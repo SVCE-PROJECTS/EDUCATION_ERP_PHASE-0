@@ -1,8 +1,10 @@
 // @ts-nocheck
-// Point this at your Express backend. Use your machine's LAN IP when testing
-// on a physical device (localhost only works on simulators/emulators).
-export const API_BASE_URL = 'http://localhost:5000/api';
-// Same host as API_BASE_URL but without the /api suffix - used to build full
+// Base URL is read from EXPO_PUBLIC_API_URL in your .env file.
+// Run `npm run set-ip` from the project root to auto-detect your
+// current LAN IP and update the .env — no manual editing needed
+// when you switch networks.
+export const API_BASE_URL = `${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5001'}/api`;
+// Same host as API_BASE_URL but without the /api suffix — used to build full
 // URLs for files served statically (e.g. /uploads/...), like transfer documents.
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 

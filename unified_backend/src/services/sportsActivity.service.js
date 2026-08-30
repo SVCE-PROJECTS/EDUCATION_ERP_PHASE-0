@@ -5,6 +5,7 @@
  */
 
 const sportsActivityRepo = require('../repositories/sportsActivity.repository');
+const studentRepo = require('../repositories/studentRepository');
 
 const parseQuery = (q) => ({
   page:      Math.max(1, parseInt(q.page)  || 1),
@@ -39,18 +40,23 @@ const getById = async (id, departmentCode) => {
 };
 
 const create = async (data, departmentCode) => {
-  if (!data.student_id) throw { statusCode: 400, message: 'student_id is required.' };
+  if (!data.student_id) throw { statusCode: 400, message: 'Student USN is required.' };
+  // FIXED: this field now takes the student's USN (the identifier actually
+  // visible in the Student Management screen) instead of the raw internal
+  // library_id, which was never shown anywhere in the app.
+  const student = await studentRepo.findByUsn(String(data.student_id).trim());
+  if (!student) throw { statusCode: 404, message: `No student found with USN "${data.student_id}". Please check and try again.` };
   if (!data.sportName)  throw { statusCode: 400, message: 'sportName is required.' };
 
   return sportsActivityRepo.create({
-    studentId:   data.student_id,
+    studentId:   student.library_id,
     facultyId:   data.faculty_id || null,
     title:       data.sportName.trim(),
     description: JSON.stringify({
       competitionLevel: data.competitionLevel || null,
       positionMedal:    data.positionMedal    || null,
-      section:          data.section          || null,
-      semester:         data.semester         || null,
+      section:          student.section_name          || null,
+      semester:         student.semester_number         || null,
     }),
     academicYear: data.academicYear || null,
     status:       'Completed',
@@ -71,8 +77,6 @@ const update = async (id, data, departmentCode) => {
   try { desc = JSON.parse(existing.description || '{}'); } catch {}
   if (data.competitionLevel !== undefined) desc.competitionLevel = data.competitionLevel;
   if (data.positionMedal    !== undefined) desc.positionMedal    = data.positionMedal;
-  if (data.section          !== undefined) desc.section          = data.section;
-  if (data.semester         !== undefined) desc.semester         = parseInt(data.semester);
   updateData.description = JSON.stringify(desc);
 
   return sportsActivityRepo.update(id, updateData);

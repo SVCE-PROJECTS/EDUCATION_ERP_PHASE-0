@@ -5,6 +5,7 @@
  */
 
 const otherCurricularRepo = require('../repositories/otherCurricular.repository');
+const studentRepo = require('../repositories/studentRepository');
 
 const parseQuery = (q) => ({
   page:      Math.max(1, parseInt(q.page)  || 1),
@@ -39,19 +40,24 @@ const getById = async (id, departmentCode) => {
 };
 
 const create = async (data, departmentCode) => {
-  if (!data.student_id) throw { statusCode: 400, message: 'student_id is required.' };
+  if (!data.student_id) throw { statusCode: 400, message: 'Student USN is required.' };
+  // FIXED: this field now takes the student's USN (the identifier actually
+  // visible in the Student Management screen) instead of the raw internal
+  // library_id, which was never shown anywhere in the app.
+  const student = await studentRepo.findByUsn(String(data.student_id).trim());
+  if (!student) throw { statusCode: 404, message: `No student found with USN "${data.student_id}". Please check and try again.` };
   if (!data.eventName)  throw { statusCode: 400, message: 'eventName is required.' };
 
   return otherCurricularRepo.create({
-    studentId:   data.student_id,
+    studentId:   student.library_id,
     facultyId:   data.faculty_id || null,
     title:       data.eventName.trim(),
     description: JSON.stringify({
       organizingCollege: data.organizingCollege || null,
       achievement:       data.achievement       || null,
       year:              data.year              || null,
-      section:           data.section           || null,
-      semester:          data.semester          || null,
+      section:           student.section_name           || null,
+      semester:          student.semester_number          || null,
     }),
     academicYear: data.academicYear || (data.year ? String(data.year) : null),
     status:       'Completed',
@@ -73,8 +79,6 @@ const update = async (id, data, departmentCode) => {
   if (data.organizingCollege !== undefined) desc.organizingCollege = data.organizingCollege;
   if (data.achievement       !== undefined) desc.achievement       = data.achievement;
   if (data.year              !== undefined) desc.year              = parseInt(data.year);
-  if (data.section           !== undefined) desc.section           = data.section;
-  if (data.semester          !== undefined) desc.semester          = parseInt(data.semester);
   updateData.description = JSON.stringify(desc);
 
   return otherCurricularRepo.update(id, updateData);

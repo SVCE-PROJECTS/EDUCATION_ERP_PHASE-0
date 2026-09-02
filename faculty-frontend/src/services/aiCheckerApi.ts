@@ -20,6 +20,7 @@
 
 import axiosInstance from '../api/axiosInstance';
 import { API_BASE_URL } from '../config/api';
+import { getToken } from '../api/tokenStore';
 import type { ExtractTextResponse, SimilarityResult } from '../types';
 
 /**
@@ -44,7 +45,7 @@ export const extractTextFromFile = async (
   } as unknown as Blob);
 
   // Use fetch directly for multipart — axios can have issues with RN FormData
-  const token = (await import('../api/tokenStore')).getToken();
+  const token = getToken(); // static import — no dynamic import needed
 
   const response = await fetch(`${API_BASE_URL}/ai-checker/extract`, {
     method: 'POST',

@@ -90,7 +90,7 @@ const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
 
       // 2. Get existing attendance for this class+date
       const existing = await getAttendance({
-        class_id: cls.class_id,
+        class_id: Number(cls.class_id),
         date: dateStr,
       });
 
@@ -165,7 +165,7 @@ const AttendanceScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const records: SaveAttendanceRequest[] = entries.map((e) => ({
         student_id: e.student_id,
-        class_id: selectedClass.class_id,
+        class_id: Number(selectedClass.class_id),
         attendance_date: toDateStr(date),
         status: e.status,
         remarks: e.remarks || undefined,

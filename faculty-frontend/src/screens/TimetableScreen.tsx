@@ -152,13 +152,14 @@ const TimetableScreen: React.FC<Props> = ({ navigation }) => {
       );
 
       // Collect and filter only this faculty's timetable rows
-      const facultyIdStr = String(faculty.faculty_id);
+      // faculty_id and facultyId are both present in the profile (pg returns as string)
+      const myId = String(faculty.faculty_id ?? faculty.employeeId ?? '');
       const collected: TimetableEntry[] = [];
 
       results.forEach((result) => {
         if (result.status === 'fulfilled') {
           result.value.timetable
-            .filter((e) => String(e.facultyId) === facultyIdStr)
+            .filter((e) => String(e.facultyId) === myId)
             .forEach((e) => collected.push(e));
         }
       });

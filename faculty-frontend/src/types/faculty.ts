@@ -19,15 +19,15 @@ export type { FacultyProfile, FacultyDepartment, FacultyRole };
  *   semester_id, semester_number
  */
 export interface FacultyClass {
-  class_id: number;
+  class_id: number | string;  // pg returns BigInt columns as strings
   academic_year: string;
-  subject_id: number;
+  subject_id: number | string;
   subject_name: string;
   subject_code: string;
-  section_id: number;
+  section_id: number | string;
   section_name: string;
-  semester_id: number;
-  semester_number: number;
+  semester_id: number | string;
+  semester_number: number;  // this is a plain int, stays number
 }
 
 /**

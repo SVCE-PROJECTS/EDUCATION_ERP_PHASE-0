@@ -98,7 +98,7 @@ const AssignmentsScreen: React.FC<Props> = ({ navigation }) => {
     setLoadingData(true);
     setError(null);
     try {
-      const data = await getAssignments({ class_id: cls.class_id });
+      const data = await getAssignments({ class_id: Number(cls.class_id) });
       setAssignments(data);
     } catch (err: unknown) {
       setError((err as { message?: string }).message ?? 'Failed to load assignments.');
@@ -153,7 +153,7 @@ const AssignmentsScreen: React.FC<Props> = ({ navigation }) => {
     setFormError(null);
     try {
       const payload = {
-        class_id: selectedClass.class_id,
+        class_id: Number(selectedClass.class_id),
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         due_date: form.due_date.trim() || undefined,

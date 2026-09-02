@@ -18,7 +18,7 @@ import LoadingIndicator from './LoadingIndicator';
 interface Props {
   classes: FacultyClass[];
   loading: boolean;
-  selectedClassId: number | null;
+  selectedClassId: number | string | null;
   onSelect: (cls: FacultyClass) => void;
   label?: string;
 }
@@ -32,8 +32,8 @@ const ClassPicker: React.FC<Props> = ({
 }) => {
   if (loading) return <LoadingIndicator message="Loading classes…" />;
 
-  const handleChange = (value: number) => {
-    const cls = classes.find((c) => c.class_id === value);
+  const handleChange = (value: number | string) => {
+    const cls = classes.find((c) => String(c.class_id) === String(value));
     if (cls) onSelect(cls);
   };
 
@@ -41,7 +41,7 @@ const ClassPicker: React.FC<Props> = ({
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.pickerWrap}>
-        <Picker<number>
+        <Picker<number | string>
           selectedValue={selectedClassId ?? -1}
           onValueChange={handleChange}
           style={styles.picker}

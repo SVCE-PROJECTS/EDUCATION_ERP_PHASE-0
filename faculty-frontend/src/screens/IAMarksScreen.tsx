@@ -47,11 +47,11 @@ import { colors, spacing, typography, radius } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'IAMarks'>;
 
-/** Clamp a numeric text value to 0–100 */
+/** Clamp a numeric text value to 0–20 (DB constraint: ia_marks_ia1/2/3_check) */
 const clampMark = (val: string): string => {
   const n = parseInt(val, 10);
   if (isNaN(n)) return '';
-  return String(Math.min(100, Math.max(0, n)));
+  return String(Math.min(20, Math.max(0, n)));
 };
 
 const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
@@ -72,7 +72,7 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const [students, existingMarks] = await Promise.all([
         getStudentsBySection(cls.semester_number, cls.section_name),
-        getIAMarks({ class_id: cls.class_id }),
+        getIAMarks({ class_id: Number(cls.class_id) }),
       ]);
 
       // Build lookup: student_id → existing IAMark row
@@ -134,7 +134,8 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   /**
-   * Save all entries.
+   * Save all entries sequentially (not in parallel) to avoid overloading
+   * the backend with 60 simultaneous requests for large classes.
    * Uses POST /api/ia-marks which upserts on UNIQUE(student_id, class_id).
    * Never sends `average` — it's DB-generated.
    */
@@ -143,18 +144,17 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
     setSaving(true);
     setError(null);
     setSaveSuccess(false);
+    const classId = Number(selectedClass.class_id); // class_id comes as string from pg
     try {
-      await Promise.all(
-        entries.map((e) =>
-          addIAMarks({
-            student_id: e.student_id,
-            class_id: selectedClass.class_id,
-            ia1: e.ia1 !== '' ? parseInt(e.ia1, 10) : null,
-            ia2: e.ia2 !== '' ? parseInt(e.ia2, 10) : null,
-            ia3: e.ia3 !== '' ? parseInt(e.ia3, 10) : null,
-          }),
-        ),
-      );
+      for (const e of entries) {
+        await addIAMarks({
+          student_id: e.student_id,
+          class_id: classId,
+          ia1: e.ia1 !== '' ? parseInt(e.ia1, 10) : null,
+          ia2: e.ia2 !== '' ? parseInt(e.ia2, 10) : null,
+          ia3: e.ia3 !== '' ? parseInt(e.ia3, 10) : null,
+        });
+      }
       setSaveSuccess(true);
       // Reload to get DB-generated averages
       await loadData(selectedClass);
@@ -232,9 +232,9 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
               <Card noPadding style={styles.tableCard}>
                 <View style={[styles.tableRow, styles.tableHeader]}>
                   <Text style={[styles.colName, styles.headerText]}>Student</Text>
-                  <Text style={[styles.colMark, styles.headerText]}>IA 1</Text>
-                  <Text style={[styles.colMark, styles.headerText]}>IA 2</Text>
-                  <Text style={[styles.colMark, styles.headerText]}>IA 3</Text>
+                  <Text style={[styles.colMark, styles.headerText]}>IA 1{'\n'}(/20)</Text>
+                  <Text style={[styles.colMark, styles.headerText]}>IA 2{'\n'}(/20)</Text>
+                  <Text style={[styles.colMark, styles.headerText]}>IA 3{'\n'}(/20)</Text>
                   <Text style={[styles.colAvg, styles.headerText]}>Avg</Text>
                 </View>
 
@@ -264,7 +264,7 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
                       onChangeText={(v) => updateMark(entry.student_id, 'ia1', v.replace(/[^0-9]/g, ''))}
                       onBlur={() => onBlurMark(entry.student_id, 'ia1')}
                       keyboardType="numeric"
-                      maxLength={3}
+                      maxLength={2}
                       placeholder="—"
                       placeholderTextColor={colors.placeholder}
                       accessibilityLabel={`IA1 for ${entry.name}`}
@@ -277,7 +277,7 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
                       onChangeText={(v) => updateMark(entry.student_id, 'ia2', v.replace(/[^0-9]/g, ''))}
                       onBlur={() => onBlurMark(entry.student_id, 'ia2')}
                       keyboardType="numeric"
-                      maxLength={3}
+                      maxLength={2}
                       placeholder="—"
                       placeholderTextColor={colors.placeholder}
                       accessibilityLabel={`IA2 for ${entry.name}`}
@@ -290,7 +290,7 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
                       onChangeText={(v) => updateMark(entry.student_id, 'ia3', v.replace(/[^0-9]/g, ''))}
                       onBlur={() => onBlurMark(entry.student_id, 'ia3')}
                       keyboardType="numeric"
-                      maxLength={3}
+                      maxLength={2}
                       placeholder="—"
                       placeholderTextColor={colors.placeholder}
                       accessibilityLabel={`IA3 for ${entry.name}`}
@@ -301,9 +301,9 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
                       <Text
                         style={[
                           styles.avgText,
-                          entry.average != null && Number(entry.average) >= 80
+                          entry.average != null && Number(entry.average) >= 16
                             ? styles.avgHigh
-                            : entry.average != null && Number(entry.average) >= 60
+                            : entry.average != null && Number(entry.average) >= 12
                             ? styles.avgMid
                             : styles.avgLow,
                         ]}
@@ -316,7 +316,7 @@ const IAMarksScreen: React.FC<Props> = ({ navigation }) => {
               </Card>
 
               <Text style={styles.note}>
-                * Average is calculated automatically by the database after saving.
+                * Marks are out of 20. Average is calculated automatically by the database after saving.
               </Text>
 
               <CustomButton

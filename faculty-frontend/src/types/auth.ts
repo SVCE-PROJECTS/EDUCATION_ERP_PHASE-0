@@ -49,10 +49,11 @@ export interface FacultyRole {
  * plus faculty.service.js → sanitizeFaculty.
  */
 export interface FacultyProfile {
-  /** Numeric PK in the DB */
-  faculty_id: number;
+  /** BigInt PK — pg returns as string, e.g. "1" */
+  faculty_id: number | string;
   /** String identifier, e.g. "EMP001" – also the JWT `id` field */
   employeeId: string;
+  employee_id?: string;
   name: string;
   email: string;
   phone: string | null;

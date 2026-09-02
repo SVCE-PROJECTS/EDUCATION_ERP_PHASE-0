@@ -58,16 +58,15 @@ export const getStudentProfile = async (
 
 /**
  * GET /api/students/:id
- * :id is the student's library_id string.
- * Returns basic student record.
+ * Backend uses success() wrapper: { success, data: Student }
  */
 export const getStudentById = async (libraryId: string): Promise<Student> => {
   const response = await axiosInstance.get<never, { success: boolean; data: Student }>(
     `/students/${libraryId}`,
   );
-  // Admin-erp uses success() wrapper; faculty_student uses direct JSON
-  // Handle both shapes safely
-  return (response as unknown as { data: Student }).data ?? (response as unknown as Student);
+  // response is the HTTP body; backend wraps with success()
+  const body = response as unknown as { success?: boolean; data?: Student };
+  return body.data ?? (response as unknown as Student);
 };
 
 /**

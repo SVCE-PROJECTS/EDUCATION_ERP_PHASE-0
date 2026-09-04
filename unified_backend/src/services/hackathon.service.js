@@ -55,8 +55,8 @@ const create = async (data, departmentCode) => {
     description: JSON.stringify({
       position: data.position || null,
       year:     data.year     || null,
-      section:  student.section_name  || null,
-      semester: student.semester_number || null,
+      section:          student.section_name      || null,
+      semester:         student.semester_number    || null,
     }),
     academicYear: data.academicYear || (data.year ? String(data.year) : null),
     status:       'Completed',
@@ -77,6 +77,8 @@ const update = async (id, data, departmentCode) => {
   try { desc = JSON.parse(existing.description || '{}'); } catch {}
   if (data.position !== undefined) desc.position = data.position;
   if (data.year     !== undefined) desc.year     = parseInt(data.year);
+  if (data.section  !== undefined) desc.section  = data.section;
+  if (data.semester !== undefined) desc.semester = parseInt(data.semester);
   updateData.description = JSON.stringify(desc);
 
   return hackathonRepo.update(id, updateData);

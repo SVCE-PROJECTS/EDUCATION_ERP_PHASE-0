@@ -55,8 +55,8 @@ const create = async (data, departmentCode) => {
     description: JSON.stringify({
       competitionLevel: data.competitionLevel || null,
       positionMedal:    data.positionMedal    || null,
-      section:          student.section_name          || null,
-      semester:         student.semester_number         || null,
+      section:          student.section_name      || null,
+      semester:         student.semester_number    || null,
     }),
     academicYear: data.academicYear || null,
     status:       'Completed',
@@ -77,6 +77,8 @@ const update = async (id, data, departmentCode) => {
   try { desc = JSON.parse(existing.description || '{}'); } catch {}
   if (data.competitionLevel !== undefined) desc.competitionLevel = data.competitionLevel;
   if (data.positionMedal    !== undefined) desc.positionMedal    = data.positionMedal;
+  if (data.section          !== undefined) desc.section          = data.section;
+  if (data.semester         !== undefined) desc.semester         = parseInt(data.semester);
   updateData.description = JSON.stringify(desc);
 
   return sportsActivityRepo.update(id, updateData);

@@ -99,6 +99,12 @@ export function useSyncRoles(facultyId: string, options: MutationOptions = {}) {
     onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ['faculty'] });
       qc.invalidateQueries({ queryKey: ['faculty', facultyId] });
+      // FIXED: this never told the Dashboard screen's cached stats to
+      // refresh, so coordinatorCount kept showing whatever it was before
+      // the role change — even though the database and API were already
+      // correct. useCreateFaculty/useDeleteFaculty already did this;
+      // syncing roles was the one mutation that forgot to.
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       const r = data?.data?.results;
       if (r?.added?.length) ok('Role assigned');
       if (r?.removed?.length) ok('Role removed');

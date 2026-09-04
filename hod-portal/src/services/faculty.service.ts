@@ -123,7 +123,7 @@ export const roleService = {
 
 export const dashboardService = {
   get: async () => {
-    const res = await api.get('/dashboard');
+    const res = await api.get('/dashboard/hod');
     return res.data;
   },
 };

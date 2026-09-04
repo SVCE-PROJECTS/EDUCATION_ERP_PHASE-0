@@ -264,7 +264,13 @@ const getDepartmentStats = async (departmentCode) => {
        COUNT(*) FILTER (WHERE f.status = 'ACTIVE')::int           AS "activeCount",
        COUNT(*) FILTER (WHERE f.status = 'ON_LEAVE')::int         AS "onLeave",
        COUNT(*) FILTER (WHERE f.status = 'INACTIVE')::int         AS "inactive",
-       COUNT(*) FILTER (WHERE f.coordinator_roles IS NOT NULL)::int AS "coordinatorCount"
+       COUNT(*) FILTER (WHERE f.coordinator_roles IS NOT NULL)::int AS "coordinatorCount",
+       -- FIXED: totalStudents was hardcoded to 0 in dashboard.service.js
+       -- instead of being queried at all. Counting here, in the same
+       -- department-scoped query, is the simplest correct fix.
+       (SELECT COUNT(*)::int FROM students s2
+          JOIN departments d2 ON d2.department_id = s2.department_id
+          WHERE d2.department_code = $1)                          AS "totalStudents"
      FROM faculty f
      JOIN departments d ON d.department_id = f.department_id
      WHERE d.department_code = $1`,

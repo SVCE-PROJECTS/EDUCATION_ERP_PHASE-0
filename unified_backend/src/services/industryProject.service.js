@@ -70,8 +70,8 @@ const create = async (data, departmentCode) => {
     description: JSON.stringify({
       projectStatus: data.status || 'ONGOING',
       domain:   data.domain   || null,
-      semester: student.semester_number || null,
-      section:  student.section_name  || null,
+      section:          student.section_name      || null,
+      semester:         student.semester_number    || null,
     }),
     academicYear: data.academicYear || null,
     status:       toStatusLabel(data.status),
@@ -96,6 +96,8 @@ const update = async (id, data, departmentCode) => {
   try { desc = JSON.parse(existing.description || '{}'); } catch {}
   if (data.status   !== undefined) desc.projectStatus = data.status;
   if (data.domain   !== undefined) desc.domain        = data.domain;
+  if (data.semester !== undefined) desc.semester      = data.semester;
+  if (data.section  !== undefined) desc.section       = data.section;
   updateData.description = JSON.stringify(desc);
 
   return industryProjectRepo.update(id, updateData);

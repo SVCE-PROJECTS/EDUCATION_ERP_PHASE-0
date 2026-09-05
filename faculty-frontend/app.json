@@ -6,11 +6,16 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "sdkVersion": "54.0.0",
+    "platforms": ["ios", "android", "web"],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.educorp.facultyportal"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       "expo-document-picker",

@@ -30,9 +30,20 @@ app.use(helmet({
 }));
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
+// CORS_ORIGIN can be:
+//   "*"                          → allow all (only for React Native dev; browsers require explicit origins with credentials)
+//   "http://localhost:8081"      → single origin
+//   "http://localhost:8081,http://localhost:19006"  → comma-separated list
+const rawCorsOrigin = config.corsOrigin || '*';
+
+const corsOriginOption =
+  rawCorsOrigin === '*'
+    ? '*'  // wildcard — fine for RN clients, avoid in production with credentials
+    : rawCorsOrigin.split(',').map(o => o.trim()).filter(Boolean);
+
 app.use(cors({
-  origin: config.corsOrigin,
-  credentials: true,
+  origin: corsOriginOption,
+  credentials: corsOriginOption !== '*', // credentials only work with explicit origins
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));

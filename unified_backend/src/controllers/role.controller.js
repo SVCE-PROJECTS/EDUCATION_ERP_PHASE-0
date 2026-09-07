@@ -1,15 +1,43 @@
 const facultyService = require('../services/faculty.service');
+const roleRepository = require('../repositories/role.repository');
 const { successResponse, errorResponse } = require('../utils/response');
+
+// The four coordinator roles selectable from the HOD portal. These must exist
+// in the `roles` table (see database/unified_seed_empty.sql) — the actual
+// role_id is looked up from the DB below, never hardcoded, so it always
+// matches whatever row `coordinator_assignments.role_id` will reference.
+const COORDINATOR_ROLE_NAMES = [
+  'timetable_coordinator',
+  'exam_coordinator',
+  'cultural_coordinator',
+  'placement_coordinator',
+];
+
+const toLabel = (roleName) =>
+  roleName
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 
 const getAllRoles = async (req, res, next) => {
   try {
-    // Return available coordinator roles
-    const roles = [
-      { id: '1', name: 'Timetable Coordinator', slug: 'TIMETABLE_COORDINATOR', isActive: true },
-      { id: '2', name: 'Exam Coordinator', slug: 'EXAM_COORDINATOR', isActive: true },
-      { id: '3', name: 'Cultural Coordinator', slug: 'CULTURAL_COORDINATOR', isActive: true },
-      { id: '4', name: 'Placement Coordinator', slug: 'PLACEMENT_COORDINATOR', isActive: true },
-    ];
+    // FIXED: previously returned hardcoded ids ('1'-'4') that did not match
+    // the real roles.role_id values in the database. Assigning a coordinator
+    // role would then silently insert the WRONG role_id into
+    // coordinator_assignments (e.g. 'Timetable Coordinator' could end up
+    // pointing at 'super_admin'). Now we read the real rows from the roles
+    // table so the id sent to the frontend is always correct.
+    const allRoles = await roleRepository.findAll(); // [{ id, name, description }]
+
+    const roles = allRoles
+      .filter((r) => COORDINATOR_ROLE_NAMES.includes(r.name))
+      .map((r) => ({
+        id: String(r.id),
+        name: toLabel(r.name),
+        slug: r.name.toUpperCase(),
+        isActive: true,
+      }));
+
     return successResponse(res, roles);
   } catch (err) {
     next(err);

@@ -92,6 +92,21 @@ async function findById(libraryId) {
   return result.rows[0] || null;
 }
 
+// Added to support looking students up by USN — the identifier actually
+// shown in the Student Management screen — instead of requiring the raw
+// internal library_id, which was never visible anywhere in the app.
+async function findByUsn(usn) {
+  const result = await query(
+    `SELECT s.library_id, s.name, s.usn, sem.semester_number, sec.section_name
+     FROM students s
+     JOIN semesters sem ON sem.semester_id = s.semester_id
+     JOIN sections  sec ON sec.section_id  = s.section_id
+     WHERE s.usn = $1`,
+    [usn],
+  );
+  return result.rows[0] || null;
+}
+
 async function create(data) {
   const semResult = await query(
     'SELECT semester_id FROM semesters WHERE semester_number = $1',
@@ -238,6 +253,7 @@ async function getStudentsBySectionId(sectionId) {
 module.exports = {
   findAll,
   findById,
+  findByUsn,
   create,
   update,
   remove,

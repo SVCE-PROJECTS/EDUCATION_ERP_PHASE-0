@@ -42,7 +42,7 @@ const getHODDashboard = async (departmentCode) => {
       onLeave:          stats.onLeave,
       inactive:         stats.inactive,
       coordinatorCount: stats.coordinatorCount,
-      totalStudents:    0,
+      totalStudents:    stats.totalStudents,
       totalSemesters:   8,
     },
     roleDistribution: rolesWithNames,

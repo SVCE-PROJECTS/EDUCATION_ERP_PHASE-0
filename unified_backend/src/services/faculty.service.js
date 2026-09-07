@@ -222,6 +222,21 @@ const syncRoles = async (facultyId, { add, remove }, syncedBy, departmentCode) =
 
   // Add roles
   const VALID_ROLES = ['TIMETABLE_COORDINATOR', 'EXAM_COORDINATOR', 'CULTURAL_COORDINATOR', 'PLACEMENT_COORDINATOR'];
+
+  // FIXED: previously an invalid roleId (e.g. a numeric role_id sent instead
+  // of a slug) was silently ignored here — VALID_ROLES.includes(roleId)
+  // just evaluated false and nothing happened — while the response below
+  // still reported it as "added" (since it isn't in currentRoles either),
+  // so the app showed a success toast for a change that was never actually
+  // persisted. Now this throws a clear, immediate error instead.
+  const invalidIds = [...(add || []), ...(remove || [])].filter((r) => !VALID_ROLES.includes(r));
+  if (invalidIds.length > 0) {
+    throw {
+      statusCode: 400,
+      message: `Invalid role identifier(s): ${invalidIds.join(', ')}. Expected one of: ${VALID_ROLES.join(', ')}.`,
+    };
+  }
+
   let newRoles = [...currentRoles];
   
   for (const roleId of (add || [])) {

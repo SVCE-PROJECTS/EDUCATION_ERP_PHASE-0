@@ -33,7 +33,7 @@ const findAll = async (departmentCode, {
 
   const [data, count] = await Promise.all([
     query(
-      `SELECT a.*, s.name AS student_name, s.usn, d.department_code
+      `SELECT a.*, a.activity_id AS id, s.name AS student_name, s.usn, d.department_code
        FROM activities a
        JOIN students s ON s.library_id = a.student_id
        JOIN departments d ON d.department_id = s.department_id
@@ -57,9 +57,10 @@ const findAll = async (departmentCode, {
 
 const findById = async (id) => {
   const result = await query(
-    `SELECT a.*, s.name AS student_name, s.usn
+    `SELECT a.*, a.activity_id AS id, s.name AS student_name, s.usn, d.department_code
      FROM activities a
      JOIN students s ON s.library_id = a.student_id
+     JOIN departments d ON d.department_id = s.department_id
      WHERE a.activity_id = $1 AND a.activity_type = $2`,
     [id, ACTIVITY_TYPE],
   );
@@ -71,7 +72,7 @@ const create = async (data) => {
     `INSERT INTO activities
        (student_id, faculty_id, activity_type, title, description, academic_year, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING *`,
+     RETURNING *, activity_id AS id`,
     [
       data.studentId,
       data.facultyId || null,
@@ -112,7 +113,7 @@ const update = async (id, data) => {
   const result = await query(
     `UPDATE activities SET ${fields.join(', ')}
      WHERE activity_type = $${actTypeIdx} AND activity_id = $${idx}
-     RETURNING *`,
+     RETURNING *, activity_id AS id`,
     params,
   );
   return result.rows[0] || null;
@@ -138,7 +139,7 @@ const addStudent = async (projectActivityId, studentData) => {
     `INSERT INTO activities
        (student_id, faculty_id, activity_type, title, description, academic_year, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING *`,
+     RETURNING *, activity_id AS id`,
     [
       studentData.studentId,
       studentData.facultyId || parent.faculty_id || null,

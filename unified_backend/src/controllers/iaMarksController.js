@@ -25,10 +25,8 @@ const getIAMarks = async (req, res) => {
 
     const result = await pool.query(
       `SELECT im.*,
-              sub.subject_name, sub.subject_code,
-              s.name AS student_name, s.usn
+              sub.subject_name, sub.subject_code
        FROM ia_marks im
-       JOIN students s  ON s.library_id = im.student_id
        JOIN classes  c  ON c.class_id   = im.class_id
        JOIN subjects sub ON sub.subject_id = c.subject_id
        ${where}

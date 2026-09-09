@@ -1,0 +1,116 @@
+/**
+ * Faculty Portal — Color Tokens
+ * Identical palette to hod-portal so the two portals share a visual identity.
+ * Keep this file self-contained: never import from hod-portal.
+ */
+
+export const colors = {
+  primary: '#1D4ED8',
+  primaryDark: '#1E3A8A',
+  primaryLight: '#DBEAFE',
+
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+
+  border: '#E2E8F0',
+  borderFocus: '#1D4ED8',
+
+  textPrimary: '#0F172A',
+  textSecondary: '#64748B',
+  textMuted: '#94A3B8',
+  placeholder: '#94A3B8',
+
+  success: '#16A34A',
+  successBg: '#DCFCE7',
+  warning: '#CA8A04',
+  warningBg: '#FEF9C3',
+  danger: '#DC2626',
+  dangerBg: '#FEE2E2',
+
+  white: '#FFFFFF',
+  black: '#000000',
+  transparent: 'transparent',
+  overlay: 'rgba(15, 23, 42, 0.5)',
+
+  green: {
+    50: '#f0fdf4', 100: '#dcfce7', 300: '#86efac', 400: '#4ade80',
+    500: '#22c55e', 600: '#16a34a', 800: '#166534', 900: '#14532d',
+  },
+  red: {
+    50: '#fef2f2', 100: '#fee2e2', 400: '#f87171', 500: '#ef4444',
+    600: '#dc2626', 700: '#b91c1c', 900: '#7f1d1d',
+  },
+  yellow: { 50: '#fefce8', 100: '#fef9c3', 500: '#eab308', 600: '#ca8a04', 800: '#854d0e' },
+  amber: {
+    50: '#fffbeb', 100: '#fef3c7', 300: '#fcd34d', 500: '#f59e0b',
+    600: '#d97706', 700: '#b45309', 900: '#78350f',
+  },
+  orange: { 50: '#fff7ed', 100: '#ffedd5', 500: '#f97316', 600: '#ea580c', 800: '#9a3412' },
+  blue: {
+    50: '#eff6ff', 100: '#dbeafe', 300: '#93c5fd', 500: '#3b82f6',
+    600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a',
+  },
+  purple: {
+    50: '#faf5ff', 100: '#f3e8ff', 300: '#d8b4fe', 400: '#c084fc',
+    500: '#a855f7', 600: '#9333ea', 800: '#6b21a8', 900: '#581c87',
+  },
+  violet: { 500: '#8b5cf6', 600: '#7c3aed' },
+  pink: {
+    50: '#fdf2f8', 100: '#fce7f3', 300: '#f9a8d4', 500: '#ec4899',
+    600: '#db2777', 800: '#9d174d', 900: '#831843',
+  },
+  cyan: { 50: '#ecfeff', 100: '#cffafe', 500: '#06b6d4', 600: '#0891b2', 800: '#155e75' },
+  teal: { 500: '#14b8a6', 600: '#0d9488' },
+  emerald: { 500: '#10b981', 600: '#059669' },
+  rose: { 500: '#f43f5e', 600: '#e11d48' },
+} as const;
+
+export const neutral = {
+  50: '#F8FAFC', 100: '#F1F5F9', 200: '#E2E8F0', 300: '#CBD5E1',
+  400: '#94A3B8', 500: '#64748B', 600: '#475569', 700: '#334155',
+  800: '#1E293B', 900: '#0F172A', 950: '#020617',
+} as const;
+
+export const primaryScale = {
+  50: '#EFF6FF', 100: '#DBEAFE', 200: '#BFDBFE', 300: '#93C5FD',
+  400: '#60A5FA', 500: '#3B82F6', 600: '#2563EB', 700: '#1D4ED8',
+  800: '#1E40AF', 900: '#1E3A8A',
+} as const;
+
+export const shadows = {
+  card: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  soft: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+} as const;
+
+export const roleBadgeColors = {
+  HOD:                   { bg: colors.purple[100], text: colors.purple[800] },
+  FACULTY:               { bg: colors.blue[100],   text: colors.blue[800] },
+  TIMETABLE_COORDINATOR: { bg: colors.green[100],  text: colors.green[800] },
+  EXAM_COORDINATOR:      { bg: colors.orange[100], text: colors.orange[800] },
+  CULTURAL_COORDINATOR:  { bg: colors.pink[100],   text: colors.pink[800] },
+  PLACEMENT_COORDINATOR: { bg: colors.cyan[100],   text: colors.cyan[800] },
+  DEFAULT:               { bg: neutral[100],        text: neutral[800] },
+} as const;
+
+export const statusColors = {
+  ACTIVE:   { bg: colors.successBg, text: colors.success, dot: colors.success },
+  INACTIVE: { bg: colors.dangerBg,  text: colors.danger,  dot: colors.danger },
+  ON_LEAVE: { bg: colors.warningBg, text: colors.warning, dot: colors.warning },
+} as const;
+
+export const avatarColors: string[] = [
+  colors.violet[500], colors.blue[500], colors.emerald[500], colors.orange[500],
+  colors.pink[500],   colors.cyan[500], colors.rose[500],    colors.teal[500],
+];

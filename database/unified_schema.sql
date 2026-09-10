@@ -202,12 +202,10 @@ CREATE TABLE IF NOT EXISTS faculty_subjects (
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (faculty_id, subject_id)
 );
-
 -- ============================================================
 -- SECTION 3: STUDENT MASTER
 -- Table: students
 -- ============================================================
-
 CREATE TABLE IF NOT EXISTS students (
     library_id    VARCHAR(50)  NOT NULL,
     usn           VARCHAR(50)  UNIQUE,        -- nullable until USN is assigned
@@ -231,7 +229,6 @@ CREATE TABLE IF NOT EXISTS students (
     updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     PRIMARY KEY (library_id)
 );
-
 -- ── Deferred FK: users.student_id → students ─────────────────
 DO $$
 BEGIN

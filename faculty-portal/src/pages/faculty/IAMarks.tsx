@@ -244,7 +244,7 @@ export default function IAMarks() {
             </View>
           ) : (
             <FlatList data={marks} keyExtractor={item => String(item.ia_id)} renderItem={renderItem}
-              scrollEnabled={false} ItemSeparatorComponent={() => <View style={s.separator} />}
+              ItemSeparatorComponent={() => <View style={s.separator} />}
               refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={primaryScale[500]} colors={[primaryScale[500]]} />} />
           )}
         </View>

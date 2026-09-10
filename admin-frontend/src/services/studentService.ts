@@ -15,7 +15,7 @@ const toStudentPayload = (form) => ({
 });
 
 export const fetchStudents = async (filters = {}) => {
-  const response = await axiosInstance.get('/students', { params: filters });
+  const response = await axiosInstance.get('/students/list', { params: filters });
   return response; // { data: [...], meta: {...} } (unwrapped by interceptor down to response.data)
 };
 

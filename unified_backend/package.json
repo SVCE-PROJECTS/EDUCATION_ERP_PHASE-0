@@ -2,7 +2,7 @@
   "name": "svce-erp-backend",
   "version": "1.0.0",
   "description": "SVCE Unified ERP Backend — Admin + HOD Portal + Faculty Portal",
-  "main": "server.js",
+  "main": "server.js", 
   "type": "commonjs",
   "engines": {
     "node": ">=18.0.0"

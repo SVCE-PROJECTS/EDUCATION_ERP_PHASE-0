@@ -2,7 +2,7 @@
 import axiosInstance from '../api/axiosInstance';
 
 export const previewExport = async (filters) => {
-  const response = await axiosInstance.get('/students/export/preview', { params: filters });
+  const response = await axiosInstance.get('/export/preview', { params: filters });
   return response.data; // { total, sample }
 };
 
@@ -10,7 +10,7 @@ export const previewExport = async (filters) => {
 // endpoint the body IS the binary file (not the { success, data } envelope),
 // so the resolved value here is the Blob itself, ready to save/share.
 export const downloadExport = async (filters, format) => axiosInstance.post(
-  '/students/export',
+  '/export',
   { ...filters, format },
   { responseType: 'blob' },
 );

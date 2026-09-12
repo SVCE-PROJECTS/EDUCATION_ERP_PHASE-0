@@ -11,7 +11,7 @@ import InfoCard from '../../components/Card/InfoCard';
 import CustomDropdown from '../../components/Dropdown/CustomDropdown';
 import CustomButton from '../../components/Button/CustomButton';
 import StudentTable from '../../components/Table/StudentTable';
-import { useDropdown } from '../../hooks/useDropdowns';
+import { useDropdown, useSectionsBySemester } from '../../hooks/useDropdowns';
 import { previewExport, downloadExport } from '../../services/exportService';
 import { EXPORT_FORMATS } from '../../constants';
 import ScreenLayout from '../../navigation/ScreenLayout';
@@ -44,7 +44,7 @@ const ExportStudentDataScreen = ({ navigation }) => {
 
   const { data: programs = [] } = useDropdown('program');
   const { data: departments = [] } = useDropdown('department');
-  const { data: sections = [] } = useDropdown('section');
+  const { data: sections = [] } = useSectionsBySemester(semester);
   const { data: semesters = [] } = useDropdown('semester');
 
   const filters = {
@@ -74,6 +74,10 @@ const ExportStudentDataScreen = ({ navigation }) => {
     refreshPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programId, departmentId, sectionId, semester, academicYear]);
+
+  useEffect(() => {
+    setSectionId(undefined);
+  }, [semester]);
 
   // Screens stay mounted in the background with our flat navigator, so local
   // state (filters, format, last preview) otherwise persists between visits -

@@ -10,6 +10,14 @@ import StudentDetailsScreen from '../screens/StudentRegistry/StudentDetailsScree
 import SearchStudentScreen from '../screens/SearchStudent/SearchStudentScreen';
 import TransferStudentScreen from '../screens/TransferStudent/TransferStudentScreen';
 import ExportStudentDataScreen from '../screens/ExportStudentData/ExportStudentDataScreen';
+import FacultyListScreen from '../screens/FacultyRegistry/FacultyListScreen';
+import AddFacultyScreen from '../screens/FacultyRegistry/AddFacultyScreen';
+import EditFacultyScreen from '../screens/FacultyRegistry/EditFacultyScreen';
+import FacultyDetailsScreen from '../screens/FacultyRegistry/FacultyDetailsScreen';
+import NonTeachingStaffListScreen from '../screens/NonTeachingStaffRegistry/NonTeachingStaffListScreen';
+import AddNonTeachingStaffScreen from '../screens/NonTeachingStaffRegistry/AddNonTeachingStaffScreen';
+import EditNonTeachingStaffScreen from '../screens/NonTeachingStaffRegistry/EditNonTeachingStaffScreen';
+import NonTeachingStaffDetailsScreen from '../screens/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
 
@@ -40,13 +48,21 @@ const AppNavigator = () => {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="AddStudent">
-      <Stack.Screen name="StudentList" component={StudentListScreen} />
-      <Stack.Screen name="AddStudent" component={AddStudentScreen} />
-      <Stack.Screen name="EditStudent" component={EditStudentScreen} />
-      <Stack.Screen name="StudentDetails" component={StudentDetailsScreen} />
-      <Stack.Screen name="SearchStudent" component={SearchStudentScreen} />
+      <Stack.Screen name="StudentList"     component={StudentListScreen} />
+      <Stack.Screen name="AddStudent"      component={AddStudentScreen} />
+      <Stack.Screen name="EditStudent"     component={EditStudentScreen} />
+      <Stack.Screen name="StudentDetails"  component={StudentDetailsScreen} />
+      <Stack.Screen name="SearchStudent"   component={SearchStudentScreen} />
       <Stack.Screen name="TransferStudent" component={TransferStudentScreen} />
       <Stack.Screen name="ExportStudentData" component={ExportStudentDataScreen} />
+      <Stack.Screen name="FacultyList"           component={FacultyListScreen} />
+      <Stack.Screen name="AddFaculty"            component={AddFacultyScreen} />
+      <Stack.Screen name="EditFaculty"           component={EditFacultyScreen} />
+      <Stack.Screen name="FacultyDetails"        component={FacultyDetailsScreen} />
+      <Stack.Screen name="NonTeachingStaffList"        component={NonTeachingStaffListScreen} />
+      <Stack.Screen name="AddNonTeachingStaff"         component={AddNonTeachingStaffScreen} />
+      <Stack.Screen name="EditNonTeachingStaff"        component={EditNonTeachingStaffScreen} />
+      <Stack.Screen name="NonTeachingStaffDetails"     component={NonTeachingStaffDetailsScreen} />
     </Stack.Navigator>
   );
 };

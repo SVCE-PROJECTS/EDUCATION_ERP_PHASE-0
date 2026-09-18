@@ -16,6 +16,17 @@ const { successResponse, errorResponse } = require('../utils/response');
 const getDashboardStats = async (req, res) => {
   try {
     const studentCount = await pool.query('SELECT COUNT(*) FROM students');
+    const transferredCount = await pool.query(
+      "SELECT COUNT(*) FROM students WHERE LOWER(COALESCE(status, '')) = 'transferred'"
+    );
+    const departmentCounts = await pool.query(`
+      SELECT d.department_name AS label, COUNT(*)::int AS value
+      FROM students s
+      JOIN departments d ON d.department_id = s.department_id
+      GROUP BY d.department_id, d.department_name
+      ORDER BY COUNT(*) DESC, d.department_name ASC
+      LIMIT 7
+    `);
     const assignmentCount = await pool.query('SELECT COUNT(*) FROM assignments');
     const openAssignments = await pool.query("SELECT COUNT(*) FROM assignments WHERE status='Open'");
 
@@ -55,6 +66,11 @@ const getDashboardStats = async (req, res) => {
 
     res.json({
       totalStudents: Number(studentCount.rows[0].count),
+      transferredStudents: Number(transferredCount.rows[0].count),
+      departmentCounts: departmentCounts.rows.map((row) => ({
+        label: row.label,
+        value: Number(row.value),
+      })),
       attendancePercent: attPercent,
       totalAssignments: Number(assignmentCount.rows[0].count),
       openAssignments: Number(openAssignments.rows[0].count),

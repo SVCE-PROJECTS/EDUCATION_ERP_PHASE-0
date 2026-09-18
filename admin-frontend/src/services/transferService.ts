@@ -1,41 +1,74 @@
+
 // @ts-nocheck
+
 import { Platform } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export const transferStudent = async ({
-  studentId, newProgramId, newDepartmentId, newSemester, newSectionId, remarks, document,
+  studentId,
+  newProgramId,
+  newDepartmentId,
+  newSemester,
+  newSectionId,
+  remarks,
+  document,
 }) => {
   const formData = new FormData();
-  formData.append('studentId', studentId);
-  formData.append('newProgramId', newProgramId);
-  formData.append('newDepartmentId', newDepartmentId);
-  formData.append('newSemester', newSemester);
-  formData.append('newSectionId', newSectionId);
-  if (remarks) formData.append('remarks', remarks);
+
+  formData.append('studentId', String(studentId));
+  formData.append('newProgramId', String(newProgramId));
+  formData.append('newDepartmentId', String(newDepartmentId));
+  formData.append('newSemester', String(newSemester));
+  formData.append('newSectionId', String(newSectionId));
+
+  if (remarks) {
+    formData.append('remarks', remarks);
+  }
 
   if (document) {
     if (Platform.OS === 'web') {
-      // expo-document-picker gives a blob: URL on web, not a real file path.
-      // A plain {uri, name, type} object is NOT a valid FormData file value
-      // in a browser - it silently gets stringified instead of uploaded.
-      // It also provides the actual browser File object via `.file` - use that.
-      formData.append('supportingDocument', document.file, document.name);
+      // On web, expo-document-picker provides the real File
+      // object through document.file.
+      if (document.file) {
+        formData.append(
+          'supportingDocument',
+          document.file,
+          document.name || 'supporting-document',
+        );
+      }
     } else {
       formData.append('supportingDocument', {
         uri: document.uri,
-        name: document.name,
+        name: document.name || 'supporting-document',
         type: document.mimeType || 'application/octet-stream',
       });
     }
   }
 
-  const response = await axiosInstance.post('/students/transfer', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return response.data;
+  // IMPORTANT:
+  // Backend route is POST /api/transfer
+  const response = await axiosInstance.post(
+    '/transfer',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+
+  // axiosInstance already unwraps response.data.
+  // Backend response format is:
+  // { success: true, data: {...} }
+  return response?.data || response;
 };
 
 export const fetchTransferHistory = async (studentId) => {
-  const response = await axiosInstance.get(`/students/transfer/${studentId}/history`);
-  return response.data;
+  // Backend route is GET /api/transfer/:id/history
+  const response = await axiosInstance.get(
+    `/transfer/${studentId}/history`,
+  );
+
+  return response?.data || response;
 };
+

@@ -17,8 +17,25 @@ export function useAttendance(params?: { class_id?: number; date?: string; stude
 export function useMarkAttendance(options: { onSuccess?: () => void } = {}) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (record: AttendancePayload) => attendanceService.save(record),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attendance'] }); ok('Attendance saved'); options.onSuccess?.(); },
-    onError: (e: any) => err('Save failed', e.response?.data?.message),
+    mutationFn: (record: AttendancePayload) => {
+      console.log('=== ATTENDANCE API CALL ===');
+      console.log('Sending to backend:', record);
+      return attendanceService.save(record);
+    },
+    onSuccess: (data) => { 
+      console.log('Attendance save successful:', data);
+      qc.invalidateQueries({ queryKey: ['attendance'] }); 
+      ok('Attendance saved successfully'); 
+      options.onSuccess?.(); 
+    },
+    onError: (e: any) => {
+      console.error('=== ATTENDANCE SAVE ERROR ===');
+      console.error('Error object:', e);
+      console.error('Response data:', e.response?.data);
+      console.error('Response status:', e.response?.status);
+      
+      const errorMsg = e.response?.data?.message || e.message || 'Unknown error occurred';
+      err('Failed to save attendance', errorMsg);
+    },
   });
 }

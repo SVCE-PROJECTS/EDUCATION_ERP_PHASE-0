@@ -56,7 +56,7 @@ export const assignmentService = {
 
 // ── Attendance Service ────────────────────────────────────────────────────────
 export interface AttendancePayload {
-  student_id: string;
+  student_id: string;   // VARCHAR(50) = students.library_id (USN string)
   class_id: number;
   attendance_date: string;
   status: 'Present' | 'Absent';
@@ -82,7 +82,7 @@ export const attendanceService = {
 
 // ── IA Marks Service ──────────────────────────────────────────────────────────
 export interface IAMarksPayload {
-  student_id: string;
+  student_id: string;   // VARCHAR(50) = students.library_id (USN string)
   class_id: number;
   ia1?: number;
   ia2?: number;

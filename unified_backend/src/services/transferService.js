@@ -98,7 +98,7 @@ async function transferStudent(payload) {
          department_id = $2,
          semester_id = $3,
          section_id = $4,
-         status = 'transferred',
+         status = 'Transferred',
          updated_at = NOW()
        WHERE library_id = $5
        RETURNING library_id`,

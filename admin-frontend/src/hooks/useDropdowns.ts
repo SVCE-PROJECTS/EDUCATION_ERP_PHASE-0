@@ -13,5 +13,6 @@ export const useSectionsBySemester = (semesterId) => useQuery({
   queryKey: ['dropdown', 'sections', semesterId],
   queryFn: () => fetchSectionsBySemester(semesterId),
   enabled: !!semesterId,
-  staleTime: 1000 * 60 * 30,
+  staleTime: 0,
+  gcTime: 0,
 });

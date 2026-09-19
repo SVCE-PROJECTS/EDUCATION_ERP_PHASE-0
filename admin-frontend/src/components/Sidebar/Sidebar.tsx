@@ -6,14 +6,10 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Image,
 } from 'react-native';
 import { Text, Avatar, Icon } from 'react-native-paper';
 import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, typography } from '../../theme';
-
-// Update this path to match the location of your logo file.
-import collegeLogo from '../../assets/images/college-logo.png';
 
 const NAV_ITEMS = [
   {
@@ -70,22 +66,12 @@ const Sidebar = ({ navigation, activeScreen }) => {
       
       {/* Brand */}
       <View style={styles.brand}>
-
-        <Image
-          source={collegeLogo}
-          style={styles.collegeLogo}
-          resizeMode="contain"
-          accessibilityLabel="College logo"
-        />
-
         <Text style={styles.brandTitle}>
           SVCE EDUCATION ERP
         </Text>
-
         <Text style={styles.brandSubtitle}>
           Academic Management
         </Text>
-
       </View>
 
 
@@ -183,13 +169,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.xl,
     alignItems: 'center',
-  },
-
-  collegeLogo: {
-    width: 240,
-    height: 70,
-    marginBottom: spacing.md,
-    alignSelf: 'center',
   },
 
   brandTitle: {

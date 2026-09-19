@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Snackbar } from 'react-native-paper';
+import { useQueryClient } from '@tanstack/react-query';
 import StudentForm from './StudentForm';
 import ScreenLayout from '../../navigation/ScreenLayout';
 import { useCreateStudent } from '../../hooks/useStudents';
@@ -9,6 +10,7 @@ import { colors } from '../../theme';
 
 const AddStudentScreen = ({ navigation }) => {
   const { mutateAsync, isPending } = useCreateStudent();
+  const queryClient = useQueryClient();
   const [continuing, setContinuing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -17,6 +19,7 @@ const AddStudentScreen = ({ navigation }) => {
   const handleSubmit = async (form) => {
     try {
       const created = await mutateAsync(form);
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
       navigation.navigate('StudentDetails', { studentId: created.id });
     } catch (err) {
       setErrorMessage(err.message || 'Failed to save student. Please try again.');
@@ -28,6 +31,7 @@ const AddStudentScreen = ({ navigation }) => {
     setContinuing(true);
     try {
       const created = await mutateAsync(form);
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
       setSuccessMessage(`${created.name} saved. Ready for the next student.`);
     } catch (err) {
       setErrorMessage(err.message || 'Failed to save student. Please try again.');

@@ -27,14 +27,24 @@ export const transferStudent = async ({
 
   if (document) {
     if (Platform.OS === 'web') {
-      // On web, expo-document-picker provides the real File
-      // object through document.file.
+      // On web, expo-document-picker returns assets with a uri (blob URL)
+      // We need to fetch the blob and append it as a File
       if (document.file) {
-        formData.append(
-          'supportingDocument',
-          document.file,
-          document.name || 'supporting-document',
-        );
+        // If File object is directly available
+        formData.append('supportingDocument', document.file, document.name || 'supporting-document');
+      } else if (document.uri) {
+        // Fetch the blob from the blob URI and append
+        try {
+          const response = await fetch(document.uri);
+          const blob = await response.blob();
+          const file = new File([blob], document.name || 'supporting-document', {
+            type: document.mimeType || blob.type || 'application/octet-stream',
+          });
+          formData.append('supportingDocument', file, document.name || 'supporting-document');
+        } catch (e) {
+          // fallback: append uri directly
+          formData.append('supportingDocument', document.uri);
+        }
       }
     } else {
       formData.append('supportingDocument', {

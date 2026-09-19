@@ -21,7 +21,7 @@ import EmptyState from '../../components/EmptyState/EmptyState';
 import ConfirmationDialog from '../../components/Dialog/ConfirmationDialog';
 
 import { useStudents } from '../../hooks/useStudents';
-import { useDropdown } from '../../hooks/useDropdowns';
+import { useDropdown, useSectionsBySemester } from '../../hooks/useDropdowns';
 import { useTransferStudent } from '../../hooks/useTransferStudent';
 
 import ScreenLayout from '../../navigation/ScreenLayout';
@@ -112,8 +112,10 @@ const TransferStudentScreen = ({ route, navigation }) => {
   // -------------------------------------------------------
   const { data: programs = [] } = useDropdown('program');
   const { data: departments = [] } = useDropdown('department');
-  const { data: sections = [] } = useDropdown('section');
   const { data: semesters = [] } = useDropdown('semester');
+
+  // sections filtered by the selected target semester
+  const { data: sections = [] } = useSectionsBySemester(newSemester);
 
 
   // -------------------------------------------------------
@@ -464,7 +466,10 @@ const TransferStudentScreen = ({ route, navigation }) => {
                     label="Semester"
                     value={newSemester}
                     options={semesters}
-                    onSelect={setNewSemester}
+                    onSelect={(val) => {
+                      setNewSemester(val);
+                      setNewSectionId(undefined); // reset section when semester changes
+                    }}
                     floatingLabel={false}
                   />
 
@@ -475,6 +480,7 @@ const TransferStudentScreen = ({ route, navigation }) => {
 
               {/* Section */}
               <CustomDropdown
+                key={`section-${newSemester}`}
                 label="Section"
                 value={newSectionId}
                 options={sections}

@@ -1,13 +1,13 @@
 // @ts-nocheck
 import React, { useEffect } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Text, Icon } from 'react-native-paper';
 import CustomInput from '../../components/Input/CustomInput';
 import CustomDropdown from '../../components/Dropdown/CustomDropdown';
 import CustomButton from '../../components/Button/CustomButton';
 import InfoCard from '../../components/Card/InfoCard';
-import { useDropdown } from '../../hooks/useDropdowns';
+import { useDropdown, useSectionsBySemester } from '../../hooks/useDropdowns';
 import { colors, spacing, typography, radius } from '../../theme';
 
 const DEFAULTS = {
@@ -38,6 +38,9 @@ const StudentForm = ({
     control, handleSubmit, reset, formState: { errors },
   } = useForm({ defaultValues: initialValues || DEFAULTS });
 
+  // Watch semester to filter sections
+  const selectedSemester = useWatch({ control, name: 'semester' });
+
   useEffect(() => {
     if (initialValues) reset(initialValues);
   }, [initialValues, reset]);
@@ -49,9 +52,11 @@ const StudentForm = ({
 
   const { data: programs = [], isLoading: loadingPrograms } = useDropdown('program');
   const { data: departments = [], isLoading: loadingDepartments } = useDropdown('department');
-  const { data: sections = [], isLoading: loadingSections } = useDropdown('section');
   const { data: genders = [] } = useDropdown('gender');
   const { data: semesters = [] } = useDropdown('semester');
+
+  // sections filtered by selected semester (semester id = semester number 1-8)
+  const { data: sections = [], isLoading: loadingSections } = useSectionsBySemester(selectedSemester);
 
   return (
     <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -74,7 +79,7 @@ const StudentForm = ({
                 <CustomInput
                   label="Name"
                   value={field.value}
-                  onChangeText={field.onChange}
+                  onChangeText={(text) => field.onChange(text.replace(/[^a-zA-Z\s.]/g, ''))}
                   onBlur={field.onBlur}
                   error={errors.name?.message}
                 />
@@ -111,9 +116,10 @@ const StudentForm = ({
                 <CustomInput
                   label="Phone"
                   value={field.value}
-                  onChangeText={field.onChange}
+                  onChangeText={(text) => field.onChange(text.replace(/[^0-9+\-\s]/g, ''))}
                   onBlur={field.onBlur}
                   keyboardType="phone-pad"
+                  maxLength={15}
                   error={errors.phone?.message}
                 />
               )}
@@ -127,14 +133,18 @@ const StudentForm = ({
             <Controller
               control={control}
               name="academicYear"
-              rules={{ required: 'Academic year is required' }}
+              rules={{
+                required: 'Academic year is required',
+                pattern: { value: /^\d{4}-\d{4}$/, message: 'Format: YYYY-YYYY (e.g. 2026-2027)' },
+              }}
               render={({ field }) => (
                 <CustomInput
                   label="Academic Year"
                   placeholder="e.g. 2026-2027"
                   value={field.value}
-                  onChangeText={field.onChange}
+                  onChangeText={(text) => field.onChange(text.replace(/[^0-9-]/g, ''))}
                   onBlur={field.onBlur}
+                  maxLength={9}
                   error={errors.academicYear?.message}
                 />
               )}
@@ -221,12 +231,15 @@ const StudentForm = ({
         <Controller
           control={control}
           name="libraryId"
+          rules={{ required: 'Library ID is required' }}
           render={({ field }) => (
             <CustomInput
               label="Library ID"
               value={field.value}
-              onChangeText={field.onChange}
+              onChangeText={(text) => field.onChange(text.replace(/[^a-zA-Z0-9]/g, '').toLowerCase())}
               onBlur={field.onBlur}
+              autoCapitalize="none"
+              error={errors.libraryId?.message}
             />
           )}
         />
@@ -237,8 +250,10 @@ const StudentForm = ({
             <CustomInput
               label="USN"
               value={field.value}
-              onChangeText={field.onChange}
+              onChangeText={(text) => field.onChange(text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
               onBlur={field.onBlur}
+              autoCapitalize="characters"
+              error={errors.usn?.message}
             />
           )}
         />

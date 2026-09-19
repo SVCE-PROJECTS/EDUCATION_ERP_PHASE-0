@@ -8,7 +8,7 @@ export const useDashboard = () =>
     queryKey: ['dashboard', 'stats'],
     queryFn: fetchDashboardStats,
     staleTime: 0,
-    refetchOnMount: 'always',
+    gcTime: 0,
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
-

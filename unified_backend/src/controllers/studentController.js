@@ -183,7 +183,7 @@ const getStudentsBySection = async (req, res) => {
     const sectionName    = req.params.section.toUpperCase();
 
     const result = await pool.query(
-      `SELECT s.library_id AS student_id, s.usn, s.name, s.email, s.phone,
+      `SELECT s.student_id AS numeric_id, s.library_id AS student_id, s.usn, s.name, s.email, s.phone,
               sem.semester_number, sec.section_name
        FROM students s
        JOIN semesters sem ON sem.semester_id = s.semester_id

@@ -5,6 +5,7 @@
  */
 
 const technicalEventRepo = require('../repositories/technicalEvent.repository');
+const studentRepo = require('../repositories/studentRepository');
 
 const parseQuery = (q) => ({
   page:      Math.max(1, parseInt(q.page)  || 1),
@@ -39,11 +40,16 @@ const getById = async (id, departmentCode) => {
 };
 
 const create = async (data, departmentCode) => {
-  if (!data.student_id)  throw { statusCode: 400, message: 'student_id is required.' };
+  if (!data.student_id) throw { statusCode: 400, message: 'Student USN is required.' };
+  // FIXED: this field now takes the student's USN (the identifier actually
+  // visible in the Student Management screen) instead of the raw internal
+  // library_id, which was never shown anywhere in the app.
+  const student = await studentRepo.findByUsn(String(data.student_id).trim());
+  if (!student) throw { statusCode: 404, message: `No student found with USN "${data.student_id}". Please check and try again.` };
   if (!data.projectName) throw { statusCode: 400, message: 'projectName is required.' };
 
   return technicalEventRepo.create({
-    studentId:   data.student_id,
+    studentId:   student.library_id,
     facultyId:   data.faculty_id || null,
     title:       data.projectName.trim(),
     description: JSON.stringify({
@@ -51,11 +57,13 @@ const create = async (data, departmentCode) => {
       projectDomain: data.projectDomain || null,
       facultyMentor: data.facultyMentor || null,
       projectStatus: data.projectStatus || 'ONGOING',
-      section:       data.section       || null,
-      semester:      data.semester      || null,
+      section:       student.section_name       || null,
+      semester:      student.semester_number      || null,
     }),
     academicYear: data.academicYear || null,
-    status:       data.projectStatus === 'COMPLETED' ? 'Completed' : 'Completed',
+    // FIXED: same copy-paste bug as Industry Projects had — this ternary
+    // returned 'Completed' on both branches regardless of projectStatus.
+    status:       data.projectStatus === 'ONGOING' ? 'Ongoing' : 'Completed',
   });
 };
 
@@ -68,6 +76,8 @@ const update = async (id, data, departmentCode) => {
   const updateData = {};
   if (data.projectName)  updateData.title       = data.projectName.trim();
   if (data.academicYear) updateData.academicYear = data.academicYear;
+  if (data.projectStatus !== undefined)
+    updateData.status = data.projectStatus === 'ONGOING' ? 'Ongoing' : 'Completed';
 
   let desc = {};
   try { desc = JSON.parse(existing.description || '{}'); } catch {}
@@ -75,8 +85,6 @@ const update = async (id, data, departmentCode) => {
   if (data.projectDomain !== undefined) desc.projectDomain = data.projectDomain;
   if (data.facultyMentor !== undefined) desc.facultyMentor = data.facultyMentor;
   if (data.projectStatus !== undefined) desc.projectStatus = data.projectStatus;
-  if (data.section       !== undefined) desc.section       = data.section;
-  if (data.semester      !== undefined) desc.semester      = parseInt(data.semester);
   updateData.description = JSON.stringify(desc);
 
   return technicalEventRepo.update(id, updateData);

@@ -27,6 +27,7 @@ import AddEditFaculty from './pages/hod/AddEditFaculty';
 import StudentManagement from './pages/hod/StudentManagement';
 import CoordinatorManagement from './pages/hod/CoordinatorManagement';
 import ActivitiesPage from './pages/hod/activities/ActivitiesPage';
+import FacultyAllocation from './pages/hod/FacultyAllocation';
 
 // ── Drawer custom content ─────────────────────────────────────────────────────
 import HODDrawerContent from './layouts/HODDrawerContent';
@@ -65,6 +66,7 @@ function HODDrawer() {
       <Drawer.Screen name={ROUTES.HOD_STUDENTS} component={StudentManagement} />
       <Drawer.Screen name={ROUTES.HOD_COORDINATORS} component={CoordinatorManagement} />
       <Drawer.Screen name={ROUTES.HOD_ACTIVITIES} component={ActivitiesPage} />
+      <Drawer.Screen name={ROUTES.HOD_FACULTY_ALLOCATION} component={FacultyAllocation} />
     </Drawer.Navigator>
   );
 }

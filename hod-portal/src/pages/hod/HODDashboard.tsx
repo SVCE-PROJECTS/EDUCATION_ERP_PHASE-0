@@ -3,12 +3,21 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Users, BookOpen, Award, ChevronRight } from '../../components/icons';
+import { Users, BookOpen, Award, CalendarClock, ChevronRight } from '../../components/icons';
 import { dashboardService, facultyService } from '../../services/faculty.service';
 import studentListService from '../../services/studentList.service';
+import {
+  technicalEventService,
+  sportsActivityService,
+  culturalActivityService,
+  industryProjectService,
+  hackathonService,
+  otherCurricularService,
+} from '../../services/activities.service';
 import { useAuth } from '../../context/AuthContext';
 import { formatRelativeTime, formatActionLabel } from '../../utils/formatters';
 import Avatar from '../../components/ui/Avatar';
+import DashboardCharts from '../../components/hod/DashboardCharts';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
 import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
@@ -17,17 +26,18 @@ import { AuditLog } from '../../types';
 const SCREEN_W = Dimensions.get('window').width;
 const CARD_W =
   SCREEN_W > 600
-    ? (SCREEN_W - 48 - 16) / 3
+    ? (SCREEN_W - 32 - 48) / 4
     : SCREEN_W - 32;
 
 // ── Management card ───────────────────────────────────────────────────────────
 
-type MgmtColor = 'indigo' | 'blue' | 'purple';
+type MgmtColor = 'indigo' | 'blue' | 'purple' | 'emerald';
 
 const COLOR_MAP: Record<MgmtColor, { light: string; icon: string; border: string }> = {
   indigo: { light: primaryScale[50], icon: primaryScale[600], border: primaryScale[100] },
   blue: { light: colors.blue[50], icon: colors.blue[600], border: colors.blue[100] },
   purple: { light: colors.purple[50], icon: colors.purple[600], border: colors.purple[100] },
+  emerald: { light: colors.emerald[500], icon: colors.emerald[600], border: colors.emerald[600] },
 };
 
 interface ManagementCardProps {
@@ -80,13 +90,16 @@ export default function HODDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-combined'],
     queryFn: async () => {
-      // Step 1: Helper to fetch total student count across available semesters & sections
-      const fetchTotalStudents = async (): Promise<number> => {
+      // Step 1: Fetch total student count + performance bands (red/yellow/green)
+      // across every semester & section — same real student-list data used
+      // by the Student Management screen.
+      const fetchStudentStats = async () => {
+        const buckets = { excellent: 0, average: 0, needsImprovement: 0 };
         try {
           const semRes = await studentListService.getSemesters();
           const semesters: number[] = semRes?.semesters || semRes?.data?.semesters || [];
-          
-          if (!semesters.length) return 0;
+
+          if (!semesters.length) return { totalCount: 0, buckets };
 
           let totalCount = 0;
 
@@ -98,36 +111,71 @@ export default function HODDashboard() {
               const secName = typeof sec === 'string' ? sec : sec?.name || sec?.id;
               if (secName) {
                 const dashData = await studentListService.getSectionDashboard(sem, secName, 1, 100);
-                
+
                 // Extract total count from pagination or data array length
                 const paginationTotal = dashData?.students?.pagination?.total ?? dashData?.data?.students?.pagination?.total;
                 const studentList = dashData?.students?.data ?? dashData?.students ?? [];
-                
+
                 totalCount += paginationTotal ?? studentList.length ?? 0;
+
+                studentList.forEach((st: any) => {
+                  const perf = st?.performance;
+                  if (perf == null) return;
+                  if (perf >= 75) buckets.excellent += 1;
+                  else if (perf >= 50) buckets.average += 1;
+                  else buckets.needsImprovement += 1;
+                });
               }
             }
           }
-          return totalCount;
+          return { totalCount, buckets };
         } catch (err) {
           console.error('Failed to resolve student count:', err);
-          return 0;
+          return { totalCount: 0, buckets };
         }
+      };
+
+      // Step 2: Total activities across all real activity categories.
+      const countFrom = (res: any): number => {
+        const pagTotal = res?.pagination?.total ?? res?.data?.pagination?.total;
+        if (typeof pagTotal === 'number') return pagTotal;
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        return list.length;
+      };
+
+      const fetchActivityCount = async (): Promise<number> => {
+        const results = await Promise.allSettled([
+          technicalEventService.getAll().catch(() => null),
+          sportsActivityService.getAll().catch(() => null),
+          culturalActivityService.getAll().catch(() => null),
+          industryProjectService.getAll().catch(() => null),
+          hackathonService.getAll().catch(() => null),
+          otherCurricularService.getAll().catch(() => null),
+        ]);
+        return results.reduce((sum, r) => sum + (r.status === 'fulfilled' ? countFrom(r.value) : 0), 0);
       };
 
       const results = await Promise.allSettled([
         dashboardService.get().catch(() => null),
         facultyService.getAll().catch(() => []),
-        fetchTotalStudents(),
+        fetchStudentStats(),
+        fetchActivityCount(),
       ]);
 
       const dashRes = results[0].status === 'fulfilled' ? results[0].value : null;
       const facultyRes = results[1].status === 'fulfilled' ? results[1].value : [];
-      const calculatedStudentCount = results[2].status === 'fulfilled' ? results[2].value : 0;
+      const studentStats =
+        results[2].status === 'fulfilled'
+          ? results[2].value
+          : { totalCount: 0, buckets: { excellent: 0, average: 0, needsImprovement: 0 } };
+      const activityCount = results[3].status === 'fulfilled' ? results[3].value : 0;
 
       return {
         dashRes,
         facultyRes,
-        calculatedStudentCount,
+        calculatedStudentCount: studentStats.totalCount,
+        performanceBuckets: studentStats.buckets,
+        activityCount,
       };
     },
   });
@@ -147,6 +195,8 @@ export default function HODDashboard() {
     dashStats.coordinatorCount || 
     dashStats.coordinatorsCount || 
     facultyList.filter((f: any) => f.isCoordinator || f.role === 'COORDINATOR' || f.coordinatorRole).length;
+  const activityCount = dashStats.activityCount || data?.activityCount || 0;
+  const performanceBuckets = data?.performanceBuckets || { excellent: 0, average: 0, needsImprovement: 0 };
 
   const dept = rawDash?.department || {};
   const recentActivity = rawDash?.recentActivity || [];
@@ -156,7 +206,7 @@ export default function HODDashboard() {
       {/* Welcome */}
       <View style={s.welcome}>
         <Text style={s.welcomeHeading}>
-          Welcome, <Text style={s.welcomeName}>{user?.name || 'Dr.'}</Text>
+         <Text style={s.welcomeName}>Welcome to Department Portal</Text>
         </Text>
         <Text style={s.welcomeSub}>{dept.name || 'Department'} — Manage your department from here</Text>
       </View>
@@ -164,7 +214,7 @@ export default function HODDashboard() {
       {/* Management cards */}
       {isLoading ? (
         <View style={s.skeletonRow}>
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <View key={i} style={[s.skeleton, { width: CARD_W }]} />
           ))}
         </View>
@@ -202,6 +252,15 @@ export default function HODDashboard() {
               stat: coordinatorCount,
               statLabel: 'coordinators assigned',
             },
+            {
+              title: 'Faculty Allocation',
+              desc: 'Allocate subjects and classes to faculty members',
+              icon: CalendarClock,
+              color: 'emerald' as const,
+              route: ROUTES.HOD_FACULTY_ALLOCATION,
+              stat: undefined,
+              statLabel: undefined,
+            },
           ].map((card, i) => (
             <Animated.View key={card.route} entering={FadeInUp.delay(i * 80).duration(400).springify()}>
               <ManagementCard
@@ -216,6 +275,17 @@ export default function HODDashboard() {
             </Animated.View>
           ))}
         </ScrollView>
+      )}
+
+      {/* Charts: department overview + performance breakdown */}
+      {!isLoading && (
+        <DashboardCharts
+          studentCount={studentCount}
+          facultyCount={facultyCount}
+          coordinatorCount={coordinatorCount}
+          activityCount={activityCount}
+          performanceBuckets={performanceBuckets}
+        />
       )}
 
       {/* Recent Activity */}

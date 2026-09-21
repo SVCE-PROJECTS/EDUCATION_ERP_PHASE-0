@@ -16,11 +16,12 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useForm, Controller } from 'react-hook-form';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GraduationCap, Lock, User, Building2, Eye, EyeOff } from '../components/icons';
+import { Lock, User, Building2, Eye, EyeOff } from '../components/icons';
 import { authService, LoginCredentials } from '../services/auth.service';
 import { useAuth } from '../context/AuthContext';
 import { colors, primaryScale, neutral } from '../theme/colors';
 import Toast from '../services/toast';
+import LogoBanner from '../layouts/LogoBanner';
 
 // ── Reusable labelled field ───────────────────────────────────────────────────
 
@@ -158,11 +159,11 @@ export default function LoginScreen() {
           <Animated.View entering={FadeInDown.duration(500).springify()} style={s.card}>
             {/* Logo */}
             <Animated.View entering={FadeIn.delay(200).duration(400)} style={s.logoSection}>
-              <View style={s.logoWrap}>
-                <GraduationCap size={32} color={colors.white} />
+              <View style={s.logoImageWrap}>
+                <LogoBanner rounded />
               </View>
               <Text style={s.appTitle}>Department Portal</Text>
-              <Text style={s.appSubtitle}>Engineering College ERP</Text>
+              <Text style={s.appSubtitle}>SVCE — Engineering College ERP</Text>
             </Animated.View>
 
             {/* Department Code */}
@@ -299,19 +300,10 @@ const s = StyleSheet.create({
     marginBottom: 4,
     gap: 6,
   },
-  logoWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: primaryScale[600],
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-    shadowColor: primaryScale[500],
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
+  logoImageWrap: {
+    width: '100%',
+    maxWidth: 380,
+    marginBottom: 6,
   },
   appTitle: {
     fontSize: 22,

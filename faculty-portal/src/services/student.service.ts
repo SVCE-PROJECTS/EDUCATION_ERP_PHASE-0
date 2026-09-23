@@ -1,12 +1,15 @@
 /**
  * Faculty Portal — Student Service
  * GET /api/students/by-section/:semester/:section
- * Returns students with numeric_id (actual PK needed for attendance/ia_marks FKs)
+ *
+ * DB truth: attendance.student_id and ia_marks.student_id are
+ * VARCHAR(50) referencing students(library_id) — the USN string.
+ * We must send library_id (e.g. "1CS21CS001") as student_id, NOT an integer.
  */
 import api from './api';
 
 export interface StudentOption {
-  numeric_id: number;   // students.student_id PK — required for attendance/ia_marks
+  student_id: string;   // library_id / USN — the FK value used everywhere
   usn: string;
   name: string;
   label: string;        // "Arjun Kumar (1CS21CS001)"
@@ -16,14 +19,15 @@ export const studentService = {
   getBySemesterSection: async (semester: number, section: string): Promise<StudentOption[]> => {
     try {
       const res = await api.get(`/students/by-section/${semester}/${section}`);
-      const rows: any[] = res.data?.students ?? [];
+      const rows: any[] = res.data?.students ?? (Array.isArray(res.data) ? res.data : []);
       return rows.map((s: any) => ({
-        numeric_id: Number(s.numeric_id),
-        usn:        s.usn ?? '',
-        name:       s.name ?? '',
-        label:      `${s.name} (${s.usn ?? ''})`,
+        student_id: String(s.library_id ?? s.usn ?? s.student_id ?? ''),
+        usn:        s.usn        ?? '',
+        name:       s.name       ?? '',
+        label:      `${s.name ?? 'Unknown'} (${s.usn ?? s.library_id ?? ''})`,
       }));
-    } catch {
+    } catch (err) {
+      console.error('[studentService] getBySemesterSection failed:', err);
       return [];
     }
   },

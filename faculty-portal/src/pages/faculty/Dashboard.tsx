@@ -12,6 +12,8 @@ import { ClipboardList, CheckSquare, Award, User, ChevronRight } from '../../com
 import { dashboardService } from '../../services/faculty.service';
 import { useAuth } from '../../context/AuthContext';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
+import SimpleBarChart from '../../components/ui/SimpleBarChart';
+import ProgressRing from '../../components/ui/ProgressRing';
 import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
 
@@ -69,6 +71,17 @@ export default function Dashboard() {
     retry: 1,
   });
 
+  // Fetch weekly attendance for chart
+  const { data: weeklyData } = useQuery({
+    queryKey: ['weekly-attendance'],
+    queryFn: async () => {
+      const res = await require('../../services/api').default.get('/dashboard/weekly-attendance');
+      return res.data;
+    },
+    staleTime: 60_000,
+    retry: 1,
+  });
+
   // Backend returns flat JSON directly — no .data wrapper
   const stats = data ?? {};
 
@@ -107,9 +120,10 @@ export default function Dashboard() {
       {/* Welcome */}
       <View style={s.welcome}>
         <Text style={s.welcomeHeading}>
-          Welcome, <Text style={s.welcomeName}>{user?.name?.split(' ')[0] || 'Faculty'}</Text>
+          Welcome to <Text style={s.welcomeBrand}>Faculty</Text>
         </Text>
         <Text style={s.welcomeSub}>
+          Hello, <Text style={s.welcomeName}>{user?.name?.split(' ')[0] || 'Faculty Member'}</Text>!{' '}
           {user?.departmentCode ? `${user.departmentCode} Department` : 'Faculty Portal'}{' '}
           — manage your academic tasks from here
         </Text>
@@ -119,6 +133,60 @@ export default function Dashboard() {
       {isError && (
         <View style={s.errorBanner}>
           <Text style={s.errorText}>Could not load stats — backend may be down</Text>
+        </View>
+      )}
+
+      {/* Statistics Overview with Charts */}
+      {!isLoading && (
+        <View style={s.statsSection}>
+          {/* Attendance Overview */}
+          <View style={s.statsCard}>
+            <Text style={s.statsCardTitle}>Overall Attendance</Text>
+            <View style={s.attendanceRow}>
+              <ProgressRing 
+                percentage={stats.attendancePercent || 0} 
+                size={100}
+                strokeWidth={10}
+                label="attendance"
+                color={
+                  (stats.attendancePercent || 0) >= 85 ? colors.green[500] :
+                  (stats.attendancePercent || 0) >= 75 ? colors.amber[500] :
+                  colors.red[500]
+                }
+              />
+              <View style={s.attendanceStats}>
+                <View style={s.attendanceStat}>
+                  <Text style={s.attendanceStatValue}>{stats.totalStudents || 0}</Text>
+                  <Text style={s.attendanceStatLabel}>Total Students</Text>
+                </View>
+                <View style={s.attendanceStat}>
+                  <Text style={s.attendanceStatValue}>{stats.totalAssignments || 0}</Text>
+                  <Text style={s.attendanceStatLabel}>Assignments</Text>
+                </View>
+                <View style={s.attendanceStat}>
+                  <Text style={s.attendanceStatValue}>{stats.iaAverage || 0}</Text>
+                  <Text style={s.attendanceStatLabel}>IA Average</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Weekly Attendance Trend */}
+          {weeklyData && weeklyData.length > 0 && (
+            <SimpleBarChart
+              title="Weekly Attendance Trend"
+              data={weeklyData.map((d: any) => ({
+                label: d.day,
+                value: d.percent,
+                color: d.percent >= 85 ? colors.green[500] :
+                       d.percent >= 75 ? colors.amber[500] :
+                       colors.red[500]
+              }))}
+              maxValue={100}
+              height={160}
+              showValues={true}
+            />
+          )}
         </View>
       )}
 
@@ -157,12 +225,57 @@ export default function Dashboard() {
 
 const s = StyleSheet.create({
   welcome: { gap: 4 },
-  welcomeHeading: { fontSize: 22, fontWeight: '700', color: neutral[900] },
-  welcomeName: { color: primaryScale[600] },
-  welcomeSub: { fontSize: 13, color: neutral[500] },
+  welcomeHeading: { fontSize: 24, fontWeight: '700', color: neutral[900] },
+  welcomeBrand: { color: primaryScale[600] },
+  welcomeName: { color: primaryScale[600], fontWeight: '700' },
+  welcomeSub: { fontSize: 14, color: neutral[600], lineHeight: 20 },
 
   errorBanner: { backgroundColor: colors.dangerBg, borderRadius: 12, padding: 12 },
   errorText: { fontSize: 13, color: colors.danger, textAlign: 'center' },
+
+  statsSection: { gap: 16 },
+  statsCard: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: neutral[100],
+    padding: 20,
+    gap: 16,
+    ...shadows.card,
+  },
+  statsCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: neutral[900],
+  },
+  attendanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+  },
+  attendanceStats: {
+    flex: 1,
+    gap: 12,
+  },
+  attendanceStat: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: neutral[50],
+    borderRadius: 12,
+  },
+  attendanceStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: neutral[900],
+  },
+  attendanceStatLabel: {
+    fontSize: 12,
+    color: neutral[600],
+    fontWeight: '500',
+  },
 
   cardRowH: { flexDirection: 'row', gap: 16 },
   cardRowV: { gap: 12 },

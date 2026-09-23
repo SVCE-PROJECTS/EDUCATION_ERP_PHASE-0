@@ -1,8 +1,7 @@
 /**
  * Faculty Portal — Attendance
- * Fully dynamic: fetches real students from DB, writes to attendance table.
- * student_id = numeric PK from students table (FK constraint).
- * status: 'Present' | 'Absent' (DB CHECK constraint).
+ * DB truth: attendance.student_id is VARCHAR(50) = students.library_id (USN string).
+ * Flow: pick class → load students → pick student → pick status → Save.
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import {
@@ -13,7 +12,9 @@ import {
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus, RefreshCw, CheckSquare, X, Check, ChevronDown } from '../../components/icons';
+import Toast from '../../services/toast';
 import { useAttendance, useMarkAttendance } from '../../hooks/useAttendance';
+import { useMyClasses } from '../../hooks/useClasses';
 import { AttendancePayload } from '../../services/academic.service';
 import { studentService, StudentOption } from '../../services/student.service';
 import Button from '../../components/ui/Button';
@@ -22,75 +23,73 @@ import { formatDate } from '../../utils/formatters';
 import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
 
-// Classes seeded for faculty_priya — sem/section used to fetch students
-const MY_CLASSES = [
-  { class_id: 1, label: 'Data Structures (CS301)', semester: 3, section: 'A' },
-  { class_id: 2, label: 'Operating Systems (CS302)', semester: 3, section: 'A' },
-  { class_id: 3, label: 'Database Management (CS401)', semester: 4, section: 'A' },
-  { class_id: 4, label: 'Computer Networks (CS402)', semester: 4, section: 'A' },
-];
-
 const STATUS_PAL = {
   Present: { bg: colors.successBg, text: colors.success, dot: colors.success },
   Absent:  { bg: colors.dangerBg,  text: colors.danger,  dot: colors.danger  },
 };
 
-// ── Attendance table ──────────────────────────────────────────────────────────
 interface AttendanceRow {
-  attendance_id: number; student_id: number; class_id: number;
+  attendance_id: number; student_id: string; class_id: number;
   attendance_date: string; status: 'Present' | 'Absent'; remarks?: string;
+  student_name?: string; student_usn?: string;   // joined from backend
   subject_name: string; subject_code: string;
 }
 
 const COLS = [
-  { key: 'sno',     label: '#',       flex: 0.4, minWidth: 36 },
-  { key: 'student', label: 'Student', flex: 1.4, minWidth: 120 },
-  { key: 'subject', label: 'Subject', flex: 1.2, minWidth: 110 },
-  { key: 'date',    label: 'Date',    flex: 1,   minWidth: 95  },
-  { key: 'status',  label: 'Status',  flex: 0.9, minWidth: 80  },
+  { key: 'sno',     label: '#',       flex: 0.3, minWidth: 40 },
+  { key: 'student', label: 'Student', flex: 1.2, minWidth: 130 },
+  { key: 'subject', label: 'Subject', flex: 1.3, minWidth: 140 },
+  { key: 'date',    label: 'Date',    flex: 0.9, minWidth: 100 },
+  { key: 'status',  label: 'Status',  flex: 0.8, minWidth: 95  },
 ] as const;
 const MIN_W = COLS.reduce((a, c) => a + c.minWidth, 0);
 
-function AttendanceTable({ records }: { records: AttendanceRow[] }) {
+function AttendanceTable({ records, myClasses }: { records: AttendanceRow[]; myClasses: any[] }) {
   const { width: sw } = useWindowDimensions();
   const tableW = Math.max(sw - 64, MIN_W);
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: '100%' }}>
-      <View style={{ width: tableW }}>
-        <View style={s.tableHeader}>
-          {COLS.map(col => (
-            <View key={col.key} style={[s.tableCol, { flex: col.flex, minWidth: col.minWidth }]}>
-              <Text style={s.tableHeaderCell}>{col.label}</Text>
-            </View>
-          ))}
-        </View>
-        {records.length > 0
-          ? records.map((rec, i) => {
-              const pal = STATUS_PAL[rec.status] ?? STATUS_PAL.Absent;
-              const cls = MY_CLASSES.find(c => c.class_id === Number(rec.class_id));
-              return (
-                <View key={rec.attendance_id} style={[s.tableRow, i % 2 === 1 && s.tableRowAlt]}>
-                  <View style={[s.tableCol, { flex: 0.4, minWidth: 36 }]}><Text style={s.tableCell}>{i + 1}</Text></View>
-                  <View style={[s.tableCol, { flex: 1.4, minWidth: 120 }]}><Text style={[s.tableCell, s.tableCellBold]} numberOfLines={1}>Student #{rec.student_id}</Text></View>
-                  <View style={[s.tableCol, { flex: 1.2, minWidth: 110 }]}><Text style={s.tableCell} numberOfLines={1}>{rec.subject_name || cls?.label || '—'}</Text></View>
-                  <View style={[s.tableCol, { flex: 1, minWidth: 95 }]}><Text style={s.tableCell}>{formatDate(rec.attendance_date)}</Text></View>
-                  <View style={[s.tableCol, { flex: 0.9, minWidth: 80 }]}>
-                    <View style={[s.statusBadge, { backgroundColor: pal.bg }]}>
-                      <View style={[s.statusDot, { backgroundColor: pal.dot }]} />
-                      <Text style={[s.statusText, { color: pal.text }]}>{rec.status}</Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            })
-          : Array.from({ length: 5 }).map((_, i) => (
-              <View key={i} style={s.tableRow}>
-                <View style={[s.tableCol, { flex: 0.4, minWidth: 36 }]}><Text style={s.tableCell}>{i + 1}</Text></View>
-                {COLS.slice(1).map(col => <View key={col.key} style={[s.tableCol, { flex: col.flex, minWidth: col.minWidth }]} />)}
+    <View style={{ width: '100%' }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator style={{ width: '100%' }}>
+        <View style={{ width: Math.max(tableW, MIN_W) }}>
+          <View style={s.tableHeader}>
+            {COLS.map(col => (
+              <View key={col.key} style={[s.tableCol, { flex: col.flex, minWidth: col.minWidth }]}>
+                <Text style={s.tableHeaderCell}>{col.label}</Text>
               </View>
             ))}
-      </View>
-    </ScrollView>
+          </View>
+          {records.length > 0
+            ? records.map((rec, i) => {
+                const pal = STATUS_PAL[rec.status] ?? STATUS_PAL.Absent;
+                const cls = myClasses.find(c => c.class_id === Number(rec.class_id));
+                return (
+                  <View key={rec.attendance_id} style={[s.tableRow, i % 2 === 1 && s.tableRowAlt]}>
+                    <View style={[s.tableCol, { flex: 0.3, minWidth: 40 }]}><Text style={s.tableCell}>{i + 1}</Text></View>
+                    <View style={[s.tableCol, { flex: 1.2, minWidth: 130 }]}>
+                      <Text style={[s.tableCell, s.tableCellBold]} numberOfLines={1}>
+                        {rec.student_name || rec.student_usn || rec.student_id}
+                      </Text>
+                    </View>
+                    <View style={[s.tableCol, { flex: 1.3, minWidth: 140 }]}><Text style={s.tableCell} numberOfLines={1}>{rec.subject_name || cls?.label || '—'}</Text></View>
+                    <View style={[s.tableCol, { flex: 0.9, minWidth: 100 }]}><Text style={s.tableCell}>{formatDate(rec.attendance_date)}</Text></View>
+                    <View style={[s.tableCol, { flex: 0.8, minWidth: 95 }]}>
+                      <View style={[s.statusBadge, { backgroundColor: pal.bg }]}>
+                        <View style={[s.statusDot, { backgroundColor: pal.dot }]} />
+                        <Text style={[s.statusText, { color: pal.text }]}>{rec.status}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            : Array.from({ length: 5 }).map((_, i) => (
+                <View key={i} style={s.tableRow}>
+                  <View style={[s.tableCol, { flex: 0.3, minWidth: 40 }]}><Text style={s.tableCell}>{i + 1}</Text></View>
+                  {COLS.slice(1).map(col => <View key={col.key} style={[s.tableCol, { flex: col.flex, minWidth: col.minWidth }]} />)}
+                </View>
+              ))}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -127,14 +126,15 @@ function SelectSheet<T extends { label: string }>({ visible, onClose, label, opt
 // ── Mark attendance modal ────────────────────────────────────────────────────
 interface MarkForm {
   classId: number | null; classLabel: string;
-  studentId: number | null; studentLabel: string;
+  studentId: string; studentLabel: string;  // string = library_id (VARCHAR)
   date: string; status: 'Present' | 'Absent'; remarks: string;
 }
-const EMPTY_MARK: MarkForm = { classId: null, classLabel: '', studentId: null, studentLabel: '', date: new Date().toISOString().split('T')[0], status: 'Present', remarks: '' };
+const EMPTY_MARK: MarkForm = { classId: null, classLabel: '', studentId: '', studentLabel: '', date: new Date().toISOString().split('T')[0], status: 'Present', remarks: '' };
 
-function MarkSheet({ visible, onClose, onSubmit, loading }: {
+function MarkSheet({ visible, onClose, onSubmit, loading, myClasses }: {
   visible: boolean; onClose: () => void;
   onSubmit: (r: AttendancePayload) => void; loading: boolean;
+  myClasses: any[]; // Updated from typeof MY_CLASSES to any[]
 }) {
   const [form, setForm]           = useState<MarkForm>(EMPTY_MARK);
   const [classSheet, setClassSheet]     = useState(false);
@@ -147,7 +147,7 @@ function MarkSheet({ visible, onClose, onSubmit, loading }: {
   const set = (k: keyof MarkForm) => (v: any) => setForm(f => ({ ...f, [k]: v }));
 
   // When class changes, fetch students for that semester/section
-  const handleClassSelect = async (cls: typeof MY_CLASSES[0]) => {
+  const handleClassSelect = async (cls: any) => {
     set('classId')(cls.class_id);
     set('classLabel')(cls.label);
     set('studentId')(null);
@@ -159,8 +159,28 @@ function MarkSheet({ visible, onClose, onSubmit, loading }: {
   };
 
   const handleSubmit = () => {
-    if (!form.classId || !form.studentId || !form.date) return;
-    onSubmit({ student_id: form.studentId, class_id: form.classId, attendance_date: form.date, status: form.status, remarks: form.remarks || undefined });
+    if (!form.classId) {
+      Toast.show({ type: 'error', text1: 'Select a class first' }); return;
+    }
+    if (!form.studentId) {
+      Toast.show({ type: 'error', text1: 'Select a student' }); return;
+    }
+    if (!form.date) {
+      Toast.show({ type: 'error', text1: 'Enter a date' }); return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) {
+      Toast.show({ type: 'error', text1: 'Date must be YYYY-MM-DD' }); return;
+    }
+
+    const payload: AttendancePayload = {
+      student_id:      form.studentId,      // library_id string e.g. "1CS21CS001"
+      class_id:        form.classId,
+      attendance_date: form.date,
+      status:          form.status,
+      remarks:         form.remarks.trim() || undefined,
+    };
+    console.log('[Attendance] submitting:', payload);
+    onSubmit(payload);
   };
 
   return (
@@ -241,13 +261,13 @@ function MarkSheet({ visible, onClose, onSubmit, loading }: {
 
       {/* Class sheet */}
       <SelectSheet visible={classSheet} onClose={() => setClassSheet(false)} label="Select Class"
-        options={MY_CLASSES.map(c => ({ ...c, label: c.label }))} value={form.classLabel}
-        onChange={(c: typeof MY_CLASSES[0]) => handleClassSelect(c)} />
+        options={myClasses.map(c => ({ ...c, label: c.label }))} value={form.classLabel}
+        onChange={(c: typeof myClasses[0]) => handleClassSelect(c)} />
 
       {/* Student sheet */}
       <SelectSheet visible={studentSheet} onClose={() => setStudentSheet(false)} label="Select Student"
         options={students} value={form.studentLabel}
-        onChange={(st: StudentOption) => { set('studentId')(st.numeric_id); set('studentLabel')(st.label); }} />
+        onChange={(st: StudentOption) => { set('studentId')(st.student_id); set('studentLabel')(st.label); }} />
     </RNModal>
   );
 }
@@ -257,6 +277,9 @@ export default function Attendance() {
   const [classFilter, setClassFilter] = useState<number | null>(null);
   const [markVisible, setMarkVisible] = useState(false);
   const qc = useQueryClient();
+
+  // Fetch classes from API instead of hardcoded
+  const { data: myClasses = [], isLoading: loadingClasses } = useMyClasses();
 
   const params = classFilter ? { class_id: classFilter } : {};
   const { data: rawData, isLoading, isFetching, refetch } = useAttendance(params);
@@ -281,12 +304,16 @@ export default function Attendance() {
         <TouchableOpacity onPress={() => setClassFilter(null)} style={[s.chip, classFilter === null && s.chipActive]} activeOpacity={0.75}>
           <Text style={[s.chipText, classFilter === null && s.chipTextActive]}>All Classes</Text>
         </TouchableOpacity>
-        {MY_CLASSES.map(c => (
-          <TouchableOpacity key={c.class_id} onPress={() => setClassFilter(c.class_id)}
-            style={[s.chip, classFilter === c.class_id && s.chipActive]} activeOpacity={0.75}>
-            <Text style={[s.chipText, classFilter === c.class_id && s.chipTextActive]} numberOfLines={1}>{c.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {loadingClasses ? (
+          <ActivityIndicator size="small" color={primaryScale[500]} />
+        ) : (
+          myClasses.map(c => (
+            <TouchableOpacity key={c.class_id} onPress={() => setClassFilter(c.class_id)}
+              style={[s.chip, classFilter === c.class_id && s.chipActive]} activeOpacity={0.75}>
+              <Text style={[s.chipText, classFilter === c.class_id && s.chipTextActive]} numberOfLines={1}>{c.label}</Text>
+            </TouchableOpacity>
+          ))
+        )}
         <TouchableOpacity onPress={() => qc.invalidateQueries({ queryKey: ['attendance'] })} style={s.refreshBtn}>
           {isFetching ? <ActivityIndicator size={14} color={neutral[400]} /> : <RefreshCw size={14} color={neutral[400]} />}
         </TouchableOpacity>
@@ -304,7 +331,7 @@ export default function Attendance() {
               <CheckSquare size={15} color={primaryScale[600]} />
               <Text style={s.tableCardTitle}>Attendance Records</Text>
             </View>
-            <AttendanceTable records={records} />
+            <AttendanceTable records={records} myClasses={myClasses} />
             {records.length === 0 && (
               <View style={s.empty}>
                 <CheckSquare size={44} color={neutral[200]} />
@@ -317,66 +344,190 @@ export default function Attendance() {
       )}
 
       <MarkSheet visible={markVisible} onClose={() => setMarkVisible(false)}
-        onSubmit={(r) => markMutation.mutate(r)} loading={markMutation.isPending} />
+        onSubmit={(r) => markMutation.mutate(r)} loading={markMutation.isPending} 
+        myClasses={myClasses} />
     </ScreenWrapper>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 12 },
-  pageTitle: { fontSize: 20, fontWeight: '700', color: neutral[900] },
-  pageSubtitle: { fontSize: 12, color: neutral[500], marginTop: 2 },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: primaryScale[600], paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, ...shadows.card },
+  pageHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', // Changed from 'flex-start' to 'center' for better alignment
+    paddingHorizontal: 16, 
+    paddingTop: 16, // Increased padding
+    paddingBottom: 4,
+  },
+  pageTitle: { fontSize: 20, fontWeight: '700', color: neutral[900], lineHeight: 24 },
+  pageSubtitle: { fontSize: 12, color: neutral[500], marginTop: 2, lineHeight: 16 },
+  addBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    backgroundColor: primaryScale[600], 
+    paddingHorizontal: 16, // Increased padding
+    paddingVertical: 10, // Increased padding
+    borderRadius: 12, 
+    ...shadows.card,
+    minHeight: 40, // Added minimum height for consistency
+  },
   addBtnText: { fontSize: 13, fontWeight: '600', color: colors.white },
-  chipRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
-  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 1, borderColor: neutral[200], backgroundColor: colors.white },
+  chipRow: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, // Increased padding
+    gap: 10, // Increased gap
+    flexDirection: 'row', 
+    alignItems: 'center',
+    minHeight: 56, // Added minimum height
+  },
+  chip: { 
+    paddingHorizontal: 14, // Increased padding
+    paddingVertical: 8, // Increased padding
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: neutral[200], 
+    backgroundColor: colors.white,
+    minHeight: 36, // Added minimum height for consistency
+    justifyContent: 'center', // Center content
+    alignItems: 'center',
+  },
   chipActive: { backgroundColor: primaryScale[600], borderColor: primaryScale[600] },
-  chipText: { fontSize: 12, fontWeight: '500', color: neutral[600] },
-  chipTextActive: { color: colors.white, fontWeight: '600' },
-  refreshBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: neutral[200], alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
-  listContent: { padding: 16, paddingBottom: 32 },
+  chipText: { fontSize: 12, fontWeight: '500', color: neutral[600], textAlign: 'center' },
+  chipTextActive: { color: colors.white, fontWeight: '600', textAlign: 'center' },
+  refreshBtn: { 
+    width: 40, // Increased size
+    height: 40, // Increased size
+    borderRadius: 12, // Increased border radius
+    borderWidth: 1, 
+    borderColor: neutral[200], 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: colors.white,
+    marginLeft: 4, // Added margin for better spacing
+  },
+  listContent: { 
+    padding: 16, 
+    paddingBottom: 32,
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
-  tableCard: { backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: neutral[100], padding: 14, gap: 10, ...shadows.card },
-  tableCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tableCardTitle: { fontSize: 13, fontWeight: '600', color: neutral[900] },
-  tableHeader: { flexDirection: 'row', alignItems: 'center', backgroundColor: neutral[50], borderRadius: 8, paddingVertical: 8, paddingHorizontal: 6, minHeight: 36 },
-  tableHeaderCell: { fontSize: 11, fontWeight: '700', color: neutral[500], textTransform: 'uppercase', letterSpacing: 0.3 },
-  tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: neutral[50], minHeight: 44 },
-  tableRowAlt: { backgroundColor: neutral[50] + '80' },
-  tableCol: { justifyContent: 'center', paddingHorizontal: 4 },
-  tableCell: { fontSize: 12, color: neutral[700] },
-  tableCellBold: { fontWeight: '600', color: neutral[900] },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, alignSelf: 'flex-start' },
-  statusDot: { width: 5, height: 5, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: '600' },
-  empty: { padding: 40, alignItems: 'center', gap: 8 },
-  emptyTitle: { fontSize: 15, fontWeight: '600', color: neutral[500] },
-  emptyDesc: { fontSize: 13, color: neutral[400], textAlign: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  tableCard: { 
+    backgroundColor: colors.white, 
+    borderRadius: 20, // Increased border radius
+    borderWidth: 1, 
+    borderColor: neutral[100], 
+    padding: 20, // Increased padding
+    gap: 16, // Increased gap
+    ...shadows.card,
+  },
+  tableCardHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 10, // Increased gap
+    paddingBottom: 4,
+  },
+  tableCardTitle: { 
+    fontSize: 15, // Increased font size
+    fontWeight: '600', 
+    color: neutral[900],
+    lineHeight: 20,
+  },
+  tableHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: neutral[50], 
+    borderRadius: 12, // Increased border radius
+    paddingVertical: 10, // Increased padding
+    paddingHorizontal: 8, 
+    minHeight: 40, // Increased minimum height
+  },
+  tableHeaderCell: { 
+    fontSize: 12, // Increased font size
+    fontWeight: '700', 
+    color: neutral[500], 
+    textTransform: 'uppercase', 
+    letterSpacing: 0.3,
+  },
+  tableRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 12, // Increased padding
+    paddingHorizontal: 8, 
+    borderBottomWidth: 1, 
+    borderBottomColor: neutral[50], 
+    minHeight: 48, // Increased minimum height
+  },
+  tableRowAlt: { backgroundColor: neutral[25] }, // Lighter background
+  tableCol: { justifyContent: 'center', paddingHorizontal: 6 }, // Increased padding
+  tableCell: { 
+    fontSize: 13, // Increased font size
+    color: neutral[700],
+    lineHeight: 18,
+  },
+  tableCellBold: { 
+    fontWeight: '600', 
+    color: neutral[900],
+  },
+  statusBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, // Increased gap
+    paddingHorizontal: 10, 
+    paddingVertical: 6, // Increased padding
+    borderRadius: 999, 
+    alignSelf: 'flex-start', 
+    minWidth: 75, // Increased minimum width
+  },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { 
+    fontSize: 12, // Increased font size
+    fontWeight: '700',
+  },
+  empty: { 
+    padding: 60, // Increased padding
+    alignItems: 'center', 
+    gap: 12, // Increased gap
+    marginVertical: 20, // Added margin
+  },
+  emptyTitle: { 
+    fontSize: 16, // Increased font size
+    fontWeight: '600', 
+    color: neutral[500],
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  emptyDesc: { 
+    fontSize: 14, // Increased font size
+    color: neutral[400], 
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280, // Added max width for better readability
+  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalKav: { justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: neutral[100] },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: neutral[900] },
-  formBody: { padding: 20, gap: 14 },
-  fieldGroup: { gap: 6 },
-  fieldLabel: { fontSize: 13, fontWeight: '500', color: neutral[700] },
+  modalSheet: { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: neutral[100], backgroundColor: neutral[25] },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: neutral[900], lineHeight: 22 },
+  formBody: { padding: 20, gap: 16, paddingBottom: 10 },
+  fieldGroup: { gap: 8 },
+  fieldLabel: { fontSize: 14, fontWeight: '600', color: neutral[700], lineHeight: 18 },
   required: { color: colors.red[500] },
-  input: { borderWidth: 1, borderColor: neutral[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: neutral[900], backgroundColor: colors.white, minHeight: 44 },
-  selectTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  selectValue: { flex: 1, fontSize: 14, color: neutral[900] },
-  selectPlaceholder: { flex: 1, fontSize: 14, color: neutral[400] },
-  statusRow: { flexDirection: 'row', gap: 10 },
-  statusOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: neutral[200], backgroundColor: neutral[50] },
-  statusOptionText: { fontSize: 13, fontWeight: '500', color: neutral[600] },
-  modalFooter: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: neutral[100] },
-  footerBtn: { flex: 1 },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheetContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 5 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  sheetTitle: { fontSize: 15, fontWeight: '700', color: neutral[900] },
-  sheetOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: neutral[50] },
-  sheetOptionActive: { backgroundColor: primaryScale[50], borderRadius: 10, paddingHorizontal: 10 },
-  sheetOptionText: { flex: 1, fontSize: 14, color: neutral[700], marginRight: 8 },
-  sheetOptionTextActive: { color: primaryScale[600], fontWeight: '600' },
+  input: { borderWidth: 1, borderColor: neutral[200], borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: neutral[900], backgroundColor: colors.white, minHeight: 48, lineHeight: 20 },
+  selectTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 12 },
+  selectValue: { flex: 1, fontSize: 14, color: neutral[900], lineHeight: 20 },
+  selectPlaceholder: { flex: 1, fontSize: 14, color: neutral[400], lineHeight: 20 },
+  statusRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  statusOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: neutral[200], backgroundColor: neutral[50], minHeight: 52 },
+  statusOptionText: { fontSize: 14, fontWeight: '600', color: neutral[600] },
+  modalFooter: { flexDirection: 'row', gap: 12, padding: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: neutral[100], backgroundColor: neutral[25] },
+  footerBtn: { flex: 1, minHeight: 48 },
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheetContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: neutral[100] },
+  sheetTitle: { fontSize: 16, fontWeight: '700', color: neutral[900], lineHeight: 22 },
+  sheetOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: neutral[50], minHeight: 50 },
+  sheetOptionActive: { backgroundColor: primaryScale[50], borderRadius: 12, paddingHorizontal: 12, borderBottomWidth: 0, marginVertical: 2 },
+  sheetOptionText: { flex: 1, fontSize: 15, color: neutral[700], marginRight: 12, lineHeight: 20 },
+  sheetOptionTextActive: { color: primaryScale[700], fontWeight: '600' },
 });

@@ -14,6 +14,7 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useForm, Controller } from 'react-hook-form';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GraduationCap, Lock, User, Eye, EyeOff } from '../components/icons';
+import SVCELogo from '../components/ui/SVCELogo';
 import { authService, LoginCredentials } from '../services/auth.service';
 import { useAuth } from '../context/AuthContext';
 import { colors, primaryScale, neutral } from '../theme/colors';
@@ -78,22 +79,23 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authService.login(data);
-      if (res.success) {
-        const { faculty, token } = res.data;
-        login(
-          {
-            ...faculty,
-            id: faculty.employeeId ?? faculty.employee_id ?? faculty.faculty_id,
-            isHOD: faculty.isHOD ?? false,
-            roles: faculty.roles?.map((fr: any) => fr.role?.slug ?? fr) ?? ['FACULTY'],
-            departmentCode: faculty.department?.code ?? faculty.departmentCode,
-          },
-          token,
-        );
-        Toast.show({ type: 'success', text1: `Welcome, ${faculty.name?.split(' ')[0]}!` });
-      }
+      // Backend wraps response: { success, data: { faculty, token, isHOD } }
+      const payload = res?.data ?? res;
+      const { faculty, token } = payload;
+      if (!token) throw new Error('No token in response');
+      login(
+        {
+          ...faculty,
+          id: faculty.employeeId ?? faculty.employee_id ?? faculty.faculty_id,
+          isHOD: faculty.isHOD ?? false,
+          roles: faculty.roles?.map((fr: any) => fr.role?.slug ?? fr) ?? ['FACULTY'],
+          departmentCode: faculty.department?.code ?? faculty.departmentCode,
+        },
+        token,
+      );
+      Toast.show({ type: 'success', text1: `Welcome, ${faculty.name?.split(' ')[0]}!` });
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Login failed. Please check your credentials.';
+      const msg = err.response?.data?.message || err.message || 'Login failed. Please check your credentials.';
       Toast.show({ type: 'error', text1: msg });
     } finally {
       setLoading(false);
@@ -112,11 +114,8 @@ export default function LoginPage() {
 
             {/* Logo */}
             <Animated.View entering={FadeIn.delay(200).duration(400)} style={s.logoSection}>
-              <View style={s.logoWrap}>
-                <GraduationCap size={32} color={colors.white} />
-              </View>
+              <SVCELogo width={360} height={100} />
               <Text style={s.appTitle}>Faculty Portal</Text>
-              <Text style={s.appSubtitle}>Engineering College ERP</Text>
             </Animated.View>
 
             {/* Username */}

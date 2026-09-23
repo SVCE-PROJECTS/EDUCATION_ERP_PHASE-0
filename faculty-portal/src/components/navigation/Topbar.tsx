@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { authService } from '../../services/auth.service';
 import Avatar from '../ui/Avatar';
+import SVCELogo from '../ui/SVCELogo';
 import { RoleBadge } from '../ui/Badge';
 import { ROUTES } from '../../navigation/routes';
 import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
@@ -41,15 +42,16 @@ export default function Topbar({ title }: TopbarProps) {
 
   return (
     <View style={styles.bar}>
-      {/* Left: hamburger (mobile only) + title */}
+      {/* Left: SVCE Logo + hamburger (mobile only) + title */}
       <View style={styles.left}>
+        <SVCELogo size="md" showText={isLargeScreen} />
         {!isLargeScreen && (
           <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             style={styles.iconBtn} accessibilityLabel="Open menu">
             <Menu size={20} color={neutral[500]} />
           </TouchableOpacity>
         )}
-        <View>
+        <View style={styles.titleContainer}>
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
           {user?.departmentCode ? (
             <Text style={styles.subtitle} numberOfLines={1}>{user.departmentCode}</Text>
@@ -122,7 +124,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', paddingHorizontal: 16,
     backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: neutral[100],
   },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  titleContainer: { flex: 1, minWidth: 0 },
   title: { fontSize: 15, fontWeight: '600', color: neutral[900], lineHeight: 20 },
   subtitle: { fontSize: 11, color: neutral[500] },
   right: { flexDirection: 'row', alignItems: 'center', gap: 2 },

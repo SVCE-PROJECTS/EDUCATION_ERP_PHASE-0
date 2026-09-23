@@ -15,6 +15,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, RefreshCw, ClipboardList, X, Check, ChevronDown } from '../../components/icons';
 import { useCreateAssignment, useUpdateAssignment, useDeleteAssignment } from '../../hooks/useAssignments';
 import { assignmentService, AssignmentPayload } from '../../services/academic.service';
+import { useMyClasses } from '../../hooks/useClasses';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import SearchBar from '../../components/ui/SearchBar';
 import Button from '../../components/ui/Button';
@@ -22,7 +23,6 @@ import ScreenWrapper from '../../layouts/ScreenWrapper';
 import { formatDate } from '../../utils/formatters';
 import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
-import api from '../../services/api';
 
 // ── Types matching actual DB rows ─────────────────────────────────────────────
 interface AssignmentRow {
@@ -49,53 +49,6 @@ interface ClassOption {
 }
 
 const STATUS_OPTIONS = ['Open', 'Closed', 'Draft'];
-
-// ── Fetch classes for the logged-in faculty ───────────────────────────────────
-// Backend doesn't have /classes?faculty_id, but we know our faculty's classes
-// from the seeded data. We fetch via assignments + a direct query.
-async function fetchMyClasses(): Promise<ClassOption[]> {
-  // Use the faculty profile endpoint to get faculty_id, then hit a broader assignments
-  // query — but simplest is to try fetching all assignments (which JOINs classes)
-  // and extract unique classes from that, OR expose via a simple query.
-  // Since we seeded 4 classes, we'll query them via the backend's subject info.
-  try {
-    // Try fetching all assignments to get class info
-    const res = await api.get('/assignments');
-    const rows: AssignmentRow[] = Array.isArray(res.data) ? res.data : [];
-    const seen = new Set<number>();
-    const classes: ClassOption[] = [];
-    rows.forEach(r => {
-      if (!seen.has(r.class_id)) {
-        seen.add(r.class_id);
-        classes.push({
-          class_id: r.class_id,
-          subject_name: r.subject_name,
-          subject_code: r.subject_code,
-          section_name: r.section_name,
-          semester_number: r.semester_number,
-          label: `${r.subject_name} (${r.subject_code}) · Sec ${r.section_name} · Sem ${r.semester_number}`,
-        });
-      }
-    });
-    // If no assignments yet, return hardcoded seeded classes
-    if (classes.length === 0) {
-      return [
-        { class_id: 1, subject_name: 'Data Structures', subject_code: 'CS301', section_name: 'A', semester_number: 3, label: 'Data Structures (CS301) · Sec A · Sem 3' },
-        { class_id: 2, subject_name: 'Operating Systems', subject_code: 'CS302', section_name: 'A', semester_number: 3, label: 'Operating Systems (CS302) · Sec A · Sem 3' },
-        { class_id: 3, subject_name: 'Database Management', subject_code: 'CS401', section_name: 'A', semester_number: 4, label: 'Database Management (CS401) · Sec A · Sem 4' },
-        { class_id: 4, subject_name: 'Computer Networks', subject_code: 'CS402', section_name: 'A', semester_number: 4, label: 'Computer Networks (CS402) · Sec A · Sem 4' },
-      ];
-    }
-    return classes;
-  } catch {
-    return [
-      { class_id: 1, subject_name: 'Data Structures', subject_code: 'CS301', section_name: 'A', semester_number: 3, label: 'Data Structures (CS301) · Sec A · Sem 3' },
-      { class_id: 2, subject_name: 'Operating Systems', subject_code: 'CS302', section_name: 'A', semester_number: 3, label: 'Operating Systems (CS302) · Sec A · Sem 3' },
-      { class_id: 3, subject_name: 'Database Management', subject_code: 'CS401', section_name: 'A', semester_number: 4, label: 'Database Management (CS401) · Sec A · Sem 4' },
-      { class_id: 4, subject_name: 'Computer Networks', subject_code: 'CS402', section_name: 'A', semester_number: 4, label: 'Computer Networks (CS402) · Sec A · Sem 4' },
-    ];
-  }
-}
 
 // ── Assignment card ───────────────────────────────────────────────────────────
 function AssignmentCard({ item, onEdit, onDelete }: { item: AssignmentRow; onEdit: () => void; onDelete: () => void }) {
@@ -164,7 +117,7 @@ function SelectSheet<T extends { label: string }>({
 interface FormState { classLabel: string; classId: number | null; title: string; description: string; dueDate: string; marks: string; status: string; }
 const EMPTY_FORM: FormState = { classLabel: '', classId: null, title: '', description: '', dueDate: '', marks: '0', status: 'Open' };
 
-interface FormSheetProps { visible: boolean; onClose: () => void; initial?: AssignmentRow | null; onSubmit: (d: AssignmentPayload) => void; loading: boolean; classes: ClassOption[]; }
+interface FormSheetProps { visible: boolean; onClose: () => void; initial?: AssignmentRow | null; onSubmit: (d: AssignmentPayload) => void; loading: boolean; classes: any[]; }
 
 function FormSheet({ visible, onClose, initial, onSubmit, loading, classes }: FormSheetProps) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -247,7 +200,7 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, classes }: Fo
       <SelectSheet
         visible={classSheet} onClose={() => setClassSheet(false)} label="Select Class"
         options={classes} value={form.classLabel}
-        onChange={(c: ClassOption) => { set('classId')(c.class_id); set('classLabel')(c.label); }} />
+        onChange={(c: any) => { set('classId')(c.class_id); set('classLabel')(c.label); }} />
       <SelectSheet
         visible={statusSheet} onClose={() => setStatusSheet(false)} label="Status"
         options={STATUS_OPTIONS.map(s => ({ label: s }))} value={form.status}
@@ -262,10 +215,10 @@ export default function Assignments() {
   const [formVisible, setFormVisible]   = useState(false);
   const [editing, setEditing]           = useState<AssignmentRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AssignmentRow | null>(null);
-  const [classes, setClasses]           = useState<ClassOption[]>([]);
   const qc = useQueryClient();
 
-  useEffect(() => { fetchMyClasses().then(setClasses); }, []);
+  // Fetch classes dynamically from /api/faculty/me/classes — no hardcoding
+  const { data: classes = [] } = useMyClasses();
 
   const { data: rawData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['assignments'],

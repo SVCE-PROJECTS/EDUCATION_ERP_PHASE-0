@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { Text } from 'react-native-paper';
 import CustomInput from '../../components/Input/CustomInput';
@@ -8,6 +8,8 @@ import CustomButton from '../../components/Button/CustomButton';
 import InfoCard from '../../components/Card/InfoCard';
 import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, typography, radius } from '../../theme';
+
+const svceBanner = require('../../assets/svce_banner.png');
 
 const DEFAULTS = { username: '', password: '' };
 
@@ -28,13 +30,18 @@ const LoginScreen = () => {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.centerWrap}>
-        <View style={styles.brand}>
-          <Text style={styles.brandTitle}>SVCE EDUCATION ERP</Text>
-          <Text style={styles.brandSubtitle}>Academic Management</Text>
-        </View>
+      {/* Full-width SVCE banner header */}
+      <View style={styles.banner}>
+        <Image
+          source={svceBanner}
+          style={styles.bannerImage}
+          resizeMode="stretch"
+        />
+      </View>
 
-        <InfoCard title="Sign in" style={styles.card}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.centerWrap}>
+          <InfoCard title="Sign in" style={styles.card}>
           <Text style={styles.subheading}>
             Enter your administrator credentials to continue.
           </Text>
@@ -79,7 +86,8 @@ const LoginScreen = () => {
             style={styles.submitButton}
           />
         </InfoCard>
-      </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
@@ -89,24 +97,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  centerWrap: {
-    flex: 1,
+  banner: {
+    width: '100%',
+    backgroundColor: '#000000',
+  },
+  bannerImage: {
+    width: '100%',
+    height: 95,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  brand: {
+  centerWrap: {
+    width: '100%',
     alignItems: 'center',
-    marginBottom: spacing.xxl,
-  },
-  brandTitle: {
-    ...typography.h1,
-    color: colors.primary,
-  },
-  brandSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
   },
   card: {
     width: '100%',

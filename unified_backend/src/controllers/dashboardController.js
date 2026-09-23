@@ -15,33 +15,55 @@ const { successResponse, errorResponse } = require('../utils/response');
  */
 const getDashboardStats = async (req, res) => {
   try {
-    const studentCount = await pool.query('SELECT COUNT(*) FROM students');
-    const assignmentCount = await pool.query('SELECT COUNT(*) FROM assignments');
-    const openAssignments = await pool.query("SELECT COUNT(*) FROM assignments WHERE status='Open'");
+    const [
+      studentCount,
+      transferredCount,
+      departmentCounts,
+      departmentByYear,
+      assignmentCount,
+      openAssignments,
+      totalAtt,
+      presentAtt,
+      iaAvg,
+      recentStudents,
+      recentAssignments,
+      recentIA,
+    ] = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM students'),
+      pool.query("SELECT COUNT(*) FROM students WHERE status = 'Transferred'"),
+      pool.query(`
+        SELECT d.department_name AS label, COUNT(*)::int AS value
+        FROM students s
+        JOIN departments d ON d.department_id = s.department_id
+        GROUP BY d.department_id, d.department_name
+        ORDER BY COUNT(*) DESC, d.department_name ASC
+        LIMIT 7
+      `),
+      pool.query(`
+        SELECT d.department_name AS dept, st.academic_year AS year, COUNT(*)::int AS value
+        FROM students st
+        JOIN departments d ON d.department_id = st.department_id
+        GROUP BY d.department_name, st.academic_year
+        ORDER BY d.department_name ASC, st.academic_year ASC
+      `),
+      pool.query('SELECT COUNT(*) FROM assignments'),
+      pool.query("SELECT COUNT(*) FROM assignments WHERE status='Open'"),
+      pool.query('SELECT COUNT(*) FROM attendance'),
+      pool.query("SELECT COUNT(*) FROM attendance WHERE status='Present'"),
+      pool.query('SELECT AVG(average) AS avg FROM ia_marks'),
+      pool.query("SELECT 'Student added: ' || name AS activity, created_at FROM students ORDER BY created_at DESC LIMIT 2"),
+      pool.query("SELECT 'Assignment: ' || title AS activity, created_at FROM assignments ORDER BY created_at DESC LIMIT 2"),
+      pool.query(`SELECT 'IA Marks added for: ' || s.name AS activity, im.created_at
+       FROM ia_marks im
+       JOIN students s ON s.library_id = im.student_id
+       ORDER BY im.created_at DESC LIMIT 2`),
+    ]);
 
-    // Overall attendance %
-    const totalAtt = await pool.query('SELECT COUNT(*) FROM attendance');
-    const presentAtt = await pool.query("SELECT COUNT(*) FROM attendance WHERE status='Present'");
     const attPercent = Number(totalAtt.rows[0].count) > 0
       ? Math.round((Number(presentAtt.rows[0].count) / Number(totalAtt.rows[0].count)) * 100)
       : 0;
 
-    // IA average — use the DB-generated 'average' column
-    const iaAvg = await pool.query('SELECT AVG(average) AS avg FROM ia_marks');
     const iaAvgVal = iaAvg.rows[0].avg ? Math.round(Number(iaAvg.rows[0].avg)) : 0;
-
-    // Recent activities
-    const recentStudents = await pool.query(
-      "SELECT 'Student added: ' || name AS activity, created_at FROM students ORDER BY created_at DESC LIMIT 2"
-    );
-    const recentAssignments = await pool.query(
-      "SELECT 'Assignment: ' || title AS activity, created_at FROM assignments ORDER BY created_at DESC LIMIT 2"
-    );
-    const recentIA = await pool.query(
-      `SELECT 'IA Marks added for student #' || im.student_id AS activity, im.created_at
-       FROM ia_marks im
-       ORDER BY im.created_at DESC LIMIT 2`
-    );
 
     const activities = [
       ...recentStudents.rows,
@@ -52,8 +74,21 @@ const getDashboardStats = async (req, res) => {
       .slice(0, 5)
       .map(r => r.activity);
 
+    // Build dept+year breakdown for grouped bar chart
+    const deptYearMap = {};
+    departmentByYear.rows.forEach(row => {
+      if (!deptYearMap[row.dept]) deptYearMap[row.dept] = {};
+      deptYearMap[row.dept][row.year] = Number(row.value);
+    });
+
     res.json({
       totalStudents: Number(studentCount.rows[0].count),
+      transferredStudents: Number(transferredCount.rows[0].count),
+      departmentCounts: departmentCounts.rows.map((row) => ({
+        label: row.label,
+        value: Number(row.value),
+      })),
+      departmentByYear: deptYearMap,
       attendancePercent: attPercent,
       totalAssignments: Number(assignmentCount.rows[0].count),
       openAssignments: Number(openAssignments.rows[0].count),

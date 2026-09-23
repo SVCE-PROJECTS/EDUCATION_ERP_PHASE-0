@@ -20,7 +20,10 @@ export const useCreateStudent = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (form) => createStudent(form),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+    },
   });
 };
 
@@ -31,6 +34,7 @@ export const useUpdateStudent = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['student', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
     },
   });
 };
@@ -39,6 +43,9 @@ export const useDeleteStudent = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id) => deleteStudent(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['students'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+    },
   });
 };

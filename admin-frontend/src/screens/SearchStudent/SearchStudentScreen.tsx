@@ -12,13 +12,12 @@ import { colors, spacing, typography } from '../../theme';
 
 const SearchStudentScreen = ({ navigation }) => {
   const [query, setQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState('');
 
   const { data, isFetching } = useStudents(
-    { search: submittedQuery, pageSize: 20 },
+    { search: query.trim(), pageSize: 20 },
   );
 
-  const results = submittedQuery ? (data?.data || []) : [];
+  const results = query.trim() ? (data?.data || []) : [];
 
   return (
     <ScreenLayout navigation={navigation} activeScreen="SearchStudent">
@@ -27,16 +26,16 @@ const SearchStudentScreen = ({ navigation }) => {
         <SearchBar
           value={query}
           onChangeText={setQuery}
-          onSubmit={() => setSubmittedQuery(query.trim())}
+          onSubmit={() => {}}
         />
       </View>
 
-      {!submittedQuery ? (
+      {!query.trim() ? (
         <EmptyState
           icon="account-search-outline"
           title="Student Record Search"
           description="Search for a student to view their master record, attendance history, and academic performance."
-          footnote="Press Enter to initiate search"
+          footnote="Type to search instantly"
         />
       ) : isFetching ? (
         <LoadingIndicator label="Searching..." />
@@ -44,7 +43,7 @@ const SearchStudentScreen = ({ navigation }) => {
         <EmptyState
           icon="account-off-outline"
           title="No matching students"
-          description={`No results for "${submittedQuery}". Try a different name, USN, or Library ID.`}
+          description={`No results for "${query}". Try a different name, USN, or Library ID.`}
         />
       ) : (
         <StudentTable

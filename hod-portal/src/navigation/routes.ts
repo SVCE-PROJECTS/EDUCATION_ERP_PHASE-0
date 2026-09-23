@@ -12,6 +12,7 @@ export const ROUTES = {
   HOD_STUDENTS: 'StudentManagement',
   HOD_COORDINATORS: 'CoordinatorManagement',
   HOD_ACTIVITIES: 'Activities',
+  HOD_FACULTY_ALLOCATION: 'FacultyAllocation',
 
   // ── HOD Stack screens (pushed on top of drawer) ──────────────────────────
   FACULTY_PROFILE: 'FacultyProfile',
@@ -33,6 +34,7 @@ export const SCREEN_TITLES: Record<string, string> = {
   [ROUTES.HOD_STUDENTS]: 'Student Management',
   [ROUTES.HOD_COORDINATORS]: 'Coordinator Management',
   [ROUTES.HOD_ACTIVITIES]: 'Student Activities',
+  [ROUTES.HOD_FACULTY_ALLOCATION]: 'Faculty Allocation',
   [ROUTES.FACULTY_PROFILE]: 'Faculty Profile',
   [ROUTES.FACULTY_ADD]: 'Add Faculty',
   [ROUTES.FACULTY_EDIT]: 'Edit Faculty',

@@ -62,7 +62,7 @@ export default function Topbar({ title }: TopbarProps) {
           <Menu size={20} color={neutral[500]} />
         </TouchableOpacity>
 
-        <View>
+        <View style={styles.titleWrap}>
           <Text style={styles.title} numberOfLines={1}>
             {title}
           </Text>
@@ -197,6 +197,10 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 12,
     position: 'relative',
+  },
+  titleWrap: {
+    flexShrink: 1,
+    minWidth: 0,
   },
   profileBtn: {
     flexDirection: 'row',

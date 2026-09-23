@@ -25,6 +25,8 @@ import type { LucideIconType } from '../../components/icons';
 
 import studentListService from '../../services/studentList.service';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
+import PerformanceCell from '../../components/student/PerformanceCell';
+import BarChart from '../../components/ui/BarChart';
 import {
   colors,
   shadows,
@@ -56,6 +58,9 @@ interface Student {
   email?: string | null;
   attendance?: number | null;
   performance?: number | null;
+  /** Not yet returned by the backend — see PerformanceCell for details. */
+  iaMarks?: number | null;
+  assignmentMarks?: number | null;
 }
 
 interface TimetableSlot {
@@ -481,11 +486,6 @@ function StudentRow({
       ? `${student.attendance}%`
       : '—';
 
-  const performance =
-    student.performance != null
-      ? `${student.performance}%`
-      : '—';
-
   return (
     <View style={s.tableDataRow}>
 
@@ -634,9 +634,7 @@ function StudentRow({
           },
         ]}
       >
-        <Text style={s.performanceCell}>
-          {performance}
-        </Text>
+        <PerformanceCell student={student} textStyle={s.performanceCell} />
       </View>
 
     </View>

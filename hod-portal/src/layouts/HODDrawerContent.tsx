@@ -8,6 +8,7 @@ import {
   Award,
   Flame,
   GraduationCap,
+  CalendarClock,
   LogOut,
 } from '../components/icons';
 import Avatar from '../components/ui/Avatar';
@@ -33,6 +34,7 @@ const HOD_NAV: NavItem[] = [
   { label: 'Faculty List', route: ROUTES.HOD_FACULTY, icon: Users },
   { label: 'Student List', route: ROUTES.HOD_STUDENTS, icon: BookOpen },
   { label: 'Coordinator Management', route: ROUTES.HOD_COORDINATORS, icon: Award },
+  { label: 'Faculty Allocation', route: ROUTES.HOD_FACULTY_ALLOCATION, icon: CalendarClock },
   { label: 'Activities', route: ROUTES.HOD_ACTIVITIES, icon: Flame },
 ];
 
@@ -88,11 +90,15 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
       {/* ── Brand header ───────────────────────────────────────────────── */}
       <View style={styles.brand}>
         <View style={styles.brandIcon}>
-          <GraduationCap size={20} color={colors.white} />
+          <GraduationCap size={18} color={colors.white} />
         </View>
-        <View>
-          <Text style={styles.brandName}>Dept Portal</Text>
-          <Text style={styles.brandDept}>{user?.departmentCode || 'ERP'}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.brandName} numberOfLines={1}>
+            {user?.departmentCode || 'CSE'} Department Portal
+          </Text>
+          <Text style={styles.brandDept} numberOfLines={1}>
+            SVCE — Engineering College ERP
+          </Text>
         </View>
       </View>
 
@@ -154,16 +160,16 @@ const styles = StyleSheet.create({
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderBottomColor: neutral[100],
   },
   brandIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 9,
     backgroundColor: primaryScale[600],
     alignItems: 'center',
     justifyContent: 'center',

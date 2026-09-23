@@ -20,6 +20,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Topbar from '../components/navigation/Topbar';
+import LogoBanner from './LogoBanner';
 import { useTheme } from '../context/ThemeContext';
 import { primaryScale, neutral } from '../theme/colors';
 import { SCREEN_TITLES, RouteName } from '../navigation/routes';
@@ -70,6 +71,7 @@ export default function ScreenWrapper({
     >
       <SafeAreaView style={[styles.safeArea, { backgroundColor: bg }]} edges={['top']}>
         <Topbar title={resolvedTitle} />
+        <LogoBanner />
 
         {scrollable ? (
           <ScrollView

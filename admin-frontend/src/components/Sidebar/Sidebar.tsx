@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 
 import React from 'react';
@@ -38,7 +37,7 @@ const NAV_ITEMS = [
   },
   {
     key: 'ExportStudentData',
-    label: 'Export Student Data',
+    label: 'Download Student Data',
     icon: 'tray-arrow-down',
     screen: 'ExportStudentData',
   },
@@ -62,51 +61,33 @@ const Sidebar = ({ navigation, activeScreen }) => {
 
   return (
     <View style={styles.container}>
-
-      
       {/* Brand */}
       <View style={styles.brand}>
-        <Text style={styles.brandTitle}>
-          SVCE EDUCATION ERP
-        </Text>
-        <Text style={styles.brandSubtitle}>
-          Academic Management
-        </Text>
+        <Text style={styles.brandTitle}>SVCE EDUCATION ERP</Text>
+        <Text style={styles.brandSubtitle}>Academic Management</Text>
       </View>
-
-
 
       {/* Navigation */}
       <View style={styles.nav}>
         {NAV_ITEMS.map((item) => {
-          const active = item.screen === activeScreen;
+          // Transfer Student nav item stays active when on the history page too
+          const active =
+            item.screen === activeScreen ||
+            (item.screen === 'TransferStudent' && activeScreen === 'TransferredStudents');
 
           return (
             <TouchableOpacity
               key={item.key}
               onPress={() => navigation.navigate(item.screen)}
               activeOpacity={0.7}
-              style={[
-                styles.navItem,
-                active && styles.navItemActive,
-              ]}
+              style={[styles.navItem, active && styles.navItemActive]}
             >
               <Icon
                 source={item.icon}
                 size={20}
-                color={
-                  active
-                    ? colors.primary
-                    : colors.textSecondary
-                }
+                color={active ? colors.primary : colors.textSecondary}
               />
-
-              <Text
-                style={[
-                  styles.navLabel,
-                  active && styles.navLabelActive,
-                ]}
-              >
+              <Text style={[styles.navLabel, active && styles.navLabelActive]}>
                 {item.label}
               </Text>
             </TouchableOpacity>
@@ -119,36 +100,23 @@ const Sidebar = ({ navigation, activeScreen }) => {
         <Avatar.Text
           size={36}
           label={initials}
-          style={{
-            backgroundColor: colors.primaryLight,
-          }}
+          style={{ backgroundColor: colors.primaryLight }}
           color={colors.primary}
         />
-
         <View style={styles.profileInfo}>
           <Text style={styles.profileName}>
-            {user?.fullName ||
-              user?.username ||
-              'Administrator'}
+            {user?.fullName || user?.username || 'Administrator'}
           </Text>
-
           <Text style={styles.profileRole}>
-            {user?.role === 'admin'
-              ? 'Super Admin'
-              : user?.role || ''}
+            {user?.role === 'admin' ? 'Super Admin' : user?.role || ''}
           </Text>
         </View>
-
         <TouchableOpacity
           onPress={logout}
           accessibilityLabel="Log out"
           activeOpacity={0.7}
         >
-          <Icon
-            source="logout"
-            size={20}
-            color={colors.textSecondary}
-          />
+          <Icon source="logout" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -164,53 +132,44 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
     height: '100%',
   },
-
   brand: {
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.xl,
     alignItems: 'center',
   },
-
   brandTitle: {
     ...typography.h2,
     color: colors.primary,
     textAlign: 'center',
   },
-
   brandSubtitle: {
     ...typography.caption,
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.xs,
   },
-
   nav: {
     flex: 1,
   },
-
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
   },
-
   navItemActive: {
     backgroundColor: colors.primaryLight,
     borderRightWidth: 3,
     borderRightColor: colors.primary,
   },
-
   navLabel: {
     ...typography.bodyBold,
     color: colors.textSecondary,
     marginLeft: spacing.md,
   },
-
   navLabelActive: {
     color: colors.primary,
   },
-
   profile: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -218,17 +177,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-
   profileInfo: {
     marginLeft: spacing.sm,
     flex: 1,
   },
-
   profileName: {
     ...typography.bodyBold,
     color: colors.textPrimary,
   },
-
   profileRole: {
     ...typography.caption,
     color: colors.textSecondary,
@@ -236,4 +192,3 @@ const styles = StyleSheet.create({
 });
 
 export default Sidebar;
-

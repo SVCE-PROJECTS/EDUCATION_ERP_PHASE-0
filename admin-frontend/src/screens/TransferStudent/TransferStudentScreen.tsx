@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
+  TouchableOpacity,
 } from 'react-native';
 
 import { Text, Snackbar, Icon } from 'react-native-paper';
@@ -292,13 +293,24 @@ const TransferStudentScreen = ({ route, navigation }) => {
       >
 
         {/* Page Heading */}
-        <Text style={styles.heading}>
-          Transfer Student
-        </Text>
+        <View style={styles.headingRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.heading}>Transfer Student</Text>
+            <Text style={styles.subheading}>
+              Initiate academic department or section transfers for registered students.
+            </Text>
+          </View>
 
-        <Text style={styles.subheading}>
-          Initiate academic department or section transfers for registered students.
-        </Text>
+          {/* Transfer History shortcut */}
+          <TouchableOpacity
+            style={styles.historyBtn}
+            onPress={() => navigation.navigate('TransferredStudents')}
+            activeOpacity={0.75}
+          >
+            <Icon source="history" size={16} color={colors.primary} />
+            <Text style={styles.historyBtnText}>Transfer History</Text>
+          </TouchableOpacity>
+        </View>
 
 
         {/* -------------------------------------------------
@@ -626,6 +638,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
 
+  headingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+
   heading: {
     ...typography.h1,
     color: colors.textPrimary,
@@ -634,7 +653,27 @@ const styles = StyleSheet.create({
   subheading: {
     ...typography.body,
     color: colors.textSecondary,
-    marginBottom: spacing.lg,
+    marginTop: spacing.xs,
+  },
+
+  historyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+
+  historyBtnText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
   },
 
   suggestionsBox: {

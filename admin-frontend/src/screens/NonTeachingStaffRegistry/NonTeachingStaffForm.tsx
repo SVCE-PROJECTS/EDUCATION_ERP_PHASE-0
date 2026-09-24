@@ -1,0 +1,220 @@
+// @ts-nocheck
+import React, { useEffect } from 'react';
+import { View, ScrollView, StyleSheet } from 'react-native';
+import { Controller, useForm } from 'react-hook-form';
+import { Text, Icon } from 'react-native-paper';
+import CustomInput from '../../components/Input/CustomInput';
+import CustomDropdown from '../../components/Dropdown/CustomDropdown';
+import CustomButton from '../../components/Button/CustomButton';
+import InfoCard from '../../components/Card/InfoCard';
+import { useDropdown } from '../../hooks/useDropdowns';
+import { colors, spacing, typography, radius } from '../../theme';
+
+const DEFAULTS = {
+  employeeId:    '',
+  name:          '',
+  email:         '',
+  phone:         '',
+  gender:        undefined,
+  designation:   '',
+  departmentId:  undefined,
+  qualification: '',
+  joiningDate:   '',
+  status:        'ACTIVE',
+};
+
+const STAFF_STATUSES = [
+  { id: 'ACTIVE',   name: 'Active' },
+  { id: 'INACTIVE', name: 'Inactive' },
+  { id: 'ON_LEAVE', name: 'On Leave' },
+];
+
+const IconBadge = ({ name }) => (
+  <View style={styles.iconBadge}>
+    <Icon source={name} size={18} color={colors.primary} />
+  </View>
+);
+
+const NonTeachingStaffForm = ({
+  initialValues, onSubmit, onSaveAndContinue, onCancel,
+  submitLabel = 'Save Staff Data', submitting = false, continuing = false,
+  breadcrumbLabel = 'Add Staff Member',
+}) => {
+  const {
+    control, handleSubmit, reset, formState: { errors },
+  } = useForm({ defaultValues: initialValues || DEFAULTS });
+
+  useEffect(() => {
+    if (initialValues) reset(initialValues);
+  }, [initialValues, reset]);
+
+  const handleSaveAndContinue = handleSubmit(async (data) => {
+    await onSaveAndContinue(data);
+    reset(DEFAULTS);
+  });
+
+  const { data: departments = [], isLoading: loadingDepts } = useDropdown('staff-department');
+  const { data: genders = [] }                              = useDropdown('gender');
+
+  return (
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <Text style={styles.breadcrumb}>
+        Non-Teaching Staff Registry{' '}
+        <Text style={styles.breadcrumbActive}>›  {breadcrumbLabel}</Text>
+      </Text>
+      <Text style={styles.heading}>
+        {breadcrumbLabel === 'Edit Staff Member' ? 'Edit Staff Member' : 'Register New Staff Member'}
+      </Text>
+      <Text style={styles.subheading}>
+        Fill in the staff member's personal and employment details.
+      </Text>
+
+      {/* ── Personal Info ── */}
+      <InfoCard title="Personal Information" icon={<IconBadge name="account-outline" />}>
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="name"
+              rules={{ required: 'Name is required' }}
+              render={({ field }) => (
+                <CustomInput label="Full Name" value={field.value} onChangeText={field.onChange}
+                  onBlur={field.onBlur} error={errors.name?.message} />
+              )}
+            />
+          </View>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="gender"
+              render={({ field }) => (
+                <CustomDropdown label="Gender" value={field.value} options={genders}
+                  onSelect={field.onChange} />
+              )}
+            />
+          </View>
+        </View>
+
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="email"
+              rules={{ pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email' } }}
+              render={({ field }) => (
+                <CustomInput label="Email" value={field.value} onChangeText={field.onChange}
+                  onBlur={field.onBlur} keyboardType="email-address" error={errors.email?.message} />
+              )}
+            />
+          </View>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="phone"
+              render={({ field }) => (
+                <CustomInput label="Phone" value={field.value} onChangeText={field.onChange}
+                  onBlur={field.onBlur} keyboardType="phone-pad" />
+              )}
+            />
+          </View>
+        </View>
+      </InfoCard>
+
+      {/* ── Employment Info ── */}
+      <InfoCard title="Employment Details" icon={<IconBadge name="domain" />}>
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="employeeId"
+              rules={{ required: 'Employee ID is required' }}
+              render={({ field }) => (
+                <CustomInput label="Employee ID" placeholder="e.g. NTS001"
+                  value={field.value} onChangeText={field.onChange} onBlur={field.onBlur}
+                  error={errors.employeeId?.message} />
+              )}
+            />
+          </View>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="designation"
+              rules={{ required: 'Designation is required' }}
+              render={({ field }) => (
+                <CustomInput label="Designation" placeholder="e.g. Lab Technician"
+                  value={field.value} onChangeText={field.onChange} onBlur={field.onBlur}
+                  error={errors.designation?.message} />
+              )}
+            />
+          </View>
+        </View>
+
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="departmentId"
+              render={({ field }) => (
+                <CustomDropdown label="Department / Section" value={field.value}
+                  options={departments} loading={loadingDepts} onSelect={field.onChange} />
+              )}
+            />
+          </View>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="qualification"
+              render={({ field }) => (
+                <CustomInput label="Qualification" placeholder="e.g. B.Sc, Diploma"
+                  value={field.value} onChangeText={field.onChange} onBlur={field.onBlur} />
+              )}
+            />
+          </View>
+        </View>
+
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="joiningDate"
+              render={({ field }) => (
+                <CustomInput label="Joining Date" placeholder="YYYY-MM-DD"
+                  value={field.value} onChangeText={field.onChange} onBlur={field.onBlur} />
+              )}
+            />
+          </View>
+          <View style={styles.col}>
+            <Controller
+              control={control} name="status"
+              render={({ field }) => (
+                <CustomDropdown label="Status" value={field.value} options={STAFF_STATUSES}
+                  onSelect={field.onChange} />
+              )}
+            />
+          </View>
+        </View>
+      </InfoCard>
+
+      <View style={styles.actions}>
+        <CustomButton label="Cancel" variant="text" onPress={onCancel} />
+        {onSaveAndContinue && (
+          <CustomButton label="Save & Continue" variant="outline"
+            onPress={handleSaveAndContinue} loading={continuing} />
+        )}
+        <CustomButton label={submitLabel} onPress={handleSubmit(onSubmit)}
+          loading={submitting} style={styles.submitButton} />
+      </View>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  scrollView:       { flex: 1, width: '100%' },
+  scrollContent:    { padding: spacing.lg, paddingBottom: spacing.xxl, flexGrow: 1 },
+  heading:          { ...typography.h1, color: colors.textPrimary },
+  breadcrumb:       { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm },
+  breadcrumbActive: { color: colors.primary, fontWeight: '600' },
+  subheading:       { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.lg },
+  iconBadge: {
+    width: 32, height: 32, borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  row:          { flexDirection: 'row', gap: spacing.lg },
+  col:          { flex: 1 },
+  actions:      { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.lg },
+  submitButton: { minWidth: 160 },
+});
+
+export default NonTeachingStaffForm;

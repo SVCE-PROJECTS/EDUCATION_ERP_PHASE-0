@@ -25,6 +25,12 @@ const NAV_ITEMS = [
     screen: 'AddStudent',
   },
   {
+    key: 'FacultyList', label: 'Faculty Registry', icon: 'account-tie-outline', screen: 'FacultyList',
+  },
+  {
+    key: 'NonTeachingStaffList', label: 'Non-Teaching Staff', icon: 'account-hard-hat-outline', screen: 'NonTeachingStaffList',
+  },
+  {
     key: 'SearchStudent',
     label: 'Search Student',
     icon: 'magnify',

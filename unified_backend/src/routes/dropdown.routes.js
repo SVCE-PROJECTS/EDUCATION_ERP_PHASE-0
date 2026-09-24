@@ -28,7 +28,7 @@ router.get(
 router.get(
   '/:type',
   validate([
-    param('type').isIn(['program', 'department', 'section', 'semester', 'gender'])
+    param('type').isIn(['program', 'department', 'section', 'semester', 'gender', 'staff-department'])
       .withMessage('Unsupported dropdown type'),
   ]),
   dropdownController.getByType,

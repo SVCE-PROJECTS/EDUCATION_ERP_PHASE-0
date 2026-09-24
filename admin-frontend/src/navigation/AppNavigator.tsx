@@ -24,6 +24,14 @@ import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 
 import FeeScreen from '../screens/Fee/FeeScreen';
 
+import FacultyListScreen from '../screens/FacultyRegistry/FacultyListScreen';
+import AddFacultyScreen from '../screens/FacultyRegistry/AddFacultyScreen';
+import EditFacultyScreen from '../screens/FacultyRegistry/EditFacultyScreen';
+import FacultyDetailsScreen from '../screens/FacultyRegistry/FacultyDetailsScreen';
+import NonTeachingStaffListScreen from '../screens/NonTeachingStaffRegistry/NonTeachingStaffListScreen';
+import AddNonTeachingStaffScreen from '../screens/NonTeachingStaffRegistry/AddNonTeachingStaffScreen';
+import EditNonTeachingStaffScreen from '../screens/NonTeachingStaffRegistry/EditNonTeachingStaffScreen';
+import NonTeachingStaffDetailsScreen from '../screens/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
 
@@ -121,6 +129,18 @@ const AppNavigator = () => {
         name="Fee"
         component={FeeScreen}
       />
+
+      {/* Faculty Registry */}
+      <Stack.Screen name="FacultyList" component={FacultyListScreen} />
+      <Stack.Screen name="AddFaculty" component={AddFacultyScreen} />
+      <Stack.Screen name="EditFaculty" component={EditFacultyScreen} />
+      <Stack.Screen name="FacultyDetails" component={FacultyDetailsScreen} />
+
+      {/* Non-Teaching Staff Registry */}
+      <Stack.Screen name="NonTeachingStaffList" component={NonTeachingStaffListScreen} />
+      <Stack.Screen name="AddNonTeachingStaff" component={AddNonTeachingStaffScreen} />
+      <Stack.Screen name="EditNonTeachingStaff" component={EditNonTeachingStaffScreen} />
+      <Stack.Screen name="NonTeachingStaffDetails" component={NonTeachingStaffDetailsScreen} />
     </Stack.Navigator>
   );
 };

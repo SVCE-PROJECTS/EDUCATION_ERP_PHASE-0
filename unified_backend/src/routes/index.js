@@ -23,6 +23,10 @@ const attendanceRoutes = require('./attendanceRoutes');
 const iaMarksRoutes = require('./iaMarksRoutes');
 const aiCheckerRoutes = require('./aiCheckerRoutes');
 
+// ── Admin-scoped Faculty & Non-Teaching Staff ─────────────────────────────────
+const adminFacultyRoutes       = require('./adminFaculty.routes');
+const nonTeachingStaffRoutes   = require('./nonTeachingStaff.routes');
+
 // ── Faculty & Management (education_erp) ─────────────────────────────────────
 const facultyRoutes = require('./faculty.routes');
 const roleRoutes = require('./role.routes');
@@ -69,6 +73,10 @@ router.use('/faculty', facultyRoutes);
 router.use('/roles', roleRoutes);
 router.use('/hod/student-list', studentListRoutes);  // HOD section dashboard
 router.use('/hod/auth', slAuthRoutes);               // HOD alt auth
+
+// Admin-only registries (no department scoping)
+router.use('/admin/faculty', adminFacultyRoutes);
+router.use('/admin/non-teaching-staff', nonTeachingStaffRoutes);
 
 // Extracurricular Activities
 router.use('/activities/cultural', culturalActivityRoutes);

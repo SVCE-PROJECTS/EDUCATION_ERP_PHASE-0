@@ -46,6 +46,15 @@ async function findActive(type) {
       );
       return result.rows;
     }
+    case 'staff-department': {
+      const result = await query(
+        `SELECT staff_dept_id AS id, name
+         FROM staff_departments
+         WHERE is_active = TRUE
+         ORDER BY sort_order ASC, name ASC`,
+      );
+      return result.rows;
+    }
     default:
       return null;
   }

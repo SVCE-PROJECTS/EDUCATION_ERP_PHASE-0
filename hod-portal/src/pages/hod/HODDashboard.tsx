@@ -3,14 +3,17 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Users, BookOpen, Award, ChevronRight } from '../../components/icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Users, BookOpen, Award, ChevronRight, LayoutDashboard, GraduationCap, Flame } from '../../components/icons';
 import { dashboardService, facultyService } from '../../services/faculty.service';
 import studentListService from '../../services/studentList.service';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { formatRelativeTime, formatActionLabel } from '../../utils/formatters';
 import Avatar from '../../components/ui/Avatar';
+import RoleNotifications from '../../components/ui/RoleNotifications';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
-import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
+import { colors, ThemeColors, shadows, primaryScale } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
 import { AuditLog } from '../../types';
 
@@ -19,6 +22,20 @@ const CARD_W =
   SCREEN_W > 600
     ? (SCREEN_W - 48 - 16) / 3
     : SCREEN_W - 32;
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const QUICK_ACTIONS = [
+  { key: 'faculty', label: 'Faculty List', icon: Users, color: 'indigo' as const, route: ROUTES.HOD_FACULTY },
+  { key: 'students', label: 'Student List', icon: BookOpen, color: 'blue' as const, route: ROUTES.HOD_STUDENTS },
+  { key: 'coordinators', label: 'Coordinators', icon: Award, color: 'purple' as const, route: ROUTES.HOD_COORDINATORS },
+  { key: 'activities', label: 'Activities', icon: Flame, color: 'blue' as const, route: ROUTES.HOD_ACTIVITIES },
+];
 
 // ── Management card ───────────────────────────────────────────────────────────
 
@@ -38,9 +55,11 @@ interface ManagementCardProps {
   route: string;
   stat?: number | string;
   statLabel?: string;
+  theme: ThemeColors;
+  styles: ReturnType<typeof getStyles>;
 }
 
-function ManagementCard({ title, description, icon: Icon, color, route, stat, statLabel }: ManagementCardProps) {
+function ManagementCard({ title, description, icon: Icon, color, route, stat, statLabel, theme, styles }: ManagementCardProps) {
   const navigation = useNavigation<any>();
   const c = COLOR_MAP[color] ?? COLOR_MAP.indigo;
 
@@ -48,26 +67,48 @@ function ManagementCard({ title, description, icon: Icon, color, route, stat, st
     <TouchableOpacity
       onPress={() => navigation.navigate(route)}
       activeOpacity={0.85}
-      style={[s.mgmtCard, { width: CARD_W }]}
+      style={[styles.mgmtCard, { width: CARD_W }]}
     >
       <View>
-        <View style={s.mgmtCardTop}>
-          <View style={[s.mgmtIconWrap, { backgroundColor: c.light, borderColor: c.border }]}>
+        <View style={styles.mgmtCardTop}>
+          <View style={[styles.mgmtIconWrap, { backgroundColor: c.light, borderColor: c.border }]}>
             <Icon size={22} color={c.icon} />
           </View>
-          <ChevronRight size={16} color={neutral[400]} />
+          <ChevronRight size={16} color={theme.textMuted} />
         </View>
 
-        <Text style={s.mgmtTitle}>{title}</Text>
-        <Text style={s.mgmtDesc}>{description}</Text>
+        <Text style={styles.mgmtTitle}>{title}</Text>
+        <Text style={styles.mgmtDesc}>{description}</Text>
       </View>
 
       {stat !== undefined && (
-        <View style={s.mgmtStat}>
-          <Text style={s.mgmtStatValue}>{stat ?? '—'}</Text>
-          <Text style={s.mgmtStatLabel}>{statLabel}</Text>
+        <View style={styles.mgmtStat}>
+          <Text style={styles.mgmtStatValue}>{stat ?? '—'}</Text>
+          <Text style={styles.mgmtStatLabel}>{statLabel}</Text>
         </View>
       )}
+    </TouchableOpacity>
+  );
+}
+
+// ── Quick action chip ─────────────────────────────────────────────────────────
+
+interface QuickActionProps {
+  icon: React.ComponentType<{ size?: number; color?: string }>;
+  label: string;
+  color: MgmtColor;
+  onPress: () => void;
+  styles: ReturnType<typeof getStyles>;
+}
+
+function QuickAction({ icon: Icon, label, color, onPress, styles }: QuickActionProps) {
+  const c = COLOR_MAP[color] ?? COLOR_MAP.indigo;
+  return (
+    <TouchableOpacity style={styles.quickAction} onPress={onPress} activeOpacity={0.75}>
+      <View style={[styles.quickActionIcon, { backgroundColor: c.light, borderColor: c.border }]}>
+        <Icon size={18} color={c.icon} />
+      </View>
+      <Text style={styles.quickActionLabel} numberOfLines={1}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -76,6 +117,20 @@ function ManagementCard({ title, description, icon: Icon, color, route, stat, st
 
 export default function HODDashboard() {
   const { user } = useAuth();
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
+  const navigation = useNavigation<any>();
+
+  const today = React.useMemo(
+    () =>
+      new Date().toLocaleDateString(undefined, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+    []
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard-combined'],
@@ -85,7 +140,7 @@ export default function HODDashboard() {
         try {
           const semRes = await studentListService.getSemesters();
           const semesters: number[] = semRes?.semesters || semRes?.data?.semesters || [];
-          
+
           if (!semesters.length) return 0;
 
           let totalCount = 0;
@@ -98,11 +153,11 @@ export default function HODDashboard() {
               const secName = typeof sec === 'string' ? sec : sec?.name || sec?.id;
               if (secName) {
                 const dashData = await studentListService.getSectionDashboard(sem, secName, 1, 100);
-                
+
                 // Extract total count from pagination or data array length
                 const paginationTotal = dashData?.students?.pagination?.total ?? dashData?.data?.students?.pagination?.total;
                 const studentList = dashData?.students?.data ?? dashData?.students ?? [];
-                
+
                 totalCount += paginationTotal ?? studentList.length ?? 0;
               }
             }
@@ -143,9 +198,9 @@ export default function HODDashboard() {
   // Extract totals using calculated student fallbacks
   const facultyCount = dashStats.totalFaculty || dashStats.facultyCount || facultyList.length;
   const studentCount = dashStats.totalStudents || dashStats.studentCount || data?.calculatedStudentCount || 0;
-  const coordinatorCount = 
-    dashStats.coordinatorCount || 
-    dashStats.coordinatorsCount || 
+  const coordinatorCount =
+    dashStats.coordinatorCount ||
+    dashStats.coordinatorsCount ||
     facultyList.filter((f: any) => f.isCoordinator || f.role === 'COORDINATOR' || f.coordinatorRole).length;
 
   const dept = rawDash?.department || {};
@@ -153,26 +208,36 @@ export default function HODDashboard() {
 
   return (
     <ScreenWrapper route={ROUTES.HOD_DASHBOARD}>
-      {/* Welcome */}
-      <View style={s.welcome}>
-        <Text style={s.welcomeHeading}>
-          Welcome, <Text style={s.welcomeName}>{user?.name || 'Dr.'}</Text>
-        </Text>
-        <Text style={s.welcomeSub}>{dept.name || 'Department'} — Manage your department from here</Text>
-      </View>
+      {/* Gradient greeting header */}
+      <LinearGradient
+        colors={theme.gradientPrimary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View>
+          <Text style={styles.headerHeading}>
+            {getGreeting()}, {(user?.name || 'Dr.').split(' ')[0]}
+          </Text>
+          <Text style={styles.headerSub}>{dept.name || 'Department'} · {today}</Text>
+        </View>
+        <View style={styles.headerIconWrap}>
+          <LayoutDashboard size={26} color={colors.white} />
+        </View>
+      </LinearGradient>
 
       {/* Management cards */}
       {isLoading ? (
-        <View style={s.skeletonRow}>
+        <View style={styles.skeletonRow}>
           {[0, 1, 2].map((i) => (
-            <View key={i} style={[s.skeleton, { width: CARD_W }]} />
+            <View key={i} style={[styles.skeleton, { width: CARD_W }]} />
           ))}
         </View>
       ) : (
         <ScrollView
           horizontal={SCREEN_W > 600}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={SCREEN_W > 600 ? s.cardRowH : s.cardRowV}
+          contentContainerStyle={SCREEN_W > 600 ? styles.cardRowH : styles.cardRowV}
         >
           {[
             {
@@ -212,34 +277,56 @@ export default function HODDashboard() {
                 route={card.route}
                 stat={card.stat}
                 statLabel={card.statLabel}
+                theme={theme}
+                styles={styles}
               />
             </Animated.View>
           ))}
         </ScrollView>
       )}
 
+      {/* Quick Actions */}
+      <View style={styles.quickActionsCard}>
+        <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
+        <View style={styles.quickActionsRow}>
+          {QUICK_ACTIONS.map((action) => (
+            <QuickAction
+              key={action.key}
+              icon={action.icon}
+              label={action.label}
+              color={action.color}
+              onPress={() => navigation.navigate(action.route)}
+              styles={styles}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* Role notifications */}
+      <RoleNotifications roles={user?.roles} />
+
       {/* Recent Activity */}
       {recentActivity.length > 0 && (
-        <View style={s.activityCard}>
-          <Text style={s.activityTitle}>Recent Activity</Text>
+        <View style={styles.activityCard}>
+          <Text style={styles.activityTitle}>Recent Activity</Text>
           {recentActivity.map((log: AuditLog & { performer?: { name?: string }; target?: { name?: string } }) => (
-            <View key={log.id} style={s.activityRow}>
-              <Avatar name={log.performer?.name} size="xs" style={s.activityAvatar} />
-              <View style={s.activityContent}>
-                <Text style={s.activityText}>
-                  <Text style={s.activityBold}>{log.performer?.name?.split(' ').slice(-1)[0]}</Text>{' '}
+            <View key={log.id} style={styles.activityRow}>
+              <Avatar name={log.performer?.name} size="xs" style={styles.activityAvatar} />
+              <View style={styles.activityContent}>
+                <Text style={styles.activityText}>
+                  <Text style={styles.activityBold}>{log.performer?.name?.split(' ').slice(-1)[0]}</Text>{' '}
                   {formatActionLabel(log.action).toLowerCase()}
                   {log.target && (
                     <Text>
                       {' for '}
-                      <Text style={s.activityBold}>{log.target.name?.split(' ').slice(-1)[0]}</Text>
+                      <Text style={styles.activityBold}>{log.target.name?.split(' ').slice(-1)[0]}</Text>
                     </Text>
                   )}
                   {(log.details as any)?.roleName && (
-                    <Text style={s.activityRole}> — {(log.details as any).roleName}</Text>
+                    <Text style={styles.activityRole}> — {(log.details as any).roleName}</Text>
                   )}
                 </Text>
-                <Text style={s.activityTime}>{formatRelativeTime(log.timestamp)}</Text>
+                <Text style={styles.activityTime}>{formatRelativeTime(log.timestamp)}</Text>
               </View>
             </View>
           ))}
@@ -251,17 +338,34 @@ export default function HODDashboard() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  welcome: { gap: 4 },
-  welcomeHeading: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: neutral[900],
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
+  // Gradient header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 4,
+    ...shadows.card,
   },
-  welcomeName: { color: primaryScale[600] },
-  welcomeSub: {
+  headerHeading: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  headerSub: {
     fontSize: 13,
-    color: neutral[500],
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  headerIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Card layout
@@ -271,10 +375,10 @@ const s = StyleSheet.create({
 
   // Management card
   mgmtCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 20,
     gap: 8,
     minHeight: 168,
@@ -295,11 +399,11 @@ const s = StyleSheet.create({
   mgmtTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   mgmtDesc: {
     fontSize: 12,
-    color: neutral[500],
+    color: theme.textSecondary,
     lineHeight: 17,
   },
   mgmtStat: {
@@ -309,31 +413,75 @@ const s = StyleSheet.create({
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: neutral[100],
+    borderTopColor: theme.border,
   },
   mgmtStatValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   mgmtStatLabel: {
     fontSize: 12,
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
   // Skeleton
   skeleton: {
     height: 160,
-    backgroundColor: neutral[100],
+    backgroundColor: theme.border,
     borderRadius: 20,
+  },
+
+  // Quick actions
+  quickActionsCard: {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 20,
+    padding: 20,
+    gap: 12,
+    ...shadows.card,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.textSecondary,
+    letterSpacing: 0.6,
+  },
+  quickActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  quickAction: {
+    flexGrow: 1,
+    minWidth: 140,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.border,
+    backgroundColor: theme.primarySoft,
+  },
+  quickActionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.textPrimary,
+    flexShrink: 1,
   },
 
   // Recent activity
   activityCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 20,
     gap: 12,
     ...shadows.card,
@@ -341,7 +489,7 @@ const s = StyleSheet.create({
   activityTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   activityRow: {
     flexDirection: 'row',
@@ -352,14 +500,14 @@ const s = StyleSheet.create({
   activityContent: { flex: 1 },
   activityText: {
     fontSize: 12,
-    color: neutral[700],
+    color: theme.textSecondary,
     lineHeight: 17,
   },
-  activityBold: { fontWeight: '600' },
-  activityRole: { color: primaryScale[500] },
+  activityBold: { fontWeight: '600', color: theme.textPrimary },
+  activityRole: { color: theme.primary },
   activityTime: {
     fontSize: 11,
-    color: neutral[400],
+    color: theme.textMuted,
     marginTop: 2,
   },
 });

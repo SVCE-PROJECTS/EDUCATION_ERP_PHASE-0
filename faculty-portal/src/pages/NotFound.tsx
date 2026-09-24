@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { neutral, primaryScale } from '../theme/colors';
+import { primaryScale, ThemeColors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { ROUTES } from '../navigation/routes';
 
 export default function NotFound() {
   const navigation = useNavigation<any>();
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <View style={s.root}>
       <Text style={s.code}>404</Text>
@@ -17,10 +20,10 @@ export default function NotFound() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32, backgroundColor: neutral[50] },
-  code: { fontSize: 64, fontWeight: '700', color: neutral[200] },
-  title: { fontSize: 18, fontWeight: '600', color: neutral[600] },
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
+  root: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32, backgroundColor: theme.background },
+  code: { fontSize: 64, fontWeight: '700', color: theme.border },
+  title: { fontSize: 18, fontWeight: '600', color: theme.textSecondary },
   btn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: primaryScale[600], borderRadius: 12 },
   btnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 });

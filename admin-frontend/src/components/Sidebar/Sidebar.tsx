@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 
 import React from 'react';
@@ -7,9 +6,13 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { Text, Avatar, Icon } from 'react-native-paper';
+import { Text, Icon } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import {
+  spacing, typography, radius, shadows,
+} from '../../theme';
 
 const NAV_ITEMS = [
   {
@@ -22,13 +25,7 @@ const NAV_ITEMS = [
     key: 'StudentList',
     label: 'Student Registry',
     icon: 'account-group-outline',
-    screen: 'AddStudent',
-  },
-  {
-    key: 'SearchStudent',
-    label: 'Search Student',
-    icon: 'magnify',
-    screen: 'SearchStudent',
+    screen: 'StudentList',
   },
   {
     key: 'TransferStudent',
@@ -38,20 +35,40 @@ const NAV_ITEMS = [
   },
   {
     key: 'ExportStudentData',
-    label: 'Export Student Data',
+    label: 'Download Student Data',
     icon: 'tray-arrow-down',
     screen: 'ExportStudentData',
   },
   {
     key: 'Fee',
-    label: 'Fee',
+    label: 'Fee Management',
     icon: 'cash-multiple',
     screen: 'Fee',
+  },
+  {
+    key: 'ActivityLog',
+    label: 'Activity Log',
+    icon: 'clipboard-text-clock-outline',
+    screen: 'ActivityLog',
+  },
+  {
+    key: 'AdminUsers',
+    label: 'Admin Users',
+    icon: 'shield-account-outline',
+    screen: 'AdminUsers',
+  },
+  {
+    key: 'Settings',
+    label: 'Settings',
+    icon: 'cog-outline',
+    screen: 'Settings',
   },
 ];
 
 const Sidebar = ({ navigation, activeScreen }) => {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme, colors } = useTheme();
+  const styles = getStyles(colors);
 
   const initials = (user?.fullName || user?.username || 'AD')
     .split(' ')
@@ -63,18 +80,25 @@ const Sidebar = ({ navigation, activeScreen }) => {
   return (
     <View style={styles.container}>
 
-      
-      {/* Brand */}
-      <View style={styles.brand}>
-        <Text style={styles.brandTitle}>
-          SVCE EDUCATION ERP
-        </Text>
-        <Text style={styles.brandSubtitle}>
-          Academic Management
-        </Text>
-      </View>
-
-
+      {/* Brand — gradient hero panel, tap to jump home */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Dashboard')}
+        activeOpacity={0.85}
+        accessibilityLabel="Go to Dashboard"
+      >
+        <LinearGradient
+          colors={colors.gradientPrimary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.brand}
+        >
+          <View style={styles.brandIconWrap}>
+            <Icon source="school-outline" size={22} color={colors.white} />
+          </View>
+          <Text style={styles.brandTitle}>SVCE EDUCATION ERP</Text>
+          <Text style={styles.brandSubtitle}>Academic Management</Text>
+        </LinearGradient>
+      </TouchableOpacity>
 
       {/* Navigation */}
       <View style={styles.nav}>
@@ -91,15 +115,13 @@ const Sidebar = ({ navigation, activeScreen }) => {
                 active && styles.navItemActive,
               ]}
             >
-              <Icon
-                source={item.icon}
-                size={20}
-                color={
-                  active
-                    ? colors.primary
-                    : colors.textSecondary
-                }
-              />
+              <View style={[styles.navIconWrap, active && styles.navIconWrapActive]}>
+                <Icon
+                  source={item.icon}
+                  size={18}
+                  color={active ? colors.primary : colors.textSecondary}
+                />
+              </View>
 
               <Text
                 style={[
@@ -116,17 +138,12 @@ const Sidebar = ({ navigation, activeScreen }) => {
 
       {/* Profile */}
       <View style={styles.profile}>
-        <Avatar.Text
-          size={36}
-          label={initials}
-          style={{
-            backgroundColor: colors.primaryLight,
-          }}
-          color={colors.primary}
-        />
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
 
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>
+          <Text style={styles.profileName} numberOfLines={1}>
             {user?.fullName ||
               user?.username ||
               'Administrator'}
@@ -135,19 +152,35 @@ const Sidebar = ({ navigation, activeScreen }) => {
           <Text style={styles.profileRole}>
             {user?.role === 'admin'
               ? 'Super Admin'
-              : user?.role || ''}
+              : user?.role
+                ? user.role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                : ''}
           </Text>
         </View>
+
+        <TouchableOpacity
+          onPress={toggleTheme}
+          accessibilityLabel="Toggle dark mode"
+          activeOpacity={0.7}
+          style={styles.themeBtn}
+        >
+          <Icon
+            source={isDark ? 'white-balance-sunny' : 'weather-night'}
+            size={16}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
 
         <TouchableOpacity
           onPress={logout}
           accessibilityLabel="Log out"
           activeOpacity={0.7}
+          style={styles.logoutBtn}
         >
           <Icon
             source="logout"
-            size={20}
-            color={colors.textSecondary}
+            size={17}
+            color={colors.danger}
           />
         </TouchableOpacity>
       </View>
@@ -155,56 +188,83 @@ const Sidebar = ({ navigation, activeScreen }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
-    width: 240,
+    width: 248,
     backgroundColor: colors.surface,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-    paddingTop: spacing.xl,
     height: '100%',
+    ...shadows.soft,
   },
 
   brand: {
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
     alignItems: 'center',
+    borderBottomLeftRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+  },
+
+  brandIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
   },
 
   brandTitle: {
-    ...typography.h2,
-    color: colors.primary,
+    ...typography.h3,
+    color: colors.white,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
 
   brandSubtitle: {
     ...typography.caption,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     marginTop: spacing.xs,
   },
 
   nav: {
     flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
+    gap: spacing.xs,
   },
 
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.md,
+    borderRadius: radius.md,
   },
 
   navItemActive: {
-    backgroundColor: colors.primaryLight,
-    borderRightWidth: 3,
-    borderRightColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+
+  navIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+
+  navIconWrapActive: {
+    backgroundColor: colors.surface,
   },
 
   navLabel: {
     ...typography.bodyBold,
     color: colors.textSecondary,
-    marginLeft: spacing.md,
+    flexShrink: 1,
   },
 
   navLabelActive: {
@@ -214,9 +274,25 @@ const styles = StyleSheet.create({
   profile: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    margin: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+  },
+
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  avatarText: {
+    ...typography.bodyBold,
+    color: colors.white,
+    fontSize: 13,
   },
 
   profileInfo: {
@@ -227,13 +303,34 @@ const styles = StyleSheet.create({
   profileName: {
     ...typography.bodyBold,
     color: colors.textPrimary,
+    fontSize: 13,
   },
 
   profileRole: {
     ...typography.caption,
     color: colors.textSecondary,
   },
+
+  logoutBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.dangerBg,
+  },
+
+  themeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: spacing.xs,
+  },
 });
 
 export default Sidebar;
-

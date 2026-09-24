@@ -3,23 +3,12 @@ import {
   TouchableOpacity, Text, View, ActivityIndicator,
   StyleSheet, StyleProp, ViewStyle, TextStyle, GestureResponderEvent,
 } from 'react-native';
-import { colors, primaryScale, neutral } from '../../theme/colors';
+import { colors, primaryScale } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
-const VARIANT_BG: Record<ButtonVariant, string> = {
-  primary: primaryScale[600], secondary: neutral[100],
-  danger: colors.red[600], ghost: colors.transparent, outline: colors.transparent,
-};
-const VARIANT_TEXT: Record<ButtonVariant, string> = {
-  primary: colors.white, secondary: neutral[800],
-  danger: colors.white, ghost: neutral[700], outline: neutral[700],
-};
-const VARIANT_BORDER: Record<ButtonVariant, string> = {
-  primary: primaryScale[600], secondary: colors.transparent,
-  danger: colors.red[600], ghost: colors.transparent, outline: neutral[200],
-};
 const SIZE_PX: Record<ButtonSize, ViewStyle> = {
   sm: { paddingHorizontal: 12, paddingVertical: 6 },
   md: { paddingHorizontal: 16, paddingVertical: 8 },
@@ -43,7 +32,22 @@ export default function Button({
   children, variant = 'primary', size = 'md',
   loading = false, disabled = false, onPress, style, textStyle,
 }: ButtonProps) {
+  const { colors: theme, isDark } = useTheme();
   const isDisabled = disabled || loading;
+
+  const VARIANT_BG: Record<ButtonVariant, string> = {
+    primary: primaryScale[600], secondary: isDark ? theme.primarySoft : primaryScale[100],
+    danger: colors.red[600], ghost: colors.transparent, outline: colors.transparent,
+  };
+  const VARIANT_TEXT: Record<ButtonVariant, string> = {
+    primary: colors.white, secondary: theme.textPrimary,
+    danger: colors.white, ghost: theme.textSecondary, outline: theme.textSecondary,
+  };
+  const VARIANT_BORDER: Record<ButtonVariant, string> = {
+    primary: primaryScale[600], secondary: colors.transparent,
+    danger: colors.red[600], ghost: colors.transparent, outline: theme.border,
+  };
+
   return (
     <TouchableOpacity
       onPress={onPress} disabled={isDisabled} activeOpacity={0.75}

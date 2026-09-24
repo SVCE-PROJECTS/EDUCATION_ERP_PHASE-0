@@ -12,6 +12,9 @@ const studentRoutes = require('./student.routes');
 const dropdownRoutes = require('./dropdown.routes');
 const transferRoutes = require('./transfer.routes');
 const exportRoutes = require('./export.routes');
+const auditRoutes = require('./audit.routes');
+const settingsRoutes = require('./settings.routes');
+const adminUsersRoutes = require('./adminUsers.routes');
 
 // ── Dashboard Routes ─────────────────────────────────────────────────────────
 const dashboardRoutes = require('./dashboard.routes');
@@ -53,6 +56,9 @@ router.use('/students', studentRoutes);
 router.use('/dropdown', dropdownRoutes);
 router.use('/transfer', transferRoutes);
 router.use('/export', exportRoutes);
+router.use('/audit-logs', auditRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/admin-users', adminUsersRoutes);
 
 // Dashboard
 router.use('/dashboard', dashboardRoutes);

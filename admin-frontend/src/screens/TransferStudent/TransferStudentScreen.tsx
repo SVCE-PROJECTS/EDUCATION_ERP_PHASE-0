@@ -26,9 +26,9 @@ import { useTransferStudent } from '../../hooks/useTransferStudent';
 
 import ScreenLayout from '../../navigation/ScreenLayout';
 import { formatStudentId } from '../../utils/formatStudentId';
+import { useTheme } from '../../context/ThemeContext';
 
 import {
-  colors,
   spacing,
   typography,
   radius,
@@ -40,37 +40,47 @@ import {
 // ---------------------------------------------------------
 // A single boxed read-only value, e.g.
 // "Program: Bachelor of Engineering"
-const DetailBox = ({ label, value, style }) => (
-  <View style={[styles.detailBox, style]}>
-    <Text style={styles.detailLabel}>
-      {label}
-    </Text>
+const DetailBox = ({ label, value, style }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  return (
+    <View style={[styles.detailBox, style]}>
+      <Text style={styles.detailLabel}>
+        {label}
+      </Text>
 
-    <Text style={styles.detailValue}>
-      {value || '-'}
-    </Text>
-  </View>
-);
+      <Text style={styles.detailValue}>
+        {value || '-'}
+      </Text>
+    </View>
+  );
+};
 
 
 // ---------------------------------------------------------
 // Icon Badge
 // ---------------------------------------------------------
-const IconBadge = ({ name }) => (
-  <View style={styles.iconBadge}>
-    <Icon
-      source={name}
-      size={16}
-      color={colors.primary}
-    />
-  </View>
-);
+const IconBadge = ({ name }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  return (
+    <View style={styles.iconBadge}>
+      <Icon
+        source={name}
+        size={16}
+        color={colors.primary}
+      />
+    </View>
+  );
+};
 
 
 // ---------------------------------------------------------
 // Transfer Student Screen
 // ---------------------------------------------------------
 const TransferStudentScreen = ({ route, navigation }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
 
   // -------------------------------------------------------
   // React Query client
@@ -614,7 +624,7 @@ const TransferStudentScreen = ({ route, navigation }) => {
 // ---------------------------------------------------------
 // Styles
 // ---------------------------------------------------------
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
 
   container: {
     flex: 1,

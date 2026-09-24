@@ -17,6 +17,7 @@ const slFacultyRepository      = require('./slFacultyRepository');
 
 // ── Academic Structure ────────────────────────────────────────────────────────
 const academicSettingsRepository = require('./academicSettingsRepository');
+const departmentRepository       = require('./department.repository');
 const semesterRepository         = require('./semesterRepository');
 const sectionRepository          = require('./sectionRepository');
 const timetableRepository        = require('./timetableRepository');
@@ -44,6 +45,7 @@ module.exports = {
 
   // Academic Structure
   academicSettingsRepository,
+  departmentRepository,
   semesterRepository,
   sectionRepository,
   timetableRepository,

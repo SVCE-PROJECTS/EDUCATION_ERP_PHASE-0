@@ -8,7 +8,8 @@ import {
   ViewStyle,
   GestureResponderEvent,
 } from 'react-native';
-import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { colors, ThemeColors, shadows, primaryScale } from '../../theme/colors';
 
 // ── Base Card ─────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,8 @@ export interface CardProps {
 }
 
 export default function Card({ children, style, onPress, hover = false }: CardProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   if (onPress) {
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.card, style]}>
@@ -38,12 +41,16 @@ export interface CardSectionProps {
 }
 
 export function CardHeader({ children, style }: CardSectionProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   return <View style={[styles.header, style]}>{children}</View>;
 }
 
 // ── CardBody ──────────────────────────────────────────────────────────────────
 
 export function CardBody({ children, style }: CardSectionProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   return <View style={[styles.body, style]}>{children}</View>;
 }
 
@@ -79,6 +86,8 @@ export function StatCard({
   trend,
   onPress,
 }: StatCardProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   const c = COLOR_MAP[color] ?? COLOR_MAP.indigo;
 
   return (
@@ -109,12 +118,12 @@ export function StatCard({
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     ...shadows.card,
     overflow: 'hidden',
   },
@@ -122,7 +131,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[100],
+    borderBottomColor: theme.border,
   },
   body: {
     paddingHorizontal: 24,
@@ -143,17 +152,17 @@ const styles = StyleSheet.create({
   statTitle: {
     fontSize: 13,
     fontWeight: '500',
-    color: neutral[500],
+    color: theme.textSecondary,
   },
   statValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
     marginTop: 6,
   },
   statSubtitle: {
     fontSize: 11,
-    color: neutral[400],
+    color: theme.textMuted,
     marginTop: 2,
   },
   iconWrap: {
@@ -166,6 +175,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   trendSuffix: {
-    color: neutral[400],
+    color: theme.textMuted,
   },
 });

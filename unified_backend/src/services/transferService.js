@@ -2,9 +2,10 @@
 const { getClient } = require('../config/db');
 const studentRepository = require('../repositories/studentRepository');
 const transferRepository = require('../repositories/transferRepository');
+const auditRepository = require('../repositories/audit.repository');
 const { ApiError } = require('../utils/apiResponse');
 
-async function transferStudent(payload) {
+async function transferStudent(payload, performedBy) {
   const student = await studentRepository.findById(payload.studentId);
 
   if (!student) {
@@ -129,6 +130,27 @@ async function transferStudent(payload) {
     const updatedStudent =
       await studentRepository.findById(payload.studentId);
 
+    await auditRepository.create({
+      userId: performedBy,
+      action: 'STUDENT_TRANSFERRED',
+      module: 'transfer',
+      recordId: payload.studentId,
+      oldValue: {
+        programId: student.programId,
+        departmentId: student.departmentId,
+        semesterId: student.semesterId,
+        sectionId: student.sectionId,
+      },
+      newValue: {
+        transferId,
+        programId: payload.newProgramId,
+        departmentId: payload.newDepartmentId,
+        semesterId: newSemesterId,
+        sectionId: payload.newSectionId,
+        reason: payload.remarks,
+      },
+    });
+
     return {
       transferId,
       student: updatedStudent,
@@ -180,8 +202,17 @@ async function getTransferHistory(studentId) {
 }
 
 
+// ---------------------------------------------------------
+// All Transfers — backs the Dashboard's "Transferred Students" detail view
+// ---------------------------------------------------------
+async function listAllTransfers() {
+  return transferRepository.findAll();
+}
+
+
 module.exports = {
   transferStudent,
   getTransferHistory,
+  listAllTransfers,
 };
 

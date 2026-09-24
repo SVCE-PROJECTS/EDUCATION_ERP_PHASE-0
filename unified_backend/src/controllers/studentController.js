@@ -204,7 +204,7 @@ const getStudentsBySection = async (req, res) => {
  * POST /api/students
  */
 const createStudent = asyncHandler(async (req, res) => {
-  const student = await studentService.createStudent(req.body);
+  const student = await studentService.createStudent(req.body, req.user?.id);
   success(res, student, null, 201);
 });
 
@@ -213,7 +213,7 @@ const createStudent = asyncHandler(async (req, res) => {
  * PUT /api/students/:id   — :id is library_id
  */
 const updateStudent = asyncHandler(async (req, res) => {
-  const student = await studentService.updateStudent(req.params.id, req.body);
+  const student = await studentService.updateStudent(req.params.id, req.body, req.user?.id);
   success(res, student);
 });
 
@@ -222,7 +222,7 @@ const updateStudent = asyncHandler(async (req, res) => {
  * DELETE /api/students/:id   — :id is library_id
  */
 const deleteStudent = asyncHandler(async (req, res) => {
-  await studentService.deleteStudent(req.params.id);
+  await studentService.deleteStudent(req.params.id, req.user?.id);
   success(res, { deleted: true });
 });
 

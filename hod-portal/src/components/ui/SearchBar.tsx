@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { Search, X } from '../../components/icons';
-import { colors, neutral } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { colors, ThemeColors } from '../../theme/colors';
 
 export interface SearchBarProps {
   value: string;
@@ -11,16 +12,18 @@ export interface SearchBarProps {
 }
 
 export default function SearchBar({ value, onChange, placeholder = 'Search...', style }: SearchBarProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   return (
     <View style={[styles.container, style]}>
       {/* Leading search icon */}
-      <Search size={16} color={neutral[400]} style={styles.leadIcon} />
+      <Search size={16} color={theme.textMuted} style={styles.leadIcon} />
 
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={neutral[400]}
+        placeholderTextColor={theme.placeholder}
         style={styles.input}
         autoCorrect={false}
         autoCapitalize="none"
@@ -36,20 +39,20 @@ export default function SearchBar({ value, onChange, placeholder = 'Search...', 
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           accessibilityLabel="Clear search"
         >
-          <X size={14} color={neutral[400]} />
+          <X size={14} color={theme.textMuted} />
         </TouchableOpacity>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: neutral[200],
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 10,
     height: 40,
@@ -60,7 +63,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 13,
-    color: neutral[900],
+    color: theme.textPrimary,
     padding: 0, // Android adds default padding — reset it
   },
   clearBtn: {

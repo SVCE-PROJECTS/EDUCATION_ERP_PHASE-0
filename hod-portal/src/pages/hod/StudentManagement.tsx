@@ -27,10 +27,10 @@ import studentListService from '../../services/studentList.service';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
 import {
   colors,
+  ThemeColors,
   shadows,
-  primaryScale,
-  neutral,
 } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { ROUTES } from '../../navigation/routes';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -85,6 +85,8 @@ function SectionHeader({
   title,
   onBack,
 }: SectionHeaderProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <View style={s.sectionHeader}>
       {onBack && (
@@ -100,7 +102,7 @@ function SectionHeader({
         >
           <ChevronLeft
             size={18}
-            color={primaryScale[600]}
+            color={theme.primary}
           />
         </TouchableOpacity>
       )}
@@ -123,21 +125,24 @@ function InfoCard({
   icon: Icon,
   label,
   value,
-  color = primaryScale[600],
+  color,
 }: InfoCardProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
+  const accentColor = color ?? theme.primary;
   return (
     <View style={s.infoCard}>
       <View
         style={[
           s.infoIcon,
           {
-            backgroundColor: color + '1a',
+            backgroundColor: accentColor + '1a',
           },
         ]}
       >
         <Icon
           size={18}
-          color={color}
+          color={accentColor}
         />
       </View>
 
@@ -161,6 +166,8 @@ interface SemesterPickerProps {
 function SemesterPicker({
   onSelect,
 }: SemesterPickerProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const {
     data,
     isLoading,
@@ -178,7 +185,7 @@ function SemesterPicker({
     return (
       <ActivityIndicator
         style={s.loader}
-        color={primaryScale[500]}
+        color={theme.primary}
       />
     );
   }
@@ -220,7 +227,7 @@ function SemesterPicker({
 
             <ChevronRight
               size={14}
-              color={primaryScale[600]}
+              color={theme.primary}
             />
           </TouchableOpacity>
         ))}
@@ -242,6 +249,8 @@ function SectionPicker({
   onSelect,
   onBack,
 }: SectionPickerProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const {
     data,
     isLoading,
@@ -265,7 +274,7 @@ function SectionPicker({
       {isLoading ? (
         <ActivityIndicator
           style={s.loader}
-          color={primaryScale[500]}
+          color={theme.primary}
         />
       ) : (
         <View style={s.chipGrid}>
@@ -282,7 +291,7 @@ function SectionPicker({
 
               <ChevronRight
                 size={14}
-                color={primaryScale[600]}
+                color={theme.primary}
               />
             </TouchableOpacity>
           ))}
@@ -348,6 +357,8 @@ interface StudentTableProps {
 function StudentTable({
   students,
 }: StudentTableProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const {
     width: screenWidth,
   } = useWindowDimensions();
@@ -475,6 +486,8 @@ interface StudentRowProps {
 function StudentRow({
   student,
 }: StudentRowProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
 
   const attendance =
     student.attendance != null
@@ -659,6 +672,8 @@ function TimetableGrid({
 }: {
   slots: TimetableSlot[];
 }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   // Always show the standard periods.
   // These are TABLE COLUMNS, not dummy data.
   const periods = [1, 2, 3, 4, 5, 6, 7];
@@ -808,6 +823,8 @@ function SubjectFacultyTable({
 }: {
   mapping: SubjectFacultyRow[];
 }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const emptyRows = 5;
 
   return (
@@ -816,7 +833,7 @@ function SubjectFacultyTable({
       <View style={s.cardTitleRow}>
         <BookOpen
           size={16}
-          color={primaryScale[600]}
+          color={theme.primary}
         />
 
         <Text style={s.cardTitle}>
@@ -970,6 +987,8 @@ function SectionDashboard({
   section,
   onBack,
 }: SectionDashboardProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [page, setPage] = useState(1);
 
   const LIMIT = 50;
@@ -1021,8 +1040,8 @@ function SectionDashboard({
             isFetching && !isLoading
           }
           onRefresh={refetch}
-          tintColor={primaryScale[500]}
-          colors={[primaryScale[500]]}
+          tintColor={theme.primary}
+          colors={[theme.primary]}
         />
       }
     >
@@ -1047,7 +1066,7 @@ function SectionDashboard({
           icon={BookOpen}
           label="Subjects"
           value={mapping.length}
-          color={primaryScale[600]}
+          color={theme.primary}
         />
 
         <InfoCard
@@ -1073,7 +1092,7 @@ function SectionDashboard({
         <View style={s.cardTitleRow}>
           <Users
             size={16}
-            color={primaryScale[600]}
+            color={theme.primary}
           />
 
           <Text style={s.cardTitle}>
@@ -1087,7 +1106,7 @@ function SectionDashboard({
         {isLoading ? (
   <ActivityIndicator
     style={s.loader}
-    color={primaryScale[500]}
+    color={theme.primary}
   />
 ) : (
   <StudentTable
@@ -1111,8 +1130,8 @@ function SectionDashboard({
                 size={16}
                 color={
                   page === 1
-                    ? neutral[300]
-                    : neutral[700]
+                    ? theme.border
+                    : theme.textSecondary
                 }
               />
             </TouchableOpacity>
@@ -1137,8 +1156,8 @@ function SectionDashboard({
                 color={
                   page >=
                   pagination.totalPages
-                    ? neutral[300]
-                    : neutral[700]
+                    ? theme.border
+                    : theme.textSecondary
                 }
               />
             </TouchableOpacity>
@@ -1152,6 +1171,8 @@ function SectionDashboard({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function StudentManagement() {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [view, setView] =
     useState<ViewName>(VIEW.SEMESTER);
 
@@ -1221,19 +1242,19 @@ export default function StudentManagement() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   // ── Dashboard ──────────────────────────────────────────────────────────────
 
   dashboardRoot: {
     flex: 1,
     width: '100%',
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
   },
 
   dashboardScroll: {
     flex: 1,
     width: '100%',
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
   },
 
   listContent: {
@@ -1269,7 +1290,7 @@ const s = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
     flex: 1,
   },
 
@@ -1288,10 +1309,10 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 12,
     ...shadows.card,
   },
@@ -1306,13 +1327,13 @@ const s = StyleSheet.create({
 
   infoLabel: {
     fontSize: 11,
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   // ── Semester / Section Picker ─────────────────────────────────────────────
@@ -1320,7 +1341,7 @@ const s = StyleSheet.create({
   pickerLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: neutral[500],
+    color: theme.textSecondary,
     marginBottom: -4,
   },
 
@@ -1336,17 +1357,17 @@ const s = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: colors.white,
+    backgroundColor: theme.primarySoft,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: primaryScale[100],
+    borderColor: theme.border,
     ...shadows.card,
   },
 
   chipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: primaryScale[700],
+    color: theme.primary,
   },
 
   // ── Common Cards ───────────────────────────────────────────────────────────
@@ -1354,10 +1375,10 @@ const s = StyleSheet.create({
   card: {
     width: '100%',
     alignSelf: 'stretch',
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 16,
     marginTop: 14,
     gap: 10,
@@ -1367,10 +1388,10 @@ const s = StyleSheet.create({
   studentsCard: {
     width: '100%',
     alignSelf: 'stretch',
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 16,
     marginTop: 14,
     gap: 10,
@@ -1386,7 +1407,7 @@ const s = StyleSheet.create({
   cardTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   // ── Students Table ─────────────────────────────────────────────────────────
@@ -1405,7 +1426,7 @@ const s = StyleSheet.create({
     minHeight: 36,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 6,
@@ -1419,7 +1440,7 @@ const s = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 6,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[50],
+    borderBottomColor: theme.border,
   },
 
   tableColumn: {
@@ -1431,17 +1452,17 @@ const s = StyleSheet.create({
   tableHeaderCell: {
     fontSize: 10,
     fontWeight: '700',
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
   tableCell: {
     fontSize: 12,
-    color: neutral[700],
+    color: theme.textSecondary,
   },
 
   tableCellStrong: {
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   attendanceCell: {
@@ -1452,7 +1473,7 @@ const s = StyleSheet.create({
 
   performanceCell: {
     fontSize: 12,
-    color: primaryScale[600],
+    color: theme.primary,
     fontWeight: '600',
   },
 
@@ -1461,14 +1482,14 @@ const s = StyleSheet.create({
   ttRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: neutral[100],
+    borderBottomColor: theme.border,
   },
 
   ttHeaderCell: {
     fontSize: 10,
     fontWeight: '700',
-    color: neutral[500],
-    backgroundColor: neutral[50],
+    color: theme.textSecondary,
+    backgroundColor: theme.background,
     paddingVertical: 8,
     paddingHorizontal: 8,
   },
@@ -1476,8 +1497,8 @@ const s = StyleSheet.create({
   ttDayCell: {
     fontSize: 12,
     fontWeight: '600',
-    color: neutral[900],
-    backgroundColor: neutral[50],
+    color: theme.textPrimary,
+    backgroundColor: theme.background,
     paddingVertical: 10,
     paddingHorizontal: 8,
     justifyContent: 'center',
@@ -1486,30 +1507,30 @@ const s = StyleSheet.create({
   ttCell: {
     padding: 8,
     borderLeftWidth: 1,
-    borderLeftColor: neutral[100],
+    borderLeftColor: theme.border,
     gap: 1,
   },
 
   ttSubject: {
     fontSize: 11,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   ttCode: {
     fontSize: 10,
-    color: primaryScale[600],
+    color: theme.primary,
     fontWeight: '500',
   },
 
   ttFaculty: {
     fontSize: 10,
-    color: neutral[400],
+    color: theme.textMuted,
   },
 
   ttEmpty: {
     fontSize: 11,
-    color: neutral[300],
+    color: theme.textMuted,
     textAlign: 'center',
   },
 
@@ -1518,7 +1539,7 @@ const s = StyleSheet.create({
   sfHeaderRow: {
     width: '100%',
     flexDirection: 'row',
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 8,
@@ -1527,7 +1548,7 @@ const s = StyleSheet.create({
   sfHeaderCell: {
     fontSize: 10,
     fontWeight: '700',
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
   sfDataRow: {
@@ -1537,25 +1558,25 @@ const s = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[50],
+    borderBottomColor: theme.border,
   },
 
   sfCell: {
     fontSize: 12,
-    color: neutral[700],
+    color: theme.textSecondary,
   },
 
   sfSubject: {
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   sfCode: {
     fontSize: 10,
     fontWeight: '600',
-    color: primaryScale[700],
+    color: theme.primary,
     backgroundColor:
-      primaryScale[50] ?? neutral[100],
+      theme.primarySoft,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -1571,7 +1592,7 @@ const s = StyleSheet.create({
 
   emptyText: {
     fontSize: 14,
-    color: neutral[400],
+    color: theme.textMuted,
   },
 
   // ── Pagination ─────────────────────────────────────────────────────────────
@@ -1587,14 +1608,14 @@ const s = StyleSheet.create({
   pageBtn: {
     padding: 8,
     borderRadius: 10,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: neutral[200],
+    borderColor: theme.border,
   },
 
   pageText: {
     fontSize: 13,
-    color: neutral[600],
+    color: theme.textSecondary,
     fontWeight: '500',
   },
 });

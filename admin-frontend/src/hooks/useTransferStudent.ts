@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { transferStudent, fetchTransferHistory } from '../services/transferService';
+import { transferStudent, fetchTransferHistory, fetchAllTransfers } from '../services/transferService';
 
 export const useTransferStudent = () => {
   const queryClient = useQueryClient();
@@ -17,4 +17,9 @@ export const useTransferHistory = (studentId) => useQuery({
   queryKey: ['transferHistory', studentId],
   queryFn: () => fetchTransferHistory(studentId),
   enabled: !!studentId,
+});
+
+export const useAllTransfers = () => useQuery({
+  queryKey: ['transfers', 'all'],
+  queryFn: fetchAllTransfers,
 });

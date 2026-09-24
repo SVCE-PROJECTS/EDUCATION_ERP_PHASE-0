@@ -1,8 +1,9 @@
-// Faculty Portal — Pagination — exact copy of hod-portal
+// Faculty Portal — Pagination — mirrors hod-portal
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from '../icons';
-import { colors, primaryScale, neutral } from '../../theme/colors';
+import { colors, primaryScale, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { Pagination as PaginationMeta } from '../../types';
 
 export interface PaginationProps {
@@ -11,6 +12,8 @@ export interface PaginationProps {
 }
 
 export default function Pagination({ pagination, onPageChange }: PaginationProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   const { page, totalPages, total, limit } = pagination;
   if (!totalPages || totalPages <= 1) return null;
 
@@ -29,28 +32,28 @@ export default function Pagination({ pagination, onPageChange }: PaginationProps
       </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.btnRow}>
         <PageArrow onPress={() => onPageChange(page - 1)} disabled={page === 1}
-          icon={<ChevronLeft size={16} color={page === 1 ? neutral[300] : neutral[600]} />} />
+          icon={<ChevronLeft size={16} color={page === 1 ? theme.border : theme.textSecondary} />} styles={styles} />
         {pages[0] > 1 && (
           <>
-            <PageBtn n={1} current={page} onPress={onPageChange} />
+            <PageBtn n={1} current={page} onPress={onPageChange} styles={styles} />
             {pages[0] > 2 && <Text style={styles.ellipsis}>…</Text>}
           </>
         )}
-        {pages.map((n) => <PageBtn key={n} n={n} current={page} onPress={onPageChange} />)}
+        {pages.map((n) => <PageBtn key={n} n={n} current={page} onPress={onPageChange} styles={styles} />)}
         {pages[pages.length - 1] < totalPages && (
           <>
             {pages[pages.length - 1] < totalPages - 1 && <Text style={styles.ellipsis}>…</Text>}
-            <PageBtn n={totalPages} current={page} onPress={onPageChange} />
+            <PageBtn n={totalPages} current={page} onPress={onPageChange} styles={styles} />
           </>
         )}
         <PageArrow onPress={() => onPageChange(page + 1)} disabled={page === totalPages}
-          icon={<ChevronRight size={16} color={page === totalPages ? neutral[300] : neutral[600]} />} />
+          icon={<ChevronRight size={16} color={page === totalPages ? theme.border : theme.textSecondary} />} styles={styles} />
       </ScrollView>
     </View>
   );
 }
 
-function PageBtn({ n, current, onPress }: { n: number; current: number; onPress: (n: number) => void }) {
+function PageBtn({ n, current, onPress, styles }: { n: number; current: number; onPress: (n: number) => void; styles: ReturnType<typeof getStyles> }) {
   const isActive = n === current;
   return (
     <TouchableOpacity onPress={() => onPress(n)} style={[styles.pageBtn, isActive && styles.pageBtnActive]}
@@ -60,7 +63,7 @@ function PageBtn({ n, current, onPress }: { n: number; current: number; onPress:
   );
 }
 
-function PageArrow({ onPress, disabled, icon }: { onPress: () => void; disabled?: boolean; icon: React.ReactNode }) {
+function PageArrow({ onPress, disabled, icon, styles }: { onPress: () => void; disabled?: boolean; icon: React.ReactNode; styles: ReturnType<typeof getStyles> }) {
   return (
     <TouchableOpacity onPress={onPress} disabled={disabled} style={[styles.pageBtn, disabled && styles.pageBtnDisabled]} activeOpacity={0.7}>
       {icon}
@@ -68,15 +71,15 @@ function PageArrow({ onPress, disabled, icon }: { onPress: () => void; disabled?
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: neutral[100], flexWrap: 'wrap', gap: 8 },
-  count: { fontSize: 12, color: neutral[500] },
-  countBold: { fontWeight: '600', color: neutral[900] },
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
+  container: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: theme.border, flexWrap: 'wrap', gap: 8 },
+  count: { fontSize: 12, color: theme.textSecondary },
+  countBold: { fontWeight: '600', color: theme.textPrimary },
   btnRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   pageBtn: { minWidth: 32, height: 32, paddingHorizontal: 6, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   pageBtnActive: { backgroundColor: primaryScale[600] },
   pageBtnDisabled: { opacity: 0.4 },
-  pageBtnText: { fontSize: 13, fontWeight: '500', color: neutral[600] },
+  pageBtnText: { fontSize: 13, fontWeight: '500', color: theme.textSecondary },
   pageBtnTextActive: { color: colors.white, fontWeight: '700' },
-  ellipsis: { fontSize: 13, color: neutral[400], paddingHorizontal: 4, alignSelf: 'center' },
+  ellipsis: { fontSize: 13, color: theme.textMuted, paddingHorizontal: 4, alignSelf: 'center' },
 });

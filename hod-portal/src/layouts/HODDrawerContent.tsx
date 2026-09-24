@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   LayoutDashboard,
   Users,
@@ -12,10 +13,11 @@ import {
 } from '../components/icons';
 import Avatar from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { authService } from '../services/auth.service';
 import { getRoleShortName } from '../utils/roleUtils';
 import { ROUTES } from '../navigation/routes';
-import { colors, shadows, primaryScale, neutral } from '../theme/colors';
+import { colors, ThemeColors, shadows } from '../theme/colors';
 import Toast from '../services/toast';
 
 type IconComponent = React.ComponentType<{ size?: number; color?: string; style?: any }>;
@@ -43,9 +45,11 @@ interface SidebarItemProps {
   label: string;
   isActive: boolean;
   onPress: () => void;
+  theme: ThemeColors;
+  styles: ReturnType<typeof getStyles>;
 }
 
-function SidebarItem({ icon: Icon, label, isActive, onPress }: SidebarItemProps) {
+function SidebarItem({ icon: Icon, label, isActive, onPress, theme, styles }: SidebarItemProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -54,7 +58,9 @@ function SidebarItem({ icon: Icon, label, isActive, onPress }: SidebarItemProps)
       accessibilityRole="button"
       accessibilityState={{ selected: isActive }}
     >
-      <Icon size={17} color={isActive ? colors.white : neutral[500]} style={styles.navIcon} />
+      <View style={[styles.navIconWrap, isActive && styles.navIconWrapActive]}>
+        <Icon size={17} color={isActive ? theme.primary : theme.textSecondary} />
+      </View>
       <Text style={[styles.navLabel, isActive && styles.navLabelActive]} numberOfLines={1}>
         {label}
       </Text>
@@ -67,6 +73,8 @@ function SidebarItem({ icon: Icon, label, isActive, onPress }: SidebarItemProps)
 export default function HODDrawerContent(props: DrawerContentComponentProps) {
   const { state, navigation: drawerNav } = props;
   const { user, logout } = useAuth();
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
 
   // Current active route name inside the drawer
   const activeRoute = state.routes[state.index]?.name;
@@ -85,16 +93,25 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
 
   return (
     <SafeAreaView style={styles.root}>
-      {/* ── Brand header ───────────────────────────────────────────────── */}
-      <View style={styles.brand}>
-        <View style={styles.brandIcon}>
-          <GraduationCap size={20} color={colors.white} />
-        </View>
-        <View>
+      {/* ── Brand header — gradient hero panel, tap to jump home ────────── */}
+      <TouchableOpacity
+        onPress={() => drawerNav.navigate(ROUTES.HOD_DASHBOARD as never)}
+        activeOpacity={0.85}
+        accessibilityLabel="Go to Dashboard"
+      >
+        <LinearGradient
+          colors={theme.gradientPrimary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.brand}
+        >
+          <View style={styles.brandIcon}>
+            <GraduationCap size={20} color={colors.white} />
+          </View>
           <Text style={styles.brandName}>Dept Portal</Text>
           <Text style={styles.brandDept}>{user?.departmentCode || 'ERP'}</Text>
-        </View>
-      </View>
+        </LinearGradient>
+      </TouchableOpacity>
 
       {/* ── User info ───────────────────────────────────────────────────── */}
       <View style={styles.userSection}>
@@ -125,6 +142,8 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
             label={item.label}
             isActive={activeRoute === item.route}
             onPress={() => drawerNav.navigate(item.route as never)}
+            theme={theme}
+            styles={styles}
           />
         ))}
       </DrawerContentScrollView>
@@ -142,43 +161,42 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRightWidth: 1,
-    borderRightColor: neutral[100],
+    borderRightColor: theme.border,
   },
 
   // Brand
   brand: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: neutral[100],
+    paddingTop: 24,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   brandIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: primaryScale[600],
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-    // gradient not natively possible without expo-linear-gradient;
-    // use a solid blue which matches the brand colour exactly
+    marginBottom: 8,
   },
   brandName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: neutral[900],
-    lineHeight: 18,
+    color: colors.white,
+    letterSpacing: 0.3,
   },
   brandDept: {
     fontSize: 11,
-    color: neutral[500],
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
 
   // User card
@@ -186,13 +204,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[100],
+    borderBottomColor: theme.border,
   },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: neutral[50],
+    backgroundColor: theme.primarySoft,
     borderRadius: 12,
     padding: 8,
   },
@@ -203,11 +221,11 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 12,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   userRole: {
     fontSize: 11,
-    color: neutral[500],
+    color: theme.textSecondary,
     marginTop: 1,
   },
 
@@ -221,27 +239,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderRadius: 12,
   },
   navItemActive: {
-    backgroundColor: primaryScale[600],
-    ...shadows.soft,
-    shadowColor: primaryScale[500],
+    backgroundColor: theme.primarySoft,
   },
-  navIcon: {
+  navIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
+  },
+  navIconWrapActive: {
+    backgroundColor: theme.surface,
+    ...shadows.soft,
   },
   navLabel: {
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
-    color: neutral[600],
+    color: theme.textSecondary,
   },
   navLabelActive: {
-    color: colors.white,
-    fontWeight: '600',
+    color: theme.primary,
+    fontWeight: '700',
   },
 
   // Logout

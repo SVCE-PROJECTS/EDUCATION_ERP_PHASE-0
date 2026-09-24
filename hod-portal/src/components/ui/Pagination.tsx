@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from '../../components/icons';
-import { colors, primaryScale, neutral } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { colors, ThemeColors, primaryScale } from '../../theme/colors';
 import { Pagination as PaginationMeta } from '../../types';
 
 export interface PaginationProps {
@@ -10,6 +11,8 @@ export interface PaginationProps {
 }
 
 export default function Pagination({ pagination, onPageChange }: PaginationProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   const { page, totalPages, total, limit } = pagination;
   if (!totalPages || totalPages <= 1) return null;
 
@@ -43,26 +46,27 @@ export default function Pagination({ pagination, onPageChange }: PaginationProps
         <PageArrow
           onPress={() => onPageChange(page - 1)}
           disabled={page === 1}
-          icon={<ChevronLeft size={16} color={page === 1 ? neutral[300] : neutral[600]} />}
+          icon={<ChevronLeft size={16} color={page === 1 ? theme.border : theme.textSecondary} />}
+          styles={styles}
         />
 
         {/* First page shortcut */}
         {pages[0] > 1 && (
           <>
-            <PageBtn n={1} current={page} onPress={onPageChange} />
+            <PageBtn n={1} current={page} onPress={onPageChange} styles={styles} theme={theme} />
             {pages[0] > 2 && <Text style={styles.ellipsis}>…</Text>}
           </>
         )}
 
         {pages.map((n) => (
-          <PageBtn key={n} n={n} current={page} onPress={onPageChange} />
+          <PageBtn key={n} n={n} current={page} onPress={onPageChange} styles={styles} theme={theme} />
         ))}
 
         {/* Last page shortcut */}
         {pages[pages.length - 1] < totalPages && (
           <>
             {pages[pages.length - 1] < totalPages - 1 && <Text style={styles.ellipsis}>…</Text>}
-            <PageBtn n={totalPages} current={page} onPress={onPageChange} />
+            <PageBtn n={totalPages} current={page} onPress={onPageChange} styles={styles} theme={theme} />
           </>
         )}
 
@@ -71,8 +75,9 @@ export default function Pagination({ pagination, onPageChange }: PaginationProps
           onPress={() => onPageChange(page + 1)}
           disabled={page === totalPages}
           icon={
-            <ChevronRight size={16} color={page === totalPages ? neutral[300] : neutral[600]} />
+            <ChevronRight size={16} color={page === totalPages ? theme.border : theme.textSecondary} />
           }
+          styles={styles}
         />
       </ScrollView>
     </View>
@@ -83,9 +88,11 @@ interface PageBtnProps {
   n: number;
   current: number;
   onPress: (n: number) => void;
+  styles: ReturnType<typeof getStyles>;
+  theme: ThemeColors;
 }
 
-function PageBtn({ n, current, onPress }: PageBtnProps) {
+function PageBtn({ n, current, onPress, styles, theme }: PageBtnProps) {
   const isActive = n === current;
   return (
     <TouchableOpacity
@@ -104,9 +111,10 @@ interface PageArrowProps {
   onPress: () => void;
   disabled?: boolean;
   icon: React.ReactNode;
+  styles: ReturnType<typeof getStyles>;
 }
 
-function PageArrow({ onPress, disabled, icon }: PageArrowProps) {
+function PageArrow({ onPress, disabled, icon, styles }: PageArrowProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -119,7 +127,7 @@ function PageArrow({ onPress, disabled, icon }: PageArrowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -127,17 +135,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: neutral[100],
+    borderTopColor: theme.border,
     flexWrap: 'wrap',
     gap: 8,
   },
   count: {
     fontSize: 12,
-    color: neutral[500],
+    color: theme.textSecondary,
   },
   countBold: {
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   btnRow: {
     flexDirection: 'row',
@@ -161,7 +169,7 @@ const styles = StyleSheet.create({
   pageBtnText: {
     fontSize: 13,
     fontWeight: '500',
-    color: neutral[600],
+    color: theme.textSecondary,
   },
   pageBtnTextActive: {
     color: colors.white,
@@ -169,7 +177,7 @@ const styles = StyleSheet.create({
   },
   ellipsis: {
     fontSize: 13,
-    color: neutral[400],
+    color: theme.textMuted,
     paddingHorizontal: 4,
     alignSelf: 'center',
   },

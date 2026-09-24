@@ -2,20 +2,25 @@
 import React from 'react';
 import { StyleSheet, ScrollView } from 'react-native';
 import { Portal, Modal, Text } from 'react-native-paper';
-import { colors, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { radius, spacing, typography } from '../../theme';
 
 const CustomModal = ({
   visible, onDismiss, title, children,
-}) => (
-  <Portal>
-    <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.container}>
-      {title ? <Text style={styles.title}>{title}</Text> : null}
-      <ScrollView>{children}</ScrollView>
-    </Modal>
-  </Portal>
-);
+}) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  return (
+    <Portal>
+      <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.container}>
+        {title ? <Text style={styles.title}>{title}</Text> : null}
+        <ScrollView>{children}</ScrollView>
+      </Modal>
+    </Portal>
+  );
+};
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     margin: spacing.xl,

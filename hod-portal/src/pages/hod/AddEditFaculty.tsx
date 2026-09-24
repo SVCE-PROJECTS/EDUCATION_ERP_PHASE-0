@@ -20,7 +20,8 @@ import { Camera, ChevronDown, Check, X, ArrowLeft, User } from '../../components
 import { useQuery } from '@tanstack/react-query';
 import { facultyService } from '../../services/faculty.service';
 import { useCreateFaculty, useUpdateFaculty } from '../../hooks/useFaculty';
-import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { colors, ThemeColors, shadows } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FacultyStatus } from '../../types';
@@ -67,10 +68,14 @@ interface FormValues {
 // ─── Reusable sub-components ──────────────────────────────────────────────────
 
 function SectionTitle({ title }: { title: string }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return <Text style={s.sectionTitle}>{title}</Text>;
 }
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <Text style={s.label}>
       {label}
@@ -80,6 +85,8 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
 }
 
 function ErrorMsg({ msg }: { msg?: string }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return msg ? <Text style={s.errorMsg}>{msg}</Text> : null;
 }
 
@@ -109,6 +116,8 @@ function InputField({
   secureTextEntry,
   multiline,
 }: InputFieldProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <View style={s.fieldGroup}>
       <FieldLabel label={label} required={required} />
@@ -123,7 +132,7 @@ function InputField({
             onBlur={onBlur}
             value={value ?? ''}
             placeholder={placeholder ?? `Enter ${label.toLowerCase()}`}
-            placeholderTextColor={neutral[400]}
+            placeholderTextColor={theme.placeholder}
             keyboardType={keyboardType ?? 'default'}
             autoCapitalize={autoCapitalize ?? 'words'}
             secureTextEntry={secureTextEntry}
@@ -150,6 +159,8 @@ interface SelectFieldProps {
 }
 
 function SelectField({ name, label, control, errors, required, options }: SelectFieldProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [open, setOpen] = useState(false);
   return (
     <View style={s.fieldGroup}>
@@ -175,7 +186,7 @@ function SelectField({ name, label, control, errors, required, options }: Select
                 <Text style={display ? s.selectValue : s.selectPlaceholder} numberOfLines={1}>
                   {display ?? `Select ${label}`}
                 </Text>
-                <ChevronDown size={16} color={neutral[400]} />
+                <ChevronDown size={16} color={theme.textMuted} />
               </TouchableOpacity>
 
               <RNModal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
@@ -184,7 +195,7 @@ function SelectField({ name, label, control, errors, required, options }: Select
                   <View style={s.sheetHeader}>
                     <Text style={s.sheetTitle}>{label}</Text>
                     <TouchableOpacity onPress={() => setOpen(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <X size={18} color={neutral[400]} />
+                      <X size={18} color={theme.textMuted} />
                     </TouchableOpacity>
                   </View>
                   <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
@@ -203,7 +214,7 @@ function SelectField({ name, label, control, errors, required, options }: Select
                           activeOpacity={0.75}
                         >
                           <Text style={[s.sheetOptionText, active && s.sheetOptionTextActive]}>{optLabel}</Text>
-                          {active && <Check size={14} color={primaryScale[600]} />}
+                          {active && <Check size={14} color={theme.primary} />}
                         </TouchableOpacity>
                       );
                     })}
@@ -228,6 +239,8 @@ interface PhotoAsset {
 }
 
 export default function AddEditFaculty() {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
@@ -346,7 +359,7 @@ export default function AddEditFaculty() {
   if (isEdit && loadingExisting) {
     return (
       <View style={[s.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator color={primaryScale[500]} size="large" />
+        <ActivityIndicator color={theme.primary} size="large" />
       </View>
     );
   }
@@ -356,7 +369,7 @@ export default function AddEditFaculty() {
       {/* ── Header bar ──────────────────────────────────────────────── */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <ArrowLeft size={20} color={neutral[700]} />
+          <ArrowLeft size={20} color={theme.textSecondary} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>{isEdit ? 'Edit Faculty' : 'Add New Faculty'}</Text>
         <View style={{ width: 36 }} />
@@ -376,7 +389,7 @@ export default function AddEditFaculty() {
               <Image source={{ uri: photoPreview }} style={s.photoImg} />
             ) : (
               <View style={s.photoPlaceholder}>
-                <User size={36} color={neutral[300]} />
+                <User size={36} color={theme.textMuted} />
               </View>
             )}
             <View style={s.cameraBtn}>
@@ -481,16 +494,16 @@ export default function AddEditFaculty() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
   },
 
   // Header
@@ -500,12 +513,12 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[100],
+    borderBottomColor: theme.border,
   },
   backBtn: { padding: 4 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: neutral[900] },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: theme.textPrimary },
 
   // Form layout
   scroll: { flex: 1 },
@@ -519,18 +532,18 @@ const s = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: colors.white,
+    borderColor: theme.surface,
     ...shadows.soft,
   },
   photoPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: neutral[100],
+    backgroundColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: colors.white,
+    borderColor: theme.surface,
     ...shadows.card,
   },
   cameraBtn: {
@@ -540,20 +553,20 @@ const s = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: primaryScale[600],
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: theme.surface,
   },
-  photoHint: { fontSize: 12, color: neutral[400] },
+  photoHint: { fontSize: 12, color: theme.textMuted },
 
   // Section card
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 20,
     gap: 16,
     ...shadows.card,
@@ -561,25 +574,25 @@ const s = StyleSheet.create({
   sectionTitle: {
     fontSize: 10,
     fontWeight: '700',
-    color: neutral[500],
+    color: theme.textSecondary,
     letterSpacing: 0.8,
     marginBottom: 4,
   },
 
   // Field
   fieldGroup: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '500', color: neutral[700] },
+  label: { fontSize: 13, fontWeight: '500', color: theme.textSecondary },
   errorMsg: { fontSize: 11, color: colors.red[500] },
 
   input: {
     borderWidth: 1,
-    borderColor: neutral[200],
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    color: neutral[900],
-    backgroundColor: colors.white,
+    color: theme.textPrimary,
+    backgroundColor: theme.surface,
     minHeight: 44,
   },
   inputMulti: { height: 80, textAlignVertical: 'top', paddingTop: 10 },
@@ -591,17 +604,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  selectValue: { flex: 1, fontSize: 14, color: neutral[900] },
-  selectPlaceholder: { flex: 1, fontSize: 14, color: neutral[400] },
+  selectValue: { flex: 1, fontSize: 14, color: theme.textPrimary },
+  selectPlaceholder: { flex: 1, fontSize: 14, color: theme.placeholder },
 
   // Bottom sheet
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.overlay },
   sheetContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -614,7 +627,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  sheetTitle: { fontSize: 15, fontWeight: '700', color: neutral[900] },
+  sheetTitle: { fontSize: 15, fontWeight: '700', color: theme.textPrimary },
   sheetOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -622,21 +635,21 @@ const s = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[50],
+    borderBottomColor: theme.border,
   },
   sheetOptionActive: {
-    backgroundColor: primaryScale[50],
+    backgroundColor: theme.primarySoft,
     borderRadius: 10,
     paddingHorizontal: 10,
   },
-  sheetOptionText: { fontSize: 14, color: neutral[700] },
-  sheetOptionTextActive: { color: primaryScale[600], fontWeight: '600' },
+  sheetOptionText: { fontSize: 14, color: theme.textSecondary },
+  sheetOptionTextActive: { color: theme.primary, fontWeight: '600' },
 
   // Submit
   submitBtn: {
     height: 52,
     borderRadius: 16,
-    backgroundColor: primaryScale[600],
+    backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.glow,

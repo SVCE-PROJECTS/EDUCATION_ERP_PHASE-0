@@ -22,12 +22,12 @@ import Pagination from '../../components/ui/Pagination';
 import ContextMenu from '../../components/faculty/ContextMenu';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useTheme } from '../../context/ThemeContext';
 
 import {
   colors,
+  ThemeColors,
   shadows,
-  primaryScale,
-  neutral,
 } from '../../theme/colors';
 
 import { ROUTES } from '../../navigation/routes';
@@ -62,6 +62,8 @@ function FacultyCard({
   onMenuPress,
   menuRef,
 }: FacultyCardProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <TouchableOpacity
       style={s.card}
@@ -114,7 +116,7 @@ function FacultyCard({
         >
           <MoreVertical
             size={18}
-            color={neutral[400]}
+            color={theme.textMuted}
           />
         </TouchableOpacity>
 
@@ -205,6 +207,10 @@ function FacultyCard({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function FacultyManagement() {
+
+  const { colors: theme } = useTheme();
+
+  const s = getStyles(theme);
 
   const navigation = useNavigation<any>();
 
@@ -565,14 +571,14 @@ export default function FacultyManagement() {
 
           <ActivityIndicator
             size={16}
-            color={neutral[400]}
+            color={theme.textMuted}
           />
 
         ) : (
 
           <RefreshCw
             size={16}
-            color={neutral[400]}
+            color={theme.textMuted}
           />
 
         )}
@@ -696,11 +702,11 @@ export default function FacultyManagement() {
             onRefresh={refetch}
 
             tintColor={
-              primaryScale[500]
+              theme.primary
             }
 
             colors={[
-              primaryScale[500],
+              theme.primary,
             ]}
 
           />
@@ -755,7 +761,7 @@ export default function FacultyManagement() {
 // Styles
 // ─────────────────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
 
   // Header
 
@@ -769,13 +775,13 @@ const s = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
 
   subtitle: {
     fontSize: 13,
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
 
@@ -800,10 +806,10 @@ const s = StyleSheet.create({
     height: 40,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: neutral[200],
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
   },
 
 
@@ -817,10 +823,10 @@ const s = StyleSheet.create({
   // Faculty card
 
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     marginHorizontal: 16,
     marginVertical: 4,
     padding: 14,
@@ -846,13 +852,13 @@ const s = StyleSheet.create({
   cardName: {
     fontSize: 14,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
 
   cardEmail: {
     fontSize: 12,
-    color: neutral[400],
+    color: theme.textMuted,
   },
 
 
@@ -881,7 +887,7 @@ const s = StyleSheet.create({
   attrLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: neutral[400],
+    color: theme.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
@@ -890,7 +896,7 @@ const s = StyleSheet.create({
   attrValue: {
     fontSize: 12,
     fontWeight: '500',
-    color: neutral[700],
+    color: theme.textSecondary,
   },
 
 
@@ -913,7 +919,7 @@ const s = StyleSheet.create({
 
   emptyText: {
     fontSize: 14,
-    color: neutral[400],
+    color: theme.textMuted,
     textAlign: 'center',
   },
 

@@ -23,7 +23,7 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const record = await svc.create(req.body, req.user.departmentCode);
+    const record = await svc.create(req.body, req.user.departmentCode, req.user.id);
     return successResponse(res, record, 'Project created successfully', 201);
   } catch (err) {
     if (err.statusCode) return errorResponse(res, err.message, err.statusCode);
@@ -33,7 +33,7 @@ const create = async (req, res, next) => {
 
 const update = async (req, res, next) => {
   try {
-    const record = await svc.update(req.params.id, req.body, req.user.departmentCode);
+    const record = await svc.update(req.params.id, req.body, req.user.departmentCode, req.user.id);
     return successResponse(res, record, 'Project updated successfully');
   } catch (err) {
     if (err.statusCode) return errorResponse(res, err.message, err.statusCode);
@@ -43,7 +43,7 @@ const update = async (req, res, next) => {
 
 const remove = async (req, res, next) => {
   try {
-    const result = await svc.remove(req.params.id, req.user.departmentCode);
+    const result = await svc.remove(req.params.id, req.user.departmentCode, req.user.id);
     return successResponse(res, result);
   } catch (err) {
     if (err.statusCode) return errorResponse(res, err.message, err.statusCode);
@@ -53,7 +53,7 @@ const remove = async (req, res, next) => {
 
 const addStudent = async (req, res, next) => {
   try {
-    const student = await svc.addStudent(req.params.id, req.body, req.user.departmentCode);
+    const student = await svc.addStudent(req.params.id, req.body, req.user.departmentCode, req.user.id);
     return successResponse(res, student, 'Student added to project', 201);
   } catch (err) {
     if (err.statusCode) return errorResponse(res, err.message, err.statusCode);
@@ -63,7 +63,7 @@ const addStudent = async (req, res, next) => {
 
 const removeStudent = async (req, res, next) => {
   try {
-    const result = await svc.removeStudent(req.params.id, req.params.studentId, req.user.departmentCode);
+    const result = await svc.removeStudent(req.params.id, req.params.studentId, req.user.departmentCode, req.user.id);
     return successResponse(res, result);
   } catch (err) {
     if (err.statusCode) return errorResponse(res, err.message, err.statusCode);

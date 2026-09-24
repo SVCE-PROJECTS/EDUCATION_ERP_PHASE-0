@@ -8,9 +8,12 @@ const {
   getFacultyList, getFacultyById, createFaculty, updateFaculty, deleteFaculty,
   getMyProfile, getMyClasses,
 } = require('../controllers/faculty.controller');
+const {
+  uploadMyDocument, listMyDocuments, deleteMyDocument, listDocumentsForFaculty,
+} = require('../controllers/facultyDocument.controller');
 const { authenticate, requireHOD } = require('../middleware/authenticate');
 const { validate } = require('../middleware/validate');
-const { uploadPhoto } = require('../middleware/upload');
+const { uploadPhoto, uploadDocument } = require('../middleware/upload');
 const { createFacultyRules, updateFacultyRules } = require('../validators/facultyValidator');
 
 const router = express.Router();
@@ -23,11 +26,19 @@ router.get('/me', getMyProfile);
 // GET /api/faculty/me/classes  — classes assigned to logged-in faculty
 router.get('/me/classes', getMyClasses);
 
+// Faculty's own uploaded documents (ID proof, certificates, ...)
+router.post('/me/documents', uploadDocument.single('document'), uploadMyDocument);
+router.get('/me/documents', listMyDocuments);
+router.delete('/me/documents/:documentId', deleteMyDocument);
+
 // GET /api/faculty
 router.get('/', getFacultyList);
 
 // GET /api/faculty/:id
 router.get('/:id', getFacultyById);
+
+// GET /api/faculty/:id/documents (HOD only) — view a given faculty's uploaded documents
+router.get('/:id/documents', requireHOD, listDocumentsForFaculty);
 
 // POST /api/faculty (HOD only)
 router.post('/', requireHOD, uploadPhoto.single('photo'), validate(createFacultyRules), createFaculty);

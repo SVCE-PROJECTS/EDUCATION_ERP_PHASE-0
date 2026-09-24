@@ -31,7 +31,8 @@ const create = async (req, res, next) => {
   try {
     const record = await technicalEventService.create(
       req.body,
-      req.user.departmentCode
+      req.user.departmentCode,
+      req.user.id
     );
     return successResponse(res, record, 'Technical event created successfully', 201);
   } catch (err) {
@@ -45,7 +46,8 @@ const update = async (req, res, next) => {
     const record = await technicalEventService.update(
       req.params.id,
       req.body,
-      req.user.departmentCode
+      req.user.departmentCode,
+      req.user.id
     );
     return successResponse(res, record, 'Technical event updated successfully');
   } catch (err) {
@@ -58,7 +60,8 @@ const remove = async (req, res, next) => {
   try {
     const result = await technicalEventService.remove(
       req.params.id,
-      req.user.departmentCode
+      req.user.departmentCode,
+      req.user.id
     );
     return successResponse(res, result);
   } catch (err) {

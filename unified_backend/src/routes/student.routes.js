@@ -48,6 +48,9 @@ router.get('/semesters/:semester/sections/:section',
 // ── faculty_student: simple list ──────────────────────────────────────────────
 router.get('/', authenticate, studentController.getStudents);
 
+// ── Name autocomplete (must precede /:id so "search" isn't read as an id) ────
+router.get('/search', authenticate, studentController.searchByName);
+
 // ── Comprehensive profile ─────────────────────────────────────────────────────
 router.get('/:id/profile', authenticate, validate(idParamRule), studentController.getStudentProfile);
 

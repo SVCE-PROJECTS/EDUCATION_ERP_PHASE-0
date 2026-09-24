@@ -229,7 +229,9 @@ const FacultyForm = ({
           <View style={styles.col}>
             <Controller
               control={control} name="password"
-              rules={!isEdit ? { required: 'Password is required', minLength: { value: 6, message: 'Min 6 characters' } } : {}}
+              rules={!isEdit
+                ? { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } }
+                : { minLength: { value: 8, message: 'Min 8 characters' } }}
               render={({ field }) => (
                 <CustomInput label={isEdit ? 'New Password (leave blank to keep)' : 'Password'}
                   value={field.value} onChangeText={field.onChange} onBlur={field.onBlur}

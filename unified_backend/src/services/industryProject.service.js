@@ -6,6 +6,7 @@
 
 const industryProjectRepo = require('../repositories/industryProject.repository');
 const studentRepo = require('../repositories/studentRepository');
+const { logActivity } = require('./activityAudit.helper');
 
 // FIXED: previously `status: data.status === 'COMPLETED' ? 'Completed' : 'Completed'`
 // returned 'Completed' on both branches of the ternary — a copy-paste bug that made
@@ -46,13 +47,18 @@ const getById = async (id, departmentCode) => {
   return record;
 };
 
-const create = async (data, departmentCode) => {
+const create = async (data, departmentCode, performedBy) => {
   if (!data.student_id) throw { statusCode: 400, message: 'Student USN is required.' };
   // FIXED: this field now takes the student's USN (the identifier actually
   // visible in the Student Management screen) instead of the raw internal
   // library_id, which was never shown anywhere in the app.
   const student = await studentRepo.findByUsn(String(data.student_id).trim());
   if (!student) throw { statusCode: 404, message: `No student found with USN "${data.student_id}". Please check and try again.` };
+  // Student exists but belongs to another department — treat identically to
+  // "not found" so a project can't silently be created for a student who'll
+  // never show up in this department's list (findAll filters by department).
+  if (departmentCode && student.department_code !== departmentCode)
+    throw { statusCode: 404, message: `No student found with USN "${data.student_id}" in your department.` };
   if (!data.projectName) throw { statusCode: 400, message: 'projectName is required.' };
 
   // FIXED: previously wrapped every student in a `students` JSON array inside a
@@ -63,7 +69,7 @@ const create = async (data, departmentCode) => {
   // together on one project card. Adding another student to this project just
   // means creating another row with the same Project Title + Academic Year;
   // each row (= each student) can then be edited/deleted independently.
-  return industryProjectRepo.create({
+  const record = await industryProjectRepo.create({
     studentId:   student.library_id,
     facultyId:   data.faculty_id || null,
     title:       data.projectName.trim(),
@@ -76,9 +82,17 @@ const create = async (data, departmentCode) => {
     academicYear: data.academicYear || null,
     status:       toStatusLabel(data.status),
   });
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'CREATE_INDUSTRY_PROJECT', module: 'industry_project', recordId: record.id,
+    details: { title: record.title, studentUsn: student.usn },
+  });
+
+  return record;
 };
 
-const update = async (id, data, departmentCode) => {
+const update = async (id, data, departmentCode, performedBy) => {
   const existing = await industryProjectRepo.findById(id);
   if (!existing) throw { statusCode: 404, message: 'Industry project not found.' };
   if (departmentCode && existing.department_code !== departmentCode)
@@ -100,57 +114,98 @@ const update = async (id, data, departmentCode) => {
   if (data.section  !== undefined) desc.section       = data.section;
   updateData.description = JSON.stringify(desc);
 
-  return industryProjectRepo.update(id, updateData);
+  const record = await industryProjectRepo.update(id, updateData);
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'UPDATE_INDUSTRY_PROJECT', module: 'industry_project', recordId: id,
+    details: { title: record.title, updatedFields: Object.keys(updateData) },
+  });
+
+  return record;
 };
 
-const remove = async (id, departmentCode) => {
+const remove = async (id, departmentCode, performedBy) => {
   const existing = await industryProjectRepo.findById(id);
   if (!existing) throw { statusCode: 404, message: 'Industry project not found.' };
   if (departmentCode && existing.department_code !== departmentCode)
     throw { statusCode: 403, message: 'Access denied.' };
   await industryProjectRepo.remove(id);
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'DELETE_INDUSTRY_PROJECT', module: 'industry_project', recordId: id,
+    details: { title: existing.title, studentUsn: existing.usn },
+  });
+
   return { message: 'Industry project deleted successfully.' };
 };
 
-const addStudent = async (id, studentData, departmentCode) => {
+// Students are added/removed as their own `activities` rows (see the
+// FIXED note on `create` above) via industryProjectRepo.addStudent/
+// removeStudent, NOT by mutating a legacy `description.students` JSON
+// array — a row-per-student is what findAll/findById actually join and
+// filter on, so writing only to the JSON blob left added students
+// invisible to search/listing.
+const addStudent = async (id, studentData, departmentCode, performedBy) => {
   const existing = await industryProjectRepo.findById(id);
   if (!existing) throw { statusCode: 404, message: 'Industry project not found.' };
   if (departmentCode && existing.department_code !== departmentCode)
     throw { statusCode: 403, message: 'Access denied.' };
 
-  let desc = {};
-  try { desc = JSON.parse(existing.description || '{}'); } catch {}
-  const students = desc.students || [];
+  if (!studentData.student_id) throw { statusCode: 400, message: 'Student USN is required.' };
+  const student = await studentRepo.findByUsn(String(studentData.student_id).trim());
+  if (!student) throw { statusCode: 404, message: `No student found with USN "${studentData.student_id}". Please check and try again.` };
+  if (departmentCode && student.department_code !== departmentCode)
+    throw { statusCode: 404, message: `No student found with USN "${studentData.student_id}" in your department.` };
 
-  if (students.some(s => s.library_id === studentData.student_id)) {
-    throw { statusCode: 409, message: 'Student already in this project.' };
-  }
+  const dup = await industryProjectRepo.findByStudentInProject(
+    existing.title, existing.academic_year, student.library_id,
+  );
+  if (dup) throw { statusCode: 409, message: 'Student already in this project.' };
 
-  students.push({
-    library_id:  studentData.student_id,
-    studentName: studentData.studentName || null,
-    usn:         studentData.usn         || null,
-    semester:    studentData.semester    || null,
-    section:     studentData.section     || null,
+  const record = await industryProjectRepo.addStudent(id, {
+    studentId:    student.library_id,
+    facultyId:    existing.faculty_id,
+    title:        existing.title,
+    description:  JSON.stringify({
+      projectStatus: existing.status,
+      section:  studentData.section  || student.section_name   || null,
+      semester: studentData.semester || student.semester_number || null,
+    }),
+    academicYear: existing.academic_year,
+    status:       existing.status,
   });
-  desc.students = students;
 
-  return industryProjectRepo.update(id, { description: JSON.stringify(desc) });
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'ADD_PROJECT_STUDENT', module: 'industry_project', recordId: id,
+    details: { title: existing.title, studentUsn: student.usn },
+  });
+
+  return record;
 };
 
-const removeStudent = async (id, studentId, departmentCode) => {
+const removeStudent = async (id, studentId, departmentCode, performedBy) => {
   const existing = await industryProjectRepo.findById(id);
   if (!existing) throw { statusCode: 404, message: 'Industry project not found.' };
   if (departmentCode && existing.department_code !== departmentCode)
     throw { statusCode: 403, message: 'Access denied.' };
 
-  let desc = {};
-  try { desc = JSON.parse(existing.description || '{}'); } catch {}
-  const before = (desc.students || []).length;
-  desc.students = (desc.students || []).filter(s => s.library_id !== studentId);
-  if (desc.students.length === before) throw { statusCode: 404, message: 'Student not found in project.' };
+  const target = await industryProjectRepo.findByStudentInProject(
+    existing.title, existing.academic_year, studentId,
+  );
+  if (!target) throw { statusCode: 404, message: 'Student not found in project.' };
 
-  return industryProjectRepo.update(id, { description: JSON.stringify(desc) });
+  await industryProjectRepo.removeStudent(target.id);
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'REMOVE_PROJECT_STUDENT', module: 'industry_project', recordId: id,
+    details: { title: existing.title, studentId },
+  });
+
+  return { message: 'Student removed from project successfully.' };
 };
 
 module.exports = { getList, getById, create, update, remove, addStudent, removeStudent };

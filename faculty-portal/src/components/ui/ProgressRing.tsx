@@ -4,7 +4,8 @@
  */
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { primaryScale, neutral, colors } from '../../theme/colors';
+import { primaryScale, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 interface ProgressRingProps {
   percentage: number;
@@ -14,13 +15,16 @@ interface ProgressRingProps {
   color?: string;
 }
 
-export default function ProgressRing({ 
-  percentage, 
-  size = 120, 
+export default function ProgressRing({
+  percentage,
+  size = 120,
   strokeWidth = 12,
   label,
-  color = primaryScale[500]
+  color,
 }: ProgressRingProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
+  const ringColor = color ?? theme.primary;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = Math.min(Math.max(percentage, 0), 100);
@@ -30,44 +34,44 @@ export default function ProgressRing({
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       {/* Background Circle */}
-      <View 
+      <View
         style={[
-          styles.circle, 
+          styles.circle,
           styles.backgroundCircle,
-          { 
-            width: size - strokeWidth, 
-            height: size - strokeWidth, 
+          {
+            width: size - strokeWidth,
+            height: size - strokeWidth,
             borderRadius: (size - strokeWidth) / 2,
             borderWidth: strokeWidth,
-            borderColor: neutral[100],
+            borderColor: theme.border,
           }
-        ]} 
+        ]}
       />
-      
+
       {/* Progress Circle (simplified) */}
-      <View 
+      <View
         style={[
-          styles.circle, 
+          styles.circle,
           styles.progressCircle,
-          { 
-            width: size - strokeWidth, 
-            height: size - strokeWidth, 
+          {
+            width: size - strokeWidth,
+            height: size - strokeWidth,
             borderRadius: (size - strokeWidth) / 2,
             borderWidth: strokeWidth,
-            borderColor: color,
+            borderColor: ringColor,
             transform: [{ rotate: '-90deg' }],
           }
-        ]} 
+        ]}
       >
-        {/* This is a simplified version - for full circle progress, 
+        {/* This is a simplified version - for full circle progress,
             you'd typically use react-native-svg, but this gives a good visual */}
-        <View 
+        <View
           style={[
             styles.progressMask,
             {
               width: '50%',
               height: '100%',
-              backgroundColor: colors.white,
+              backgroundColor: theme.surface,
               opacity: progress < 50 ? 1 : 0,
             }
           ]}
@@ -89,7 +93,7 @@ export default function ProgressRing({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -121,10 +125,10 @@ const styles = StyleSheet.create({
   },
   percentageText: {
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   label: {
-    color: neutral[600],
+    color: theme.textSecondary,
     fontWeight: '500',
   },
 });

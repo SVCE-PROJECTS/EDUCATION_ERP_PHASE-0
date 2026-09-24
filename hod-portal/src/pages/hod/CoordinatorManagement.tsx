@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { facultyService } from '../../services/faculty.service';
+import { resolveFileUrl } from '../../services/api';
 import { useSyncRoles } from '../../hooks/useFaculty';
 import Avatar from '../../components/ui/Avatar';
 import { RoleBadge } from '../../components/ui/Badge';
@@ -100,7 +101,7 @@ function CoordinatorRow({ faculty: f }: { faculty: Faculty }) {
 
   return (
     <View style={s.row}>
-      <Avatar src={f.photo} name={f.name} size="sm" />
+      <Avatar src={resolveFileUrl(f.photoUrl)} name={f.name} size="sm" />
       <View style={s.rowInfo}>
         <Text style={s.rowName} numberOfLines={1}>
           {f.name}

@@ -10,10 +10,18 @@ const getAcademicYear = asyncHandler(async (req, res) => {
   success(res, settings);
 });
 
+const VALID_SEMESTER_TYPES = ['ODD', 'EVEN'];
+
 const updateAcademicYear = asyncHandler(async (req, res) => {
   const { academicYear, currentSemesterType } = req.body;
   if (!academicYear || !currentSemesterType) {
     throw new ApiError(400, 'academicYear and currentSemesterType are required.');
+  }
+  // Whitelist-check before hitting the DB — the CHECK (current_semester_type
+  // IN ('ODD','EVEN')) constraint would otherwise reject an invalid value
+  // with a raw constraint-violation error instead of a clean 400.
+  if (!VALID_SEMESTER_TYPES.includes(currentSemesterType)) {
+    throw new ApiError(400, `currentSemesterType must be one of: ${VALID_SEMESTER_TYPES.join(', ')}.`);
   }
   const settings = await academicSettingsRepository.upsertSettings({ academicYear, currentSemesterType });
   success(res, settings);

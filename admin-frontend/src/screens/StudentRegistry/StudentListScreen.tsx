@@ -25,6 +25,11 @@ const StudentListScreen = ({ navigation }) => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  // Selection spans pages, but `students` below only holds the rows for the
+  // CURRENT page — so we keep the actual selected row objects here (keyed by
+  // id) as they're selected, instead of re-deriving them from `students`
+  // later (which would silently drop any selection made on another page).
+  const [selectedStudents, setSelectedStudents] = useState(() => new Map());
   const [csvModalVisible, setCsvModalVisible] = useState(false);
   const [reassignVisible, setReassignVisible] = useState(false);
   const [promoteConfirmVisible, setPromoteConfirmVisible] = useState(false);
@@ -45,42 +50,58 @@ const StudentListScreen = ({ navigation }) => {
   const meta = data?.meta;
 
   const toggleSelect = (id) => {
+    const student = students.find((s) => s.id === id);
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
-  };
-
-  const toggleSelectAll = () => {
-    setSelectedIds((prev) => {
-      const allSelected = students.length > 0 && students.every((s) => prev.has(s.id));
-      if (allSelected) return new Set();
-      const next = new Set(prev);
-      students.forEach((s) => next.add(s.id));
+    setSelectedStudents((prev) => {
+      const next = new Map(prev);
+      if (next.has(id)) next.delete(id); else if (student) next.set(id, student);
       return next;
     });
   };
 
-  const clearSelection = () => setSelectedIds(new Set());
+  const toggleSelectAll = () => {
+    const allSelected = students.length > 0 && students.every((s) => selectedIds.has(s.id));
+    setSelectedIds((prev) => {
+      if (allSelected) {
+        const next = new Set(prev);
+        students.forEach((s) => next.delete(s.id));
+        return next;
+      }
+      const next = new Set(prev);
+      students.forEach((s) => next.add(s.id));
+      return next;
+    });
+    setSelectedStudents((prev) => {
+      const next = new Map(prev);
+      if (allSelected) {
+        students.forEach((s) => next.delete(s.id));
+      } else {
+        students.forEach((s) => next.set(s.id, s));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setSelectedStudents(new Map());
+  };
 
   const runBulkUpdate = async (buildPayload, successLabel) => {
     setBulkBusy(true);
-    const targets = students.filter((s) => selectedIds.has(s.id));
-    let success = 0;
-    let failed = 0;
-    for (const student of targets) {
-      try {
+    const targets = [...selectedStudents.values()];
+    const results = await Promise.allSettled(
+      targets.map((student) => {
         const payload = buildPayload(student);
-        if (payload) {
-          // eslint-disable-next-line no-await-in-loop
-          await updateMutation.mutateAsync({ id: student.id, form: payload });
-        }
-        success += 1;
-      } catch {
-        failed += 1;
-      }
-    }
+        return payload ? updateMutation.mutateAsync({ id: student.id, form: payload }) : Promise.resolve();
+      }),
+    );
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    const success = results.length - failed;
     setBulkBusy(false);
     clearSelection();
     setSnackbar(`${successLabel}: ${success} updated${failed ? `, ${failed} failed` : ''}.`);

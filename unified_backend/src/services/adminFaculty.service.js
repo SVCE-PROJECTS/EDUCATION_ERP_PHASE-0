@@ -41,6 +41,14 @@ const create = async (data) => {
   }
 
   if (!data.password) throw { statusCode: 400, message: 'Password is required.' };
+  // Kept in sync with adminUsers.controller.js's password rule — this is the
+  // only server-side length check on faculty passwords (the pre-existing
+  // facultyValidator.js min-6 rule isn't wired into this admin route), so
+  // without it any length would be accepted regardless of what the frontend
+  // form enforces.
+  if (data.password.length < 8) {
+    throw { statusCode: 400, message: 'Password must be at least 8 characters.' };
+  }
   const passwordHash = await bcrypt.hash(data.password, 12);
 
   const faculty = await repo.create({ ...data, passwordHash });
@@ -64,6 +72,9 @@ const update = async (id, data) => {
 
   let passwordHash;
   if (data.password) {
+    if (data.password.length < 8) {
+      throw { statusCode: 400, message: 'Password must be at least 8 characters.' };
+    }
     passwordHash = await bcrypt.hash(data.password, 12);
   }
 

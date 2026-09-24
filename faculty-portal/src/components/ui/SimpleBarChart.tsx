@@ -4,7 +4,8 @@
  */
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { primaryScale, neutral, colors } from '../../theme/colors';
+import { primaryScale, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 interface DataPoint {
   label: string;
@@ -20,13 +21,15 @@ interface SimpleBarChartProps {
   title?: string;
 }
 
-export default function SimpleBarChart({ 
-  data, 
-  maxValue, 
-  height = 180, 
+export default function SimpleBarChart({
+  data,
+  maxValue,
+  height = 180,
   showValues = true,
-  title 
+  title
 }: SimpleBarChartProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   const max = maxValue || Math.max(...data.map(d => d.value), 100);
   const barWidth = Math.min((Dimensions.get('window').width - 80) / data.length, 60);
 
@@ -45,23 +48,23 @@ export default function SimpleBarChart({
         <View style={styles.barsContainer}>
           {data.map((item, index) => {
             const barHeight = (item.value / max) * (height - 40);
-            const barColor = item.color || primaryScale[500];
-            
+            const barColor = item.color || theme.primary;
+
             return (
               <View key={index} style={[styles.barWrapper, { width: barWidth }]}>
                 <View style={styles.barContainer}>
                   {showValues && item.value > 0 && (
                     <Text style={styles.valueLabel}>{item.value}</Text>
                   )}
-                  <View 
+                  <View
                     style={[
-                      styles.bar, 
-                      { 
-                        height: barHeight, 
+                      styles.bar,
+                      {
+                        height: barHeight,
                         backgroundColor: barColor,
                         width: Math.max(barWidth * 0.7, 24),
                       }
-                    ]} 
+                    ]}
                   />
                 </View>
                 <Text style={styles.barLabel} numberOfLines={1}>{item.label}</Text>
@@ -74,9 +77,9 @@ export default function SimpleBarChart({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 16,
     gap: 12,
@@ -84,7 +87,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   chartContainer: {
     flexDirection: 'row',
@@ -98,7 +101,7 @@ const styles = StyleSheet.create({
   },
   axisLabel: {
     fontSize: 10,
-    color: neutral[500],
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   barsContainer: {
@@ -132,11 +135,11 @@ const styles = StyleSheet.create({
   valueLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: neutral[700],
+    color: theme.textPrimary,
   },
   barLabel: {
     fontSize: 10,
-    color: neutral[600],
+    color: theme.textSecondary,
     textAlign: 'center',
     fontWeight: '500',
   },

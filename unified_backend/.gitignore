@@ -10,7 +10,13 @@ node_modules/
 *.log
 logs/
 
-# Uploaded files
+# Uploaded files — ignore everything under uploads/, including files
+# written straight into its root (e.g. transfer.routes.js's upload dir),
+# not just the documents/exports/photos subfolders.
+uploads/*
+!uploads/documents/
+!uploads/exports/
+!uploads/photos/
 uploads/documents/*
 uploads/exports/*
 uploads/photos/*

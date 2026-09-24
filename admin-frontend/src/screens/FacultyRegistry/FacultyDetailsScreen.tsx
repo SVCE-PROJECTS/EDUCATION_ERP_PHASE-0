@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
-import { Text, Chip } from 'react-native-paper';
+import { Text, Chip, Snackbar } from 'react-native-paper';
 import InfoCard from '../../components/Card/InfoCard';
 import CustomButton from '../../components/Button/CustomButton';
 import ConfirmationDialog from '../../components/Dialog/ConfirmationDialog';
@@ -29,6 +29,7 @@ const FacultyDetailsScreen = ({ route, navigation }) => {
   const { data: faculty, isLoading, isError } = useFacultyMember(facultyId);
   const { mutateAsync: deleteFaculty, isPending: deleting } = useDeleteFaculty();
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   if (isLoading) {
     return (
@@ -48,9 +49,14 @@ const FacultyDetailsScreen = ({ route, navigation }) => {
   const statusStyle = STATUS_STYLE[faculty.status] || { bg: colors.border, text: colors.textSecondary };
 
   const handleDelete = async () => {
-    await deleteFaculty(facultyId);
-    setConfirmVisible(false);
-    navigation.navigate('FacultyList');
+    try {
+      await deleteFaculty(facultyId);
+      setConfirmVisible(false);
+      navigation.navigate('FacultyList');
+    } catch (err) {
+      setConfirmVisible(false);
+      setErrorMessage(err?.response?.data?.message || 'Failed to delete faculty member. Please try again.');
+    }
   };
 
   return (
@@ -115,6 +121,9 @@ const FacultyDetailsScreen = ({ route, navigation }) => {
           onCancel={() => setConfirmVisible(false)}
         />
       </ScrollView>
+      <Snackbar visible={!!errorMessage} onDismiss={() => setErrorMessage('')} duration={4000}>
+        {errorMessage}
+      </Snackbar>
     </ScreenLayout>
   );
 };

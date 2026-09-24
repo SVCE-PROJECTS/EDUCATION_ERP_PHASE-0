@@ -1,7 +1,8 @@
 // @ts-nocheck
-// Point this at your Express backend. Use your machine's LAN IP when testing
-// on a physical device (localhost only works on simulators/emulators).
-export const API_BASE_URL = 'http://localhost:5000/api';
+// Point this at your Express backend. Set EXPO_PUBLIC_API_URL in your .env
+// (same convention as faculty-portal/hod-portal) — use your machine's LAN IP
+// when testing on a physical device (localhost only works on simulators/emulators).
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000/api';
 // Same host as API_BASE_URL but without the /api suffix - used to build full
 // URLs for files served statically (e.g. /uploads/...), like transfer documents.
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');

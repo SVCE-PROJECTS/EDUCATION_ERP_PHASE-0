@@ -9,7 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import SnackbarHost from './components/ui/SnackbarHost';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, useWindowDimensions } from 'react-native';
 
 import { navigationRef } from './navigation/navigationRef';
 import { ROUTES } from './navigation/routes';
@@ -28,6 +28,7 @@ import StudentManagement from './pages/hod/StudentManagement';
 import CoordinatorManagement from './pages/hod/CoordinatorManagement';
 import ActivitiesPage from './pages/hod/activities/ActivitiesPage';
 import FacultyAllocation from './pages/hod/FacultyAllocation';
+import ActivityLog from './pages/hod/ActivityLog';
 
 // ── Drawer custom content ─────────────────────────────────────────────────────
 import HODDrawerContent from './layouts/HODDrawerContent';
@@ -52,13 +53,18 @@ const queryClient = new QueryClient({
 // Stack-push screens (FacultyProfile, Add/Edit) live in the root Stack so they
 // appear on top of the drawer with a proper back-arrow header.
 function HODDrawer() {
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width >= 768;
+
   return (
     <Drawer.Navigator
       drawerContent={(props) => <HODDrawerContent {...props} />}
       screenOptions={{
         headerShown: false, // Topbar is rendered inside each screen
+        drawerType: isLargeScreen ? 'permanent' : 'front',
         drawerStyle: { width: 260 },
-        swipeEdgeWidth: 40,
+        swipeEdgeWidth: isLargeScreen ? 0 : 40,
+        overlayColor: isLargeScreen ? 'transparent' : 'rgba(0,0,0,0.5)',
       }}
     >
       <Drawer.Screen name={ROUTES.HOD_DASHBOARD} component={HODDashboard} />
@@ -67,6 +73,7 @@ function HODDrawer() {
       <Drawer.Screen name={ROUTES.HOD_COORDINATORS} component={CoordinatorManagement} />
       <Drawer.Screen name={ROUTES.HOD_ACTIVITIES} component={ActivitiesPage} />
       <Drawer.Screen name={ROUTES.HOD_FACULTY_ALLOCATION} component={FacultyAllocation} />
+      <Drawer.Screen name={ROUTES.HOD_ACTIVITY_LOG} component={ActivityLog} />
     </Drawer.Navigator>
   );
 }

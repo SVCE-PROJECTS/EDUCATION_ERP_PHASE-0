@@ -10,7 +10,8 @@ import Pagination from '../ui/Pagination';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import ActivityFormModal, { FieldDescriptor } from './ActivityFormModal';
 import ActivityCard, { ActivityStudent } from './ActivityCard';
-import { colors, primaryScale, neutral } from '../../theme/colors';
+import { colors, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Pagination as PaginationMeta } from '../../types';
 
@@ -57,9 +58,12 @@ function uniqueStudents(students: ActivityStudent[]) {
 }
 
 export default function ActivityListScreen<T extends ActivityItem = ActivityItem>({
-  title, accentColor = primaryScale[600], icon: Icon, useListHook, useCreateHook,
+  title, accentColor, icon: Icon, useListHook, useCreateHook,
   useUpdateHook, useDeleteHook, fields, getGroupKey, getStudents, renderCard,
 }: ActivityListScreenProps<T>) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
+  const accent = accentColor ?? theme.primary;
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 350);
@@ -115,17 +119,17 @@ export default function ActivityListScreen<T extends ActivityItem = ActivityItem
       <ActivityCard
         title={String(item.item.title ?? 'Activity')}
         students={item.students}
-        accentColor={accentColor}
+        accentColor={accent}
         onEdit={() => openEdit(item.item)}
         onDelete={() => openDelete(item.item)}
       />
     );
-  }, [renderCard, openEdit, openDelete, accentColor]);
+  }, [renderCard, openEdit, openDelete, accent]);
 
   const ListHeader = (
     <View style={s.filterRow}>
       <SearchBar value={search} onChange={handleSearch} placeholder="Search..." style={s.search} />
-      <TouchableOpacity onPress={openAdd} style={[s.addBtn, { backgroundColor: accentColor }]} activeOpacity={0.85}>
+      <TouchableOpacity onPress={openAdd} style={[s.addBtn, { backgroundColor: accent }]} activeOpacity={0.85}>
         <Plus size={18} color={colors.white} />
       </TouchableOpacity>
     </View>
@@ -134,8 +138,8 @@ export default function ActivityListScreen<T extends ActivityItem = ActivityItem
   const ListEmpty = !isLoading ? (
     <Animated.View entering={FadeInUp.delay(100).duration(400)} style={s.empty}>
       <Text style={s.emptyText}>{debouncedSearch ? `No results for "${debouncedSearch}"` : `No ${title.toLowerCase()} recorded yet.`}</Text>
-      <TouchableOpacity onPress={openAdd} style={[s.emptyAddBtn, { borderColor: accentColor }]}>
-        <Text style={[s.emptyAddText, { color: accentColor }]}>+ Add First Record</Text>
+      <TouchableOpacity onPress={openAdd} style={[s.emptyAddBtn, { borderColor: accent }]}>
+        <Text style={[s.emptyAddText, { color: accent }]}>+ Add First Record</Text>
       </TouchableOpacity>
     </Animated.View>
   ) : null;
@@ -147,7 +151,7 @@ export default function ActivityListScreen<T extends ActivityItem = ActivityItem
   return (
     <View style={s.root}>
       <Animated.View entering={FadeIn.duration(300)} style={s.header}>
-        {Icon && <Icon size={20} color={accentColor} />}
+        {Icon && <Icon size={20} color={accent} />}
         <Text style={s.title}>{title}</Text>
         {!isLoading && <Text style={s.count}>{pagination.total ?? groups.length}</Text>}
       </Animated.View>
@@ -161,7 +165,7 @@ export default function ActivityListScreen<T extends ActivityItem = ActivityItem
         ListFooterComponent={ListFooter}
         contentContainerStyle={s.listContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={accentColor} colors={[accentColor]} />}
+        refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={accent} colors={[accent]} />}
       />
 
       <ActivityFormModal
@@ -172,7 +176,7 @@ export default function ActivityListScreen<T extends ActivityItem = ActivityItem
         fields={fields}
         initialValues={editItem as Record<string, unknown> | null}
         loading={createMutation.isPending || updateMutation.isPending}
-        accentColor={accentColor}
+        accentColor={accent}
       />
 
       <ConfirmDialog
@@ -189,17 +193,17 @@ export default function ActivityListScreen<T extends ActivityItem = ActivityItem
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: neutral[50] },
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: theme.background },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
-  title: { flex: 1, fontSize: 17, fontWeight: '700', color: neutral[900] },
-  count: { fontSize: 12, fontWeight: '600', color: colors.white, backgroundColor: neutral[400], borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
+  title: { flex: 1, fontSize: 17, fontWeight: '700', color: theme.textPrimary },
+  count: { fontSize: 12, fontWeight: '600', color: colors.white, backgroundColor: theme.textMuted, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
   search: { flex: 1 },
   addBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   listContent: { paddingBottom: 32 },
   empty: { padding: 40, alignItems: 'center', gap: 12 },
-  emptyText: { fontSize: 14, color: neutral[400], textAlign: 'center' },
+  emptyText: { fontSize: 14, color: theme.textMuted, textAlign: 'center' },
   emptyAddBtn: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
   emptyAddText: { fontSize: 13, fontWeight: '600' },
 });

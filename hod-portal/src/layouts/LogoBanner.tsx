@@ -1,49 +1,40 @@
-import React, { useState } from 'react';
-import { Image, View, StyleSheet, LayoutChangeEvent } from 'react-native';
-import svceLogoBanner from '../assets/svce-logo-banner.png';
+import React from 'react';
+import { View, Image, StyleSheet } from 'react-native';
 
-const ASPECT_RATIO = 469 / 35;
+const svceBanner = require('../assets/svce_banner.png');
 
-/**
- * LogoBanner — full-width SVCE wordmark strip.
- *
- * Height is computed explicitly from the container's measured width
- * (rather than relying on the CSS `aspectRatio` style, which some builds
- * of react-native-web don't apply consistently before the image paints,
- * causing "cover" to zoom in and crop the top/bottom of the logo). This
- * guarantees the full logo is always visible, uncropped, and fills the
- * banner edge-to-edge with no letterboxing on every screen size.
- */
+// Same asset + rendering approach as admin-frontend's CollegeBanner, so the
+// banner looks identical across portals. Real file is 1133x260 (~4.36:1).
+// Rendered at its natural aspect ratio with resizeMode="contain" — a fixed
+// bar height with the logo left-aligned, not stretched full-bleed.
+const ASPECT_RATIO = 1133 / 260;
+
 export interface LogoBannerProps {
+  height?: number;
   /** Rounds the corners — use when embedding inside a card rather than full-bleed. */
   rounded?: boolean;
 }
 
-export default function LogoBanner({ rounded }: LogoBannerProps) {
-  const [width, setWidth] = useState(0);
-
-  const onLayout = (e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    if (w && w !== width) setWidth(w);
-  };
-
-  const height = width ? width / ASPECT_RATIO : undefined;
-
+export default function LogoBanner({ height = 80, rounded }: LogoBannerProps) {
   return (
-    <View style={[styles.wrap, rounded && styles.rounded]} onLayout={onLayout}>
-      {!!height && (
-        <Image
-          source={svceLogoBanner}
-          style={{ width, height }}
-          resizeMode="stretch"
-          accessibilityLabel="SVCE — Sri Venkateshwara College of Engineering"
-        />
-      )}
+    <View style={[styles.wrap, { height }, rounded && styles.rounded]}>
+      <Image
+        source={svceBanner}
+        style={{ height: height - 20, width: (height - 20) * ASPECT_RATIO }}
+        resizeMode="contain"
+        accessibilityLabel="SVCE — Sri Venkateshwara College of Engineering"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: '100%', backgroundColor: '#000000'},
+  wrap: {
+    width: '100%',
+    backgroundColor: '#000000',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
   rounded: { borderRadius: 14, overflow: 'hidden' },
 });

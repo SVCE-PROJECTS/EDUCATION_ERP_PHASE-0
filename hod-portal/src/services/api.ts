@@ -58,4 +58,15 @@ api.interceptors.response.use(
   }
 );
 
+// Backend returns file paths as root-relative ('/uploads/documents/xxx.pdf')
+// — resolve them against the API host (baseURL minus its trailing '/api')
+// so they open correctly regardless of dev/prod host.
+const API_ORIGIN = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+export const resolveFileUrl = (path?: string | null): string | null => {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 export default api;

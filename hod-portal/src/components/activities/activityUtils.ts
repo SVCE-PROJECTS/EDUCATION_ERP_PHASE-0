@@ -12,10 +12,16 @@ export function parseActivityDescription(value: unknown): Record<string, any> {
   }
 }
 
+// Each student on a project/event is stored as its own row, grouped back
+// together purely by matching activity_type + title + academic_year text —
+// there's no shared project id. Normalizing case/whitespace here means a
+// student added with a slightly different typing of the same title (e.g.
+// trailing space, different casing) still lands on the existing card
+// instead of silently starting a new one-student card that's easy to miss.
 export function getActivityGroupKey(item: any): string {
-  const type = item?.activity_type ?? '';
-  const title = item?.title ?? '';
-  const academicYear = item?.academic_year ?? '';
+  const type = String(item?.activity_type ?? '').trim().toLowerCase();
+  const title = String(item?.title ?? '').trim().toLowerCase();
+  const academicYear = String(item?.academic_year ?? '').trim().toLowerCase();
   return `${type}|${title}|${academicYear}`;
 }
 

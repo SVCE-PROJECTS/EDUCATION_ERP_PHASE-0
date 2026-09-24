@@ -980,6 +980,14 @@ interface SectionDashboardProps {
   onBack: () => void;
 }
 
+type DashboardTab = 'students' | 'timetable' | 'subjects';
+
+const DASHBOARD_TABS: { key: DashboardTab; label: string }[] = [
+  { key: 'students', label: 'Students' },
+  { key: 'timetable', label: 'Timetable' },
+  { key: 'subjects', label: 'Subject — Faculty' },
+];
+
 function SectionDashboard({
   semester,
   section,
@@ -988,6 +996,10 @@ function SectionDashboard({
   const { colors: theme } = useTheme();
   const s = getStyles(theme);
   const [page, setPage] = useState(1);
+  // Students is the default and primary reason an HOD opens this screen —
+  // Timetable and Subject-Faculty are reference info, tucked behind tabs
+  // instead of stacked above the student list every time.
+  const [tab, setTab] = useState<DashboardTab>('students');
 
   const LIMIT = 50;
 
@@ -1075,93 +1087,120 @@ function SectionDashboard({
         />
       </View>
 
-      {/* Timetable */}
-      <TimetableGrid
-        slots={timetable}
-      />
-
-      {/* Subject Faculty */}
-      <SubjectFacultyTable
-        mapping={mapping}
-      />
-
-      {/* Students */}
-      <View style={s.studentsCard}>
-        <View style={s.cardTitleRow}>
-          <Users
-            size={16}
-            color={theme.primary}
-          />
-
-          <Text style={s.cardTitle}>
-            Students (
-            {pagination.total ??
-              students.length}{' '}
-            total)
-          </Text>
-        </View>
-
-        {isLoading ? (
-  <ActivityIndicator
-    style={s.loader}
-    color={theme.primary}
-  />
-) : (
-  <StudentTable
-    students={students}
-  />
-)}
-
-        {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <View style={s.pageRow}>
-            <TouchableOpacity
-              onPress={() =>
-                setPage((p) =>
-                  Math.max(1, p - 1)
-                )
-              }
-              disabled={page === 1}
-              style={s.pageBtn}
+      {/* Tabs */}
+      <View style={s.tabBar}>
+        {DASHBOARD_TABS.map((t) => (
+          <TouchableOpacity
+            key={t.key}
+            onPress={() => setTab(t.key)}
+            style={[
+              s.tabBtn,
+              tab === t.key && s.tabBtnActive,
+            ]}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                s.tabBtnText,
+                tab === t.key && s.tabBtnTextActive,
+              ]}
             >
-              <ChevronLeft
-                size={16}
-                color={
-                  page === 1
-                    ? theme.border
-                    : theme.textSecondary
-                }
-              />
-            </TouchableOpacity>
-
-            <Text style={s.pageText}>
-              {page} /{' '}
-              {pagination.totalPages}
+              {t.label}
             </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-            <TouchableOpacity
-              onPress={() =>
-                setPage((p) => p + 1)
-              }
-              disabled={
-                page >=
-                pagination.totalPages
-              }
-              style={s.pageBtn}
-            >
-              <ChevronRight
-                size={16}
-                color={
+      {tab === 'timetable' && (
+        <TimetableGrid
+          slots={timetable}
+        />
+      )}
+
+      {tab === 'subjects' && (
+        <SubjectFacultyTable
+          mapping={mapping}
+        />
+      )}
+
+      {tab === 'students' && (
+        <View style={s.studentsCard}>
+          <View style={s.cardTitleRow}>
+            <Users
+              size={16}
+              color={theme.primary}
+            />
+
+            <Text style={s.cardTitle}>
+              Students (
+              {pagination.total ??
+                students.length}{' '}
+              total)
+            </Text>
+          </View>
+
+          {isLoading ? (
+            <ActivityIndicator
+              style={s.loader}
+              color={theme.primary}
+            />
+          ) : (
+            <StudentTable
+              students={students}
+            />
+          )}
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <View style={s.pageRow}>
+              <TouchableOpacity
+                onPress={() =>
+                  setPage((p) =>
+                    Math.max(1, p - 1)
+                  )
+                }
+                disabled={page === 1}
+                style={s.pageBtn}
+              >
+                <ChevronLeft
+                  size={16}
+                  color={
+                    page === 1
+                      ? theme.border
+                      : theme.textSecondary
+                  }
+                />
+              </TouchableOpacity>
+
+              <Text style={s.pageText}>
+                {page} /{' '}
+                {pagination.totalPages}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  setPage((p) => p + 1)
+                }
+                disabled={
                   page >=
                   pagination.totalPages
-                    ? theme.border
-                    : theme.textSecondary
                 }
-              />
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+                style={s.pageBtn}
+              >
+                <ChevronRight
+                  size={16}
+                  color={
+                    page >=
+                    pagination.totalPages
+                      ? theme.border
+                      : theme.textSecondary
+                  }
+                />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -1205,21 +1244,10 @@ export default function StudentManagement() {
     setView(VIEW.SECTION);
   };
 
-  if (view === VIEW.DASHBOARD) {
-    return (
-      <View style={s.dashboardRoot}>
-        <SectionDashboard
-          semester={semester as number}
-          section={section}
-          onBack={backToSections}
-        />
-      </View>
-    );
-  }
-
   return (
     <ScreenWrapper
       route={ROUTES.HOD_STUDENTS}
+      scrollable={false}
     >
       {view === VIEW.SEMESTER && (
         <SemesterPicker
@@ -1234,6 +1262,14 @@ export default function StudentManagement() {
           onBack={backToSemesters}
         />
       )}
+
+      {view === VIEW.DASHBOARD && (
+        <SectionDashboard
+          semester={semester as number}
+          section={section}
+          onBack={backToSections}
+        />
+      )}
     </ScreenWrapper>
   );
 }
@@ -1242,12 +1278,6 @@ export default function StudentManagement() {
 
 const getStyles = (theme: ThemeColors) => StyleSheet.create({
   // ── Dashboard ──────────────────────────────────────────────────────────────
-
-  dashboardRoot: {
-    flex: 1,
-    width: '100%',
-    backgroundColor: theme.background,
-  },
 
   dashboardScroll: {
     flex: 1,
@@ -1269,6 +1299,40 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   section: {
     gap: 16,
     width: '100%',
+  },
+
+  // ── Tabs ───────────────────────────────────────────────────────────────────
+
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: theme.background,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 12,
+    padding: 3,
+    gap: 3,
+  },
+
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 9,
+    alignItems: 'center',
+  },
+
+  tabBtnActive: {
+    backgroundColor: theme.surface,
+    ...shadows.card,
+  },
+
+  tabBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary,
+  },
+
+  tabBtnTextActive: {
+    color: theme.primary,
   },
 
   // ── Header ─────────────────────────────────────────────────────────────────

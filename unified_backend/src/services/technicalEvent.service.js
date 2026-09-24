@@ -6,6 +6,7 @@
 
 const technicalEventRepo = require('../repositories/technicalEvent.repository');
 const studentRepo = require('../repositories/studentRepository');
+const { logActivity } = require('./activityAudit.helper');
 
 const parseQuery = (q) => ({
   page:      Math.max(1, parseInt(q.page)  || 1),
@@ -39,16 +40,18 @@ const getById = async (id, departmentCode) => {
   return record;
 };
 
-const create = async (data, departmentCode) => {
+const create = async (data, departmentCode, performedBy) => {
   if (!data.student_id) throw { statusCode: 400, message: 'Student USN is required.' };
   // FIXED: this field now takes the student's USN (the identifier actually
   // visible in the Student Management screen) instead of the raw internal
   // library_id, which was never shown anywhere in the app.
   const student = await studentRepo.findByUsn(String(data.student_id).trim());
   if (!student) throw { statusCode: 404, message: `No student found with USN "${data.student_id}". Please check and try again.` };
+  if (departmentCode && student.department_code !== departmentCode)
+    throw { statusCode: 404, message: `No student found with USN "${data.student_id}" in your department.` };
   if (!data.projectName) throw { statusCode: 400, message: 'projectName is required.' };
 
-  return technicalEventRepo.create({
+  const record = await technicalEventRepo.create({
     studentId:   student.library_id,
     facultyId:   data.faculty_id || null,
     title:       data.projectName.trim(),
@@ -65,9 +68,17 @@ const create = async (data, departmentCode) => {
     // returned 'Completed' on both branches regardless of projectStatus.
     status:       data.projectStatus === 'ONGOING' ? 'Ongoing' : 'Completed',
   });
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'CREATE_TECHNICAL_EVENT', module: 'technical_event', recordId: record.id,
+    details: { title: record.title, studentUsn: student.usn },
+  });
+
+  return record;
 };
 
-const update = async (id, data, departmentCode) => {
+const update = async (id, data, departmentCode, performedBy) => {
   const existing = await technicalEventRepo.findById(id);
   if (!existing) throw { statusCode: 404, message: 'Technical event not found.' };
   if (departmentCode && existing.department_code !== departmentCode)
@@ -87,15 +98,30 @@ const update = async (id, data, departmentCode) => {
   if (data.projectStatus !== undefined) desc.projectStatus = data.projectStatus;
   updateData.description = JSON.stringify(desc);
 
-  return technicalEventRepo.update(id, updateData);
+  const record = await technicalEventRepo.update(id, updateData);
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'UPDATE_TECHNICAL_EVENT', module: 'technical_event', recordId: id,
+    details: { title: record.title, updatedFields: Object.keys(updateData) },
+  });
+
+  return record;
 };
 
-const remove = async (id, departmentCode) => {
+const remove = async (id, departmentCode, performedBy) => {
   const existing = await technicalEventRepo.findById(id);
   if (!existing) throw { statusCode: 404, message: 'Technical event not found.' };
   if (departmentCode && existing.department_code !== departmentCode)
     throw { statusCode: 403, message: 'Access denied.' };
   await technicalEventRepo.remove(id);
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'DELETE_TECHNICAL_EVENT', module: 'technical_event', recordId: id,
+    details: { title: existing.title, studentUsn: existing.usn },
+  });
+
   return { message: 'Technical event deleted successfully.' };
 };
 

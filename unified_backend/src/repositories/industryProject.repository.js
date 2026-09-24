@@ -166,4 +166,22 @@ const removeStudent = async (activityId) => {
   return result.rowCount > 0;
 };
 
-module.exports = { findAll, findById, create, update, remove, addStudent, removeStudent };
+/**
+ * Find the per-student activity row for a given "project" (rows sharing the
+ * same title + academic_year, since each student is its own activities row)
+ * — used to look up/dedupe a specific student's row by their student_id.
+ */
+const findByStudentInProject = async (title, academicYear, studentId) => {
+  const result = await query(
+    `SELECT *, activity_id AS id FROM activities
+     WHERE activity_type = $1 AND title = $2
+       AND academic_year IS NOT DISTINCT FROM $3
+       AND student_id = $4`,
+    [ACTIVITY_TYPE, title, academicYear || null, studentId],
+  );
+  return result.rows[0] || null;
+};
+
+module.exports = {
+  findAll, findById, create, update, remove, addStudent, removeStudent, findByStudentInProject,
+};

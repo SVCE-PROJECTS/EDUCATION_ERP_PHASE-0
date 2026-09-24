@@ -1,20 +1,19 @@
 /**
  * Faculty Portal — Document Upload
- * A staging area on My Profile where faculty can attach supporting
- * documents (ID proof, certificates, etc.) before submitting them.
+ * Faculty's own uploaded documents (ID proof, certificates, etc.), backed by
+ * GET/POST/DELETE /api/faculty/me/documents — uploads immediately on pick
+ * (no local staging), so the HOD can see them right away too.
  */
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UploadCloud, FileText, X } from '../icons';
 import { colors, shadows, ThemeColors } from '../../theme/colors';
 import { useTheme } from '../../context/ThemeContext';
-
-interface PickedDoc {
-  uri: string;
-  name: string;
-  size?: number | null;
-}
+import { documentService, FacultyDocument } from '../../services/document.service';
+import { resolveFileUrl } from '../../services/api';
+import Toast from '../../services/toast';
 
 const formatSize = (bytes?: number | null) => {
   if (!bytes) return '';
@@ -22,61 +21,136 @@ const formatSize = (bytes?: number | null) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const formatDate = (iso: string) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 export default function DocumentUpload() {
   const { colors: theme } = useTheme();
   const s = getStyles(theme);
-  const [docs, setDocs] = useState<PickedDoc[]>([]);
-  const [error, setError] = useState('');
+  const qc = useQueryClient();
+  const [pickError, setPickError] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['my-documents'],
+    queryFn: documentService.getMine,
+  });
+
+  const documents: FacultyDocument[] = (data as any)?.data ?? [];
+
+  const uploadMutation = useMutation({
+    mutationFn: documentService.upload,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-documents'] });
+      Toast.show({ type: 'success', text1: 'Document uploaded' });
+    },
+    onError: (err: any) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Upload failed',
+        text2: err?.response?.data?.message ?? 'Please try again.',
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: documentService.remove,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-documents'] });
+      Toast.show({ type: 'success', text1: 'Document deleted' });
+    },
+    onError: (err: any) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Delete failed',
+        text2: err?.response?.data?.message ?? 'Please try again.',
+      });
+    },
+  });
 
   const handlePick = async () => {
-    setError('');
+    setPickError('');
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['application/pdf', 'image/jpeg', 'image/png'],
         multiple: true,
         copyToCacheDirectory: true,
       });
-      if (!result.canceled) {
-        const picked = result.assets.map((a) => ({ uri: a.uri, name: a.name, size: a.size }));
-        setDocs((prev) => [...prev, ...picked.filter((p) => !prev.some((d) => d.uri === p.uri))]);
-      }
+      if (result.canceled) return;
+      result.assets.forEach((asset) => {
+        uploadMutation.mutate({
+          uri: asset.uri,
+          name: asset.name,
+          mimeType: asset.mimeType,
+          file: (asset as any).file ?? null,
+        });
+      });
     } catch (err: any) {
-      setError(err?.message || 'Unable to select document.');
+      setPickError(err?.message || 'Unable to select document.');
     }
   };
 
-  const removeDoc = (uri: string) => setDocs((prev) => prev.filter((d) => d.uri !== uri));
+  const handleOpen = (doc: FacultyDocument) => {
+    const url = resolveFileUrl(doc.filePath);
+    if (url) Linking.openURL(url).catch(() => {});
+  };
 
   return (
     <View style={s.card}>
       <Text style={s.title}>DOCUMENTS</Text>
       <Text style={s.hint}>Attach any supporting documents — ID proof, certificates, or other records.</Text>
 
-      <TouchableOpacity style={s.dropzone} onPress={handlePick} activeOpacity={0.7}>
-        <UploadCloud size={24} color={theme.textMuted} />
-        <Text style={s.dropzoneText}>Tap to select a file</Text>
+      <TouchableOpacity
+        style={s.dropzone}
+        onPress={handlePick}
+        activeOpacity={0.7}
+        disabled={uploadMutation.isPending}
+      >
+        {uploadMutation.isPending ? (
+          <ActivityIndicator color={theme.primary} />
+        ) : (
+          <UploadCloud size={24} color={theme.textMuted} />
+        )}
+        <Text style={s.dropzoneText}>
+          {uploadMutation.isPending ? 'Uploading…' : 'Tap to select a file'}
+        </Text>
         <Text style={s.dropzoneHint}>PDF, JPG or PNG up to 10MB</Text>
       </TouchableOpacity>
 
-      {docs.length > 0 && (
+      {isLoading ? (
+        <ActivityIndicator style={{ marginTop: 4 }} color={theme.primary} />
+      ) : documents.length > 0 ? (
         <View style={s.list}>
-          {docs.map((doc) => (
-            <View key={doc.uri} style={s.docRow}>
+          {documents.map((doc) => (
+            <TouchableOpacity
+              key={doc.id}
+              style={s.docRow}
+              onPress={() => handleOpen(doc)}
+              activeOpacity={0.75}
+            >
               <FileText size={16} color={theme.primary} />
               <View style={s.docInfo}>
-                <Text style={s.docName} numberOfLines={1}>{doc.name}</Text>
-                {!!doc.size && <Text style={s.docSize}>{formatSize(doc.size)}</Text>}
+                <Text style={s.docName} numberOfLines={1}>{doc.documentName}</Text>
+                <Text style={s.docSize}>
+                  {formatSize(doc.fileSize)}{doc.fileSize ? ' · ' : ''}{formatDate(doc.uploadedAt)}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => removeDoc(doc.uri)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel={`Remove ${doc.name}`}>
+              <TouchableOpacity
+                onPress={() => deleteMutation.mutate(doc.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel={`Remove ${doc.documentName}`}
+                disabled={deleteMutation.isPending}
+              >
                 <X size={15} color={theme.textMuted} />
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
-      )}
+      ) : null}
 
-      {!!error && <Text style={s.error}>{error}</Text>}
+      {!!pickError && <Text style={s.error}>{pickError}</Text>}
     </View>
   );
 }

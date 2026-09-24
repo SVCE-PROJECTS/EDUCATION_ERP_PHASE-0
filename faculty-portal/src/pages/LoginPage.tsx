@@ -14,7 +14,7 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useForm, Controller } from 'react-hook-form';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GraduationCap, Lock, User, Eye, EyeOff } from '../components/icons';
-import SVCELogo from '../components/ui/SVCELogo';
+import LogoBanner from '../layouts/LogoBanner';
 import { authService, LoginCredentials } from '../services/auth.service';
 import { useAuth } from '../context/AuthContext';
 import { colors, primaryScale, neutral } from '../theme/colors';
@@ -114,8 +114,11 @@ export default function LoginPage() {
 
             {/* Logo */}
             <Animated.View entering={FadeIn.delay(200).duration(400)} style={s.logoSection}>
-              <SVCELogo width={360} height={100} />
+              <View style={s.logoImageWrap}>
+                <LogoBanner rounded />
+              </View>
               <Text style={s.appTitle}>Faculty Portal</Text>
+              <Text style={s.appSubtitle}>SVCE — Engineering College ERP</Text>
             </Animated.View>
 
             {/* Username */}
@@ -191,6 +194,11 @@ const s = StyleSheet.create({
   },
 
   logoSection: { alignItems: 'center', marginBottom: 4, gap: 6 },
+  logoImageWrap: {
+    width: '100%',
+    maxWidth: 380,
+    marginBottom: 6,
+  },
   logoWrap: {
     width: 64, height: 64, borderRadius: 18,
     backgroundColor: primaryScale[600], alignItems: 'center', justifyContent: 'center', marginBottom: 4,

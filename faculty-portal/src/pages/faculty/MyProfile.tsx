@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ArrowLeft, Mail, Phone, Calendar, Award, Briefcase, BookOpen, type LucideIconType } from '../../components/icons';
 import { facultyService } from '../../services/faculty.service';
+import { resolveFileUrl } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import Avatar from '../../components/ui/Avatar';
 import { RoleBadge, StatusBadge } from '../../components/ui/Badge';
@@ -159,7 +160,7 @@ export default function MyProfile() {
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.coverGradient} />
         <View style={s.profileBody}>
           <View style={s.profileTop}>
-            <Avatar src={f.photo} name={f.name} size="2xl" style={s.profileAvatar} />
+            <Avatar src={resolveFileUrl(f.photoUrl)} name={f.name} size="2xl" style={s.profileAvatar} />
             <View style={s.profileActions}>
               <StatusBadge status={f.status} />
             </View>

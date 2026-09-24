@@ -15,7 +15,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
 import SimpleBarChart from '../../components/ui/SimpleBarChart';
-import ProgressRing from '../../components/ui/ProgressRing';
 import RoleNotifications from '../../components/ui/RoleNotifications';
 import { colors, shadows, primaryScale, ThemeColors } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
@@ -184,38 +183,6 @@ export default function Dashboard() {
       {/* Statistics Overview with Charts */}
       {!isLoading && (
         <View style={s.statsSection}>
-          {/* Attendance Overview */}
-          <View style={s.statsCard}>
-            <Text style={s.statsCardTitle}>Overall Attendance</Text>
-            <View style={s.attendanceRow}>
-              <ProgressRing 
-                percentage={stats.attendancePercent || 0} 
-                size={100}
-                strokeWidth={10}
-                label="attendance"
-                color={
-                  (stats.attendancePercent || 0) >= 85 ? colors.green[500] :
-                  (stats.attendancePercent || 0) >= 75 ? colors.amber[500] :
-                  colors.red[500]
-                }
-              />
-              <View style={s.attendanceStats}>
-                <View style={s.attendanceStat}>
-                  <Text style={s.attendanceStatValue}>{stats.totalStudents || 0}</Text>
-                  <Text style={s.attendanceStatLabel}>Total Students</Text>
-                </View>
-                <View style={s.attendanceStat}>
-                  <Text style={s.attendanceStatValue}>{stats.totalAssignments || 0}</Text>
-                  <Text style={s.attendanceStatLabel}>Assignments</Text>
-                </View>
-                <View style={s.attendanceStat}>
-                  <Text style={s.attendanceStatValue}>{stats.iaAverage || 0}</Text>
-                  <Text style={s.attendanceStatLabel}>IA Average</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
           {/* Weekly Attendance Trend */}
           {weeklyData && weeklyData.length > 0 && (
             <SimpleBarChart
@@ -304,48 +271,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   errorText: { fontSize: 13, color: theme.danger, textAlign: 'center' },
 
   statsSection: { gap: 16 },
-  statsCard: {
-    backgroundColor: theme.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.border,
-    padding: 20,
-    gap: 16,
-    ...shadows.card,
-  },
-  statsCardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.textPrimary,
-  },
-  attendanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 24,
-  },
-  attendanceStats: {
-    flex: 1,
-    gap: 12,
-  },
-  attendanceStat: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: theme.background,
-    borderRadius: 12,
-  },
-  attendanceStatValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.textPrimary,
-  },
-  attendanceStatLabel: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    fontWeight: '500',
-  },
 
   cardRowH: { flexDirection: 'row', gap: 16 },
   cardRowV: { gap: 12 },

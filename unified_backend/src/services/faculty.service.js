@@ -117,6 +117,7 @@ const createFaculty = async (data, createdBy, departmentCode) => {
     action:      'CREATE_FACULTY',
     facultyId:   faculty.employeeId,
     details:     { name: faculty.name, employeeId: faculty.employeeId },
+    departmentId,
   });
 
   return sanitizeFaculty(faculty);
@@ -173,6 +174,7 @@ const updateFaculty = async (id, data, updatedBy, departmentCode) => {
     action:      'UPDATE_FACULTY',
     facultyId:   id,
     details:     { updatedFields: Object.keys(updateData) },
+    departmentId: existing.departmentId,
   });
 
   return sanitizeFaculty(updated);
@@ -201,6 +203,7 @@ const deleteFaculty = async (id, deletedBy, departmentCode) => {
     action:      'DELETE_FACULTY',
     facultyId:   null,
     details:     { name: faculty.name, employeeId: faculty.employeeId },
+    departmentId: faculty.departmentId,
   });
 
   await facultyRepo.remove(id);
@@ -263,6 +266,7 @@ const syncRoles = async (facultyId, { add, remove }, syncedBy, departmentCode) =
       action: 'ASSIGN_ROLE',
       facultyId,
       details: { roles: added },
+      departmentId: faculty.departmentId,
     });
   }
 
@@ -272,6 +276,7 @@ const syncRoles = async (facultyId, { add, remove }, syncedBy, departmentCode) =
       action: 'REMOVE_ROLE',
       facultyId,
       details: { roles: removed },
+      departmentId: faculty.departmentId,
     });
   }
 
@@ -331,4 +336,5 @@ module.exports = {
   updateFaculty,
   deleteFaculty,
   syncRoles,
+  resolveDepartmentId,
 };

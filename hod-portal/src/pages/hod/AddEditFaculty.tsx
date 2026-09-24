@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera, ChevronDown, Check, X, ArrowLeft, User } from '../../components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { facultyService } from '../../services/faculty.service';
+import { resolveFileUrl } from '../../services/api';
 import { useCreateFaculty, useUpdateFaculty } from '../../hooks/useFaculty';
 import { useTheme } from '../../context/ThemeContext';
 import { colors, ThemeColors, shadows } from '../../theme/colors';
@@ -296,7 +297,7 @@ export default function AddEditFaculty() {
         joiningDate: f.joiningDate ?? '',
         status: f.status ?? 'ACTIVE',
       });
-      if (f.photo) setPhotoPreview(f.photo);
+      if (f.photoUrl) setPhotoPreview(resolveFileUrl(f.photoUrl));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing, isEdit, reset]);

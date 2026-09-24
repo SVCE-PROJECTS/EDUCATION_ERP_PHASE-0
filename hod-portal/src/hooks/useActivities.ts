@@ -47,6 +47,16 @@ function makeListHook(queryKey: string, queryFn: ListFn) {
     });
 }
 
+// FIXED: mutations only ever invalidated their own list's queryKey (e.g.
+// 'hackathons'), so the individual list screen refreshed correctly — but
+// HODDashboard.tsx's activity count / "Department Overview" chart reads
+// from a single combined query keyed 'dashboard-combined', which nothing
+// here ever told to refresh. That's why a new record would show up fine on
+// its own screen but the Dashboard kept showing the old total until its
+// 30s staleTime happened to lapse. Every mutation below now also
+// invalidates 'dashboard-combined'.
+const DASHBOARD_KEY = ['dashboard-combined'];
+
 function makeCreateHook(queryKey: string, mutationFn: CreateFn, label: string) {
   return (options: MutationOptions = {}) => {
     const qc = useQueryClient();
@@ -54,6 +64,7 @@ function makeCreateHook(queryKey: string, mutationFn: CreateFn, label: string) {
       mutationFn,
       onSuccess: (data) => {
         qc.invalidateQueries({ queryKey: [queryKey] });
+        qc.invalidateQueries({ queryKey: DASHBOARD_KEY });
         ok(`${label} added successfully`);
         options.onSuccess?.(data);
       },
@@ -72,6 +83,7 @@ function makeUpdateHook(queryKey: string, updateFn: UpdateFn, label: string) {
       mutationFn: (data: Record<string, unknown>) => updateFn(id, data),
       onSuccess: (data) => {
         qc.invalidateQueries({ queryKey: [queryKey] });
+        qc.invalidateQueries({ queryKey: DASHBOARD_KEY });
         ok(`${label} updated successfully`);
         options.onSuccess?.(data);
       },
@@ -90,6 +102,7 @@ function makeDeleteHook(queryKey: string, deleteFn: DeleteFn, label: string) {
       mutationFn: (id: string) => deleteFn(id),
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: [queryKey] });
+        qc.invalidateQueries({ queryKey: DASHBOARD_KEY });
         ok(`${label} deleted`);
         options.onSuccess?.(undefined as any);
       },
@@ -134,6 +147,7 @@ export function useAddProjectStudent(projectId: string, options: MutationOptions
     mutationFn: (data: Record<string, unknown>) => industryProjectService.addStudent(projectId, data),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['industryProjects'] });
+      qc.invalidateQueries({ queryKey: DASHBOARD_KEY });
       ok('Student added to project');
       options.onSuccess?.(data);
     },
@@ -150,6 +164,7 @@ export function useRemoveProjectStudent(options: MutationOptions = {}) {
       industryProjectService.removeStudent(projectId, studentId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['industryProjects'] });
+      qc.invalidateQueries({ queryKey: DASHBOARD_KEY });
       ok('Student removed');
       options.onSuccess?.(undefined as any);
     },

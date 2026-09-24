@@ -4,7 +4,7 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginRequest } from '../services/authService';
-import { setToken as setAxiosToken } from '../api/tokenStore';
+import { setToken as setAxiosToken, setLogoutHandler } from '../api/tokenStore';
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
@@ -59,6 +59,11 @@ export const AuthProvider = ({ children }) => {
     setAxiosToken(null);
     setUser(null);
   };
+
+  // Let axiosInstance's response interceptor trigger this logout on 401,
+  // matching hod-portal/faculty-portal's session-expiry behavior. Re-registered
+  // on every render so tokenStore always calls the latest closure.
+  setLogoutHandler(logout);
 
   const value = useMemo(() => ({
     user,

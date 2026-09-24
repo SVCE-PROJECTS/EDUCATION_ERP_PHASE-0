@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MoreVertical, RefreshCw } from '../../components/icons';
 
 import { facultyService } from '../../services/faculty.service';
+import { resolveFileUrl } from '../../services/api';
 import SearchBar from '../../components/ui/SearchBar';
 import { RoleBadge } from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
@@ -79,7 +80,7 @@ function FacultyCard({
 
         {/* Avatar */}
         <Avatar
-          src={faculty.photo}
+          src={resolveFileUrl(faculty.photoUrl)}
           name={faculty.name}
           size="sm"
         />

@@ -17,9 +17,12 @@ import {
 import { useForm, Controller, Control, FieldErrors, RegisterOptions } from 'react-hook-form';
 import { X, ChevronDown, Check } from '../../components/icons';
 import Button from '../ui/Button';
-import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
+import { colors, shadows, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { useDebounce } from '../../hooks/useDebounce';
+import { searchStudentsByName, StudentSearchResult } from '../../services/studentSearch.service';
 
-export type FieldType = 'text' | 'number' | 'email' | 'multiline' | 'select' | 'date';
+export type FieldType = 'text' | 'number' | 'email' | 'multiline' | 'select' | 'date' | 'student-search';
 
 export interface FieldOption {
   label: string;
@@ -41,9 +44,10 @@ export interface FieldDescriptor {
 interface FieldLabelProps {
   label: string;
   required?: boolean;
+  styles: ReturnType<typeof getStyles>;
 }
 
-function FieldLabel({ label, required }: FieldLabelProps) {
+function FieldLabel({ label, required, styles: fs }: FieldLabelProps) {
   return (
     <Text style={fs.label}>
       {label}
@@ -57,9 +61,11 @@ interface TextFieldProps {
   control: Control<any>;
   errors: FieldErrors<any>;
   type?: FieldType;
+  theme: ThemeColors;
+  styles: ReturnType<typeof getStyles>;
 }
 
-function TextField({ field, control, errors, type }: TextFieldProps) {
+function TextField({ field, control, errors, type, theme, styles: fs }: TextFieldProps) {
   const isMultiline = type === 'multiline';
   const isNumber = type === 'number';
   const isEmail = type === 'email';
@@ -76,7 +82,7 @@ function TextField({ field, control, errors, type }: TextFieldProps) {
           onChangeText={onChange}
           onBlur={onBlur}
           placeholder={field.placeholder ?? `Enter ${field.label.toLowerCase()}`}
-          placeholderTextColor={neutral[400]}
+          placeholderTextColor={theme.textMuted}
           keyboardType={isNumber ? 'numeric' : isEmail ? 'email-address' : 'default'}
           autoCapitalize={isEmail ? 'none' : 'sentences'}
           multiline={isMultiline}
@@ -93,9 +99,11 @@ interface SelectFieldProps {
   field: FieldDescriptor;
   control: Control<any>;
   errors: FieldErrors<any>;
+  theme: ThemeColors;
+  styles: ReturnType<typeof getStyles>;
 }
 
-function SelectField({ field, control, errors }: SelectFieldProps) {
+function SelectField({ field, control, errors, theme, styles: fs }: SelectFieldProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -115,7 +123,7 @@ function SelectField({ field, control, errors }: SelectFieldProps) {
               <Text style={selected ? fs.selectValue : fs.selectPlaceholder} numberOfLines={1}>
                 {selected?.label ?? `Select ${field.label}`}
               </Text>
-              <ChevronDown size={15} color={neutral[400]} />
+              <ChevronDown size={15} color={theme.textMuted} />
             </TouchableOpacity>
 
             <RNModal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -136,7 +144,123 @@ function SelectField({ field, control, errors }: SelectFieldProps) {
                       <Text style={[fs.selectOptionText, opt.value === value && fs.selectOptionTextActive]}>
                         {opt.label}
                       </Text>
-                      {opt.value === value && <Check size={14} color={primaryScale[600]} />}
+                      {opt.value === value && <Check size={14} color={theme.primary} />}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </RNModal>
+          </>
+        );
+      }}
+    />
+  );
+}
+
+interface StudentSearchFieldProps extends SelectFieldProps {
+  // The record being edited, if any — used to show the already-assigned
+  // student's name/USN. Reassigning the student on an existing row isn't
+  // supported by the backend, so the field is read-only while editing.
+  initialValues?: Record<string, unknown> | null;
+  isOpen: boolean;
+}
+
+function StudentSearchField({ field, control, errors, theme, styles: fs, initialValues, isOpen }: StudentSearchFieldProps) {
+  const isEditing = !!initialValues;
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<StudentSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<{ usn: string; name: string } | null>(null);
+  const debouncedQuery = useDebounce(query, 300);
+
+  // Every time the modal is opened fresh (new "Add" or a different record
+  // to edit), drop whatever was left over from the previous time it was open.
+  useEffect(() => {
+    setSheetOpen(false);
+    setQuery('');
+    setResults([]);
+    setSelected(null);
+  }, [isOpen]);
+
+  useEffect(() => {
+    const trimmed = debouncedQuery.trim();
+    if (trimmed.length < 2) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    searchStudentsByName(trimmed)
+      .then((data) => { if (!cancelled) setResults(data); })
+      .catch(() => { if (!cancelled) setResults([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [debouncedQuery]);
+
+  const editingLabel = initialValues?.student_name && initialValues?.usn
+    ? `${initialValues.student_name} (${initialValues.usn})`
+    : (initialValues?.usn as string | undefined) ?? '';
+
+  return (
+    <Controller
+      control={control}
+      name={field.name}
+      rules={!isEditing && field.required ? { required: `${field.label} is required` } : {}}
+      render={({ field: { onChange } }) => {
+        const triggerLabel = isEditing ? editingLabel : (selected ? `${selected.name} (${selected.usn})` : '');
+        return (
+          <>
+            <TouchableOpacity
+              style={[fs.input, fs.selectTrigger, errors[field.name] && fs.inputError, isEditing && fs.inputDisabled]}
+              onPress={() => !isEditing && setSheetOpen(true)}
+              activeOpacity={isEditing ? 1 : 0.8}
+              disabled={isEditing}
+            >
+              <Text style={triggerLabel ? fs.selectValue : fs.selectPlaceholder} numberOfLines={1}>
+                {triggerLabel || 'Search by student name'}
+              </Text>
+              {!isEditing && <ChevronDown size={15} color={theme.textMuted} />}
+            </TouchableOpacity>
+
+            <RNModal visible={sheetOpen} transparent animationType="fade" onRequestClose={() => setSheetOpen(false)}>
+              <TouchableOpacity style={fs.selectBackdrop} activeOpacity={1} onPress={() => setSheetOpen(false)} />
+              <View style={fs.selectSheet}>
+                <Text style={fs.selectSheetTitle}>{field.label}</Text>
+                <TextInput
+                  style={fs.studentSearchInput}
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Type at least 2 letters of the student's name"
+                  placeholderTextColor={theme.textMuted}
+                  autoFocus
+                  autoCorrect={false}
+                />
+                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 260 }} keyboardShouldPersistTaps="handled">
+                  {loading && <Text style={fs.studentSearchHint}>Searching…</Text>}
+                  {!loading && query.trim().length >= 2 && results.length === 0 && (
+                    <Text style={fs.studentSearchHint}>No students found.</Text>
+                  )}
+                  {!loading && query.trim().length < 2 && (
+                    <Text style={fs.studentSearchHint}>Keep typing to search…</Text>
+                  )}
+                  {results.map((s) => (
+                    <TouchableOpacity
+                      key={String(s.library_id)}
+                      style={fs.selectOption}
+                      onPress={() => {
+                        onChange(s.usn);
+                        setSelected({ usn: s.usn, name: s.name });
+                        setSheetOpen(false);
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <View>
+                        <Text style={fs.selectOptionText}>{s.name}</Text>
+                        <Text style={fs.studentSearchSub}>
+                          {s.usn}{s.section_name ? ` • Sem ${s.semester_number} • ${s.section_name}` : ''}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -170,8 +294,11 @@ export default function ActivityFormModal({
   fields = [],
   initialValues,
   loading,
-  accentColor = primaryScale[600],
+  accentColor,
 }: ActivityFormModalProps) {
+  const { colors: theme } = useTheme();
+  const fs = getStyles(theme);
+  const accent = accentColor ?? theme.primary;
   const {
     control,
     handleSubmit,
@@ -200,7 +327,7 @@ export default function ActivityFormModal({
           <View style={fs.header}>
             <Text style={fs.headerTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose} style={fs.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <X size={18} color={neutral[400]} />
+              <X size={18} color={theme.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -213,12 +340,22 @@ export default function ActivityFormModal({
           >
             {fields.map((field) => (
               <View key={field.name} style={fs.fieldWrap}>
-                <FieldLabel label={field.label} required={field.required} />
+                <FieldLabel label={field.label} required={field.required} styles={fs} />
 
                 {field.type === 'select' ? (
-                  <SelectField field={field} control={control} errors={errors} />
+                  <SelectField field={field} control={control} errors={errors} theme={theme} styles={fs} />
+                ) : field.type === 'student-search' ? (
+                  <StudentSearchField
+                    field={field}
+                    control={control}
+                    errors={errors}
+                    theme={theme}
+                    styles={fs}
+                    initialValues={initialValues}
+                    isOpen={isOpen}
+                  />
                 ) : (
-                  <TextField field={field} control={control} errors={errors} type={field.type} />
+                  <TextField field={field} control={control} errors={errors} type={field.type} theme={theme} styles={fs} />
                 )}
 
                 {errors[field.name] && (
@@ -236,7 +373,7 @@ export default function ActivityFormModal({
             <Button
               onPress={handleSubmit(onSubmit)}
               loading={loading}
-              style={[fs.footerBtn, { backgroundColor: accentColor }]}
+              style={[fs.footerBtn, { backgroundColor: accent }]}
             >
               {initialValues ? 'Update' : 'Add'}
             </Button>
@@ -249,14 +386,14 @@ export default function ActivityFormModal({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const fs = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: theme.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '92%',
@@ -269,9 +406,9 @@ const fs = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[100],
+    borderBottomColor: theme.border,
   },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: neutral[900] },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: theme.textPrimary },
   closeBtn: { padding: 4 },
   body: { flexShrink: 1 },
   bodyContent: { padding: 20, gap: 14, paddingBottom: 8 },
@@ -282,47 +419,60 @@ const fs = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: neutral[100],
+    borderTopColor: theme.border,
   },
   footerBtn: { flex: 1 },
   fieldWrap: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '500', color: neutral[700] },
+  label: { fontSize: 13, fontWeight: '500', color: theme.textSecondary },
   input: {
     borderWidth: 1,
-    borderColor: neutral[200],
+    borderColor: theme.border,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: neutral[900],
-    backgroundColor: colors.white,
+    color: theme.textPrimary,
+    backgroundColor: theme.surface,
   },
   inputMulti: { height: 80, textAlignVertical: 'top' },
   inputError: { borderColor: colors.red[400] },
+  inputDisabled: { backgroundColor: theme.background, opacity: 0.7 },
   errorText: { fontSize: 11, color: colors.red[500] },
+  studentSearchInput: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 14,
+    color: theme.textPrimary,
+    marginBottom: 10,
+  },
+  studentSearchHint: { fontSize: 12, color: theme.textMuted, textAlign: 'center', paddingVertical: 14 },
+  studentSearchSub: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
   selectTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  selectValue: { flex: 1, fontSize: 14, color: neutral[900] },
-  selectPlaceholder: { flex: 1, fontSize: 14, color: neutral[400] },
+  selectValue: { flex: 1, fontSize: 14, color: theme.textPrimary },
+  selectPlaceholder: { flex: 1, fontSize: 14, color: theme.textMuted },
   selectBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: theme.overlay,
   },
   selectSheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
     ...shadows.soft,
   },
-  selectSheetTitle: { fontSize: 15, fontWeight: '600', color: neutral[900], marginBottom: 12 },
+  selectSheetTitle: { fontSize: 15, fontWeight: '600', color: theme.textPrimary, marginBottom: 12 },
   selectOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -330,9 +480,9 @@ const fs = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[50],
+    borderBottomColor: theme.border,
   },
-  selectOptionActive: { backgroundColor: primaryScale[50], borderRadius: 8, paddingHorizontal: 8 },
-  selectOptionText: { fontSize: 14, color: neutral[700] },
-  selectOptionTextActive: { color: primaryScale[600], fontWeight: '600' },
+  selectOptionActive: { backgroundColor: theme.primarySoft, borderRadius: 8, paddingHorizontal: 8 },
+  selectOptionText: { fontSize: 14, color: theme.textSecondary },
+  selectOptionTextActive: { color: theme.primary, fontWeight: '600' },
 });

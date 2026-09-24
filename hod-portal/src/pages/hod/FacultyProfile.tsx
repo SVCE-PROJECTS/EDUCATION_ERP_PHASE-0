@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 
 import {
@@ -24,12 +25,16 @@ import {
   Briefcase,
   BookOpen,
   Pencil,
+  FileText,
+  ExternalLink,
   type LucideIconType,
 } from '../../components/icons';
 
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { facultyService } from '../../services/faculty.service';
+import { documentService, FacultyDocument } from '../../services/document.service';
+import { resolveFileUrl } from '../../services/api';
 
 import Avatar from '../../components/ui/Avatar';
 
@@ -139,6 +144,26 @@ export default function FacultyProfileScreen() {
 
   const f: Faculty | undefined =
     (data as any)?.data;
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Documents uploaded by this faculty member (read-only for HOD)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const {
+    data: docsData,
+    isLoading: docsLoading,
+  } = useQuery({
+    queryKey: ['faculty-documents', id],
+
+    queryFn: () =>
+      documentService.getForFaculty(id),
+
+    enabled: !!id,
+  });
+
+  const documents: FacultyDocument[] =
+    (docsData as any)?.data ?? [];
 
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -348,7 +373,7 @@ export default function FacultyProfileScreen() {
           <View style={s.profileTop}>
 
             <Avatar
-              src={f.photo}
+              src={resolveFileUrl(f.photoUrl)}
               name={f.name}
               size="2xl"
               style={s.profileAvatar}
@@ -574,6 +599,91 @@ export default function FacultyProfileScreen() {
         </View>
 
       )}
+
+
+      {/* ─────────────────────────────────────────────────────────────────────
+          Faculty Documents (uploaded by the faculty member — read only here)
+      ───────────────────────────────────────────────────────────────────── */}
+
+      <View
+        style={[
+          s.infoCard,
+          s.coordCard,
+          { marginTop: 12 },
+        ]}
+      >
+
+        <Text
+          style={
+            s.infoSectionTitle
+          }
+        >
+          FACULTY DOCUMENTS
+        </Text>
+
+        {docsLoading ? (
+
+          <ActivityIndicator
+            color={theme.primary}
+            style={{ marginTop: 4 }}
+          />
+
+        ) : documents.length === 0 ? (
+
+          <Text style={s.docsEmptyText}>
+            This faculty member hasn't uploaded any documents yet.
+          </Text>
+
+        ) : (
+
+          <View style={s.docsList}>
+
+            {documents.map((doc) => (
+
+              <TouchableOpacity
+                key={doc.id}
+                style={s.docRow}
+                activeOpacity={0.75}
+                onPress={() => {
+                  const url = resolveFileUrl(doc.filePath);
+                  if (url) Linking.openURL(url).catch(() => {});
+                }}
+              >
+
+                <FileText
+                  size={16}
+                  color={theme.primary}
+                />
+
+                <View
+                  style={{ flex: 1, minWidth: 0 }}
+                >
+                  <Text
+                    style={s.docName}
+                    numberOfLines={1}
+                  >
+                    {doc.documentName}
+                  </Text>
+
+                  <Text style={s.docMeta}>
+                    {formatDate(doc.uploadedAt)}
+                  </Text>
+                </View>
+
+                <ExternalLink
+                  size={14}
+                  color={theme.textMuted}
+                />
+
+              </TouchableOpacity>
+
+            ))}
+
+          </View>
+
+        )}
+
+      </View>
 
 
       <View
@@ -846,6 +956,42 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   coordSince: {
     fontSize: 11,
     color: theme.textMuted,
+  },
+
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Faculty Documents
+  // ─────────────────────────────────────────────────────────────────────────
+
+  docsEmptyText: {
+    fontSize: 13,
+    color: theme.textMuted,
+  },
+
+  docsList: {
+    gap: 8,
+  },
+
+  docRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: theme.primarySoft,
+  },
+
+  docName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: theme.textPrimary,
+  },
+
+  docMeta: {
+    fontSize: 10,
+    color: theme.textSecondary,
+    marginTop: 1,
   },
 
 });

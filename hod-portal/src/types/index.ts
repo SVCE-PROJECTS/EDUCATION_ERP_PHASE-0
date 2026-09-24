@@ -40,7 +40,8 @@ export interface Faculty {
   qualification: string;
   experience: number;
   specialization?: string;
-  photo?: string;
+  /** Root-relative path from backend, resolve with resolveFileUrl() */
+  photoUrl?: string | null;
   /** ISO date string */
   joiningDate: string;
   status: FacultyStatus;
@@ -60,6 +61,7 @@ export interface AuthUser {
   /** Array of role slugs */
   roles: string[];
   isHOD: boolean;
+  photoUrl?: string | null;
 }
 
 export interface Pagination {

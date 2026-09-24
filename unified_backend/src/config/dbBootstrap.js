@@ -106,6 +106,7 @@ function splitSqlStatements(sql) {
 async function initializeDatabase() {
   const schemaPath = path.join(__dirname, '..', '..', '..', 'database', 'unified_schema.sql');
   const seedPath = path.join(__dirname, '..', '..', '..', 'database', 'unified_seed_empty.sql');
+  const migrationsDir = path.join(__dirname, '..', '..', 'database', 'migrations');
 
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
   const seedSql = fs.readFileSync(seedPath, 'utf8');
@@ -117,6 +118,23 @@ async function initializeDatabase() {
 
     for (const statement of splitSqlStatements(schemaSql)) {
       await client.query(statement);
+    }
+
+    // Migrations live outside unified_schema.sql but, like it, are written
+    // to be safe to re-run every startup (CREATE TABLE/ADD COLUMN/CREATE
+    // INDEX ... IF NOT EXISTS) — running them here means a fresh clone ends
+    // up with the same schema as a longer-lived dev database without any
+    // manual `psql -f ...` step.
+    if (fs.existsSync(migrationsDir)) {
+      const migrationFiles = fs.readdirSync(migrationsDir)
+        .filter((f) => f.endsWith('.sql'))
+        .sort();
+      for (const file of migrationFiles) {
+        const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+        for (const statement of splitSqlStatements(migrationSql)) {
+          await client.query(statement);
+        }
+      }
     }
 
     for (const statement of splitSqlStatements(seedSql)) {

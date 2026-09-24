@@ -62,6 +62,21 @@ const getStudents = async (req, res) => {
 };
 
 /**
+ * Search students by (partial) name, scoped to the caller's own department —
+ * backs the name-autocomplete used when adding a student to an activity, so
+ * the picker never surfaces (and a form can never resolve to) a student
+ * outside the caller's department.
+ * GET /api/students/search?name=...
+ */
+const searchByName = asyncHandler(async (req, res) => {
+  const name = (req.query.name || '').trim();
+  if (name.length < 2) return success(res, []);
+  const students = await require('../repositories/studentRepository')
+    .searchByName(name, req.user?.departmentCode, 10);
+  success(res, students);
+});
+
+/**
  * Get Student by ID (Admin-erp pattern)
  * GET /api/students/:id
  * :id is the student's library_id (string)
@@ -283,6 +298,7 @@ const getSectionDashboard = async (req, res, next) => {
 module.exports = {
   listStudents,
   getStudents,
+  searchByName,
   getById,
   getStudentProfile,
   createStudent,

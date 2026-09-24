@@ -10,12 +10,14 @@ import {
   Flame,
   GraduationCap,
   CalendarClock,
+  History,
   LogOut,
 } from '../components/icons';
 import Avatar from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { authService } from '../services/auth.service';
+import { resolveFileUrl } from '../services/api';
 import { getRoleShortName } from '../utils/roleUtils';
 import { ROUTES } from '../navigation/routes';
 import { colors, ThemeColors, shadows } from '../theme/colors';
@@ -38,6 +40,7 @@ const HOD_NAV: NavItem[] = [
   { label: 'Coordinator Management', route: ROUTES.HOD_COORDINATORS, icon: Award },
   { label: 'Faculty Allocation', route: ROUTES.HOD_FACULTY_ALLOCATION, icon: CalendarClock },
   { label: 'Activities', route: ROUTES.HOD_ACTIVITIES, icon: Flame },
+  { label: 'Activity Log', route: ROUTES.HOD_ACTIVITY_LOG, icon: History },
 ];
 
 // ── Sidebar item ──────────────────────────────────────────────────────────────
@@ -122,7 +125,7 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
       {/* ── User info ───────────────────────────────────────────────────── */}
       <View style={styles.userSection}>
         <View style={styles.userCard}>
-          <Avatar src={(user as any)?.photo} name={user?.name} size="sm" />
+          <Avatar src={resolveFileUrl(user?.photoUrl)} name={user?.name} size="sm" />
           <View style={styles.userInfo}>
             <Text style={styles.userName} numberOfLines={1}>
               {user?.name}

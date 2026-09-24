@@ -24,7 +24,7 @@ const DOMAIN_OPTIONS = [
 ];
 
 const FIELDS: FieldDescriptor[] = [
-  { name: 'student_id', label: 'Student USN', required: true },
+  { name: 'student_id', label: 'Student', required: true, type: 'student-search' },
   { name: 'projectName', label: 'Project Title', required: true },
   { name: 'status', label: 'Status', required: true, type: 'select', options: STATUS_OPTIONS },
   { name: 'academicYear', label: 'Academic Year' },

@@ -97,14 +97,43 @@ async function findById(libraryId) {
 // internal library_id, which was never visible anywhere in the app.
 async function findByUsn(usn) {
   const result = await query(
-    `SELECT s.library_id, s.name, s.usn, sem.semester_number, sec.section_name
+    `SELECT s.library_id, s.name, s.usn, sem.semester_number, sec.section_name,
+            d.department_code
      FROM students s
-     JOIN semesters sem ON sem.semester_id = s.semester_id
-     JOIN sections  sec ON sec.section_id  = s.section_id
+     JOIN semesters   sem ON sem.semester_id  = s.semester_id
+     JOIN sections    sec ON sec.section_id   = s.section_id
+     JOIN departments d   ON d.department_id  = s.department_id
      WHERE s.usn = $1`,
     [usn],
   );
   return result.rows[0] || null;
+}
+
+// Same as findByUsn, but returns light-weight name+USN matches for
+// autocomplete — callers still resolve the exact record via findByUsn
+// (or the id embedded in each suggestion) before writing anything.
+async function searchByName(name, departmentCode, limit = 10) {
+  const conditions = ['s.name ILIKE $1'];
+  const params = [`%${name}%`];
+  let idx = 2;
+  if (departmentCode) {
+    conditions.push(`d.department_code = $${idx}`);
+    params.push(departmentCode);
+    idx++;
+  }
+  params.push(limit);
+  const result = await query(
+    `SELECT s.library_id, s.name, s.usn, sem.semester_number, sec.section_name
+     FROM students s
+     JOIN semesters   sem ON sem.semester_id  = s.semester_id
+     JOIN sections    sec ON sec.section_id   = s.section_id
+     JOIN departments d   ON d.department_id  = s.department_id
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY s.name ASC
+     LIMIT $${idx}`,
+    params,
+  );
+  return result.rows;
 }
 
 async function create(data) {
@@ -254,6 +283,7 @@ module.exports = {
   findAll,
   findById,
   findByUsn,
+  searchByName,
   create,
   update,
   remove,

@@ -39,7 +39,8 @@ export interface Faculty {
   qualification: string;
   experience: number;
   specialization?: string;
-  photo?: string;
+  /** Root-relative path from backend, resolve with resolveFileUrl() */
+  photoUrl?: string | null;
   joiningDate: string;
   status: FacultyStatus;
   departmentId: string;
@@ -59,7 +60,7 @@ export interface AuthUser {
   roles: string[];
   isHOD: boolean;
   email?: string;
-  photo?: string;
+  photoUrl?: string | null;
   designation?: string;
 }
 

@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Topbar from '../components/navigation/Topbar';
 import LogoBanner from './LogoBanner';
 import { useTheme } from '../context/ThemeContext';
-import { primaryScale } from '../theme/colors';
+import { primaryScale, shadows } from '../theme/colors';
 import { SCREEN_TITLES, RouteName } from '../navigation/routes';
 
 export interface ScreenWrapperProps {
@@ -71,7 +71,9 @@ export default function ScreenWrapper({
     >
       <SafeAreaView style={[styles.safeArea, { backgroundColor: bg }]} edges={['top']}>
         <Topbar title={resolvedTitle} />
-        <LogoBanner />
+        <View style={styles.bannerShadow}>
+          <LogoBanner />
+        </View>
 
         {scrollable ? (
           <ScrollView
@@ -103,6 +105,7 @@ export default function ScreenWrapper({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safeArea: { flex: 1 },
+  bannerShadow: { zIndex: 1, ...shadows.soft },
   scroll: { flex: 1 },
   content: { padding: 16, gap: 16 },
   fill: { flex: 1, padding: 16 },

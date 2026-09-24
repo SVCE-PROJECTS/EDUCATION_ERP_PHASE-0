@@ -6,19 +6,42 @@
  *   UNIQUE (student_id, class_id, attendance_date)
  *
  * No standalone subject column — subject is derived via class_id JOIN
+ *
+ * Every endpoint here is reached with nothing more than `authenticate` — no
+ * role or ownership check — so every one of them is scoped to the requesting
+ * faculty's own classes (isOwnClass), except an actual admin token.
  */
 
 const pool = require('../config/db').pool;
+const { isOwnClass, ownsAllClasses } = require('../utils/classOwnership');
 
 // GET /attendance?class_id=X&date=YYYY-MM-DD
+// class_id is optional: when omitted, the result is scoped to the
+// requesting faculty's own classes (or, for an admin token, to every
+// class) instead of being rejected — the faculty portal's "All Classes"
+// filter relies on this to load its default view.
 const getAttendance = async (req, res) => {
   const { class_id, date, student_id } = req.query;
+
+  if (class_id && !req.user.isAdmin && !(await isOwnClass(class_id, req.user.id))) {
+    return res.status(403).json({ message: 'Access denied. That class is not assigned to you.' });
+  }
+
   try {
     const conditions = [];
     const params = [];
     let idx = 1;
 
-    if (class_id)   { conditions.push(`a.class_id   = $${idx++}`); params.push(class_id); }
+    if (class_id) {
+      conditions.push(`a.class_id = $${idx++}`);
+      params.push(class_id);
+    } else if (!req.user.isAdmin) {
+      conditions.push(
+        `a.class_id IN (SELECT c.class_id FROM classes c JOIN faculty f ON f.faculty_id = c.faculty_id WHERE f.employee_id = $${idx++})`,
+      );
+      params.push(req.user.id);
+    }
+
     if (date)       { conditions.push(`a.attendance_date = $${idx++}`); params.push(date); }
     if (student_id) { conditions.push(`a.student_id  = $${idx++}`); params.push(student_id); }
 
@@ -53,6 +76,9 @@ const saveAttendance = async (req, res) => {
   if (!['Present', 'Absent'].includes(status)) {
     return res.status(400).json({ message: 'status must be Present or Absent.' });
   }
+  if (!req.user.isAdmin && !(await isOwnClass(class_id, req.user.id))) {
+    return res.status(403).json({ message: 'Access denied. That class is not assigned to you.' });
+  }
 
   try {
     const result = await pool.query(
@@ -75,6 +101,13 @@ const saveAttendanceBulk = async (req, res) => {
 
   if (!Array.isArray(records) || !records.length) {
     return res.status(400).json({ message: 'records array is required.' });
+  }
+
+  if (!req.user.isAdmin) {
+    const classIds = records.map((r) => r.class_id);
+    if (!(await ownsAllClasses(classIds, req.user.id))) {
+      return res.status(403).json({ message: 'Access denied. One or more classes are not assigned to you.' });
+    }
   }
 
   const client = await pool.connect();

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
-import { Text, Chip } from 'react-native-paper';
+import { Text, Chip, Snackbar } from 'react-native-paper';
 import InfoCard from '../../components/Card/InfoCard';
 import CustomButton from '../../components/Button/CustomButton';
 import ConfirmationDialog from '../../components/Dialog/ConfirmationDialog';
@@ -29,6 +29,7 @@ const NonTeachingStaffDetailsScreen = ({ route, navigation }) => {
   const { data: staff, isLoading, isError } = useNonTeachingStaffMember(staffId);
   const { mutateAsync: deleteStaff, isPending: deleting } = useDeleteNonTeachingStaff();
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   if (isLoading) {
     return (
@@ -48,9 +49,14 @@ const NonTeachingStaffDetailsScreen = ({ route, navigation }) => {
   const statusStyle = STATUS_STYLE[staff.status] || { bg: colors.border, text: colors.textSecondary };
 
   const handleDelete = async () => {
-    await deleteStaff(staffId);
-    setConfirmVisible(false);
-    navigation.navigate('NonTeachingStaffList');
+    try {
+      await deleteStaff(staffId);
+      setConfirmVisible(false);
+      navigation.navigate('NonTeachingStaffList');
+    } catch (err) {
+      setConfirmVisible(false);
+      setErrorMessage(err?.response?.data?.message || 'Failed to delete staff member. Please try again.');
+    }
   };
 
   return (
@@ -112,6 +118,9 @@ const NonTeachingStaffDetailsScreen = ({ route, navigation }) => {
           onCancel={() => setConfirmVisible(false)}
         />
       </ScrollView>
+      <Snackbar visible={!!errorMessage} onDismiss={() => setErrorMessage('')} duration={4000}>
+        {errorMessage}
+      </Snackbar>
     </ScreenLayout>
   );
 };

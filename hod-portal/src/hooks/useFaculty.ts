@@ -41,7 +41,7 @@ export function useCreateFaculty(options: MutationOptions = {}) {
     mutationFn: facultyService.create,
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['faculty'] });
-      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-combined'] });
       ok('Faculty created successfully');
       options.onSuccess?.(data);
     },
@@ -79,7 +79,7 @@ export function useDeleteFaculty(options: MutationOptions = {}) {
     mutationFn: (id: string) => facultyService.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['faculty'] });
-      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-combined'] });
       ok('Faculty deleted');
       options.onSuccess?.(undefined as any);
     },
@@ -104,7 +104,7 @@ export function useSyncRoles(facultyId: string, options: MutationOptions = {}) {
       // the role change — even though the database and API were already
       // correct. useCreateFaculty/useDeleteFaculty already did this;
       // syncing roles was the one mutation that forgot to.
-      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-combined'] });
       const r = data?.data?.results;
       if (r?.added?.length) ok('Role assigned');
       if (r?.removed?.length) ok('Role removed');

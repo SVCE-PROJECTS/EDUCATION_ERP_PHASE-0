@@ -22,6 +22,7 @@ import Avatar from '../components/ui/Avatar';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { authService } from '../services/auth.service';
+import { resolveFileUrl } from '../services/api';
 import { getRoleShortName } from '../utils/roleUtils';
 import { ROUTES } from '../navigation/routes';
 import { colors, shadows, ThemeColors } from '../theme/colors';
@@ -76,24 +77,30 @@ export default function FacultyDrawerContent(props: DrawerContentComponentProps)
 
   return (
     <SafeAreaView style={styles.root}>
-      {/* Brand header — gradient hero panel */}
-      <LinearGradient
-        colors={theme.gradientPrimary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.brand}
+      {/* Brand header — gradient hero panel, tap to jump home */}
+      <TouchableOpacity
+        onPress={() => drawerNav.navigate(ROUTES.FACULTY_DASHBOARD as never)}
+        activeOpacity={0.85}
+        accessibilityLabel="Go to Dashboard"
       >
-        <View style={styles.brandIcon}>
-          <GraduationCap size={20} color={colors.white} />
-        </View>
-        <Text style={styles.brandName}>Faculty Portal</Text>
-        <Text style={styles.brandDept}>{user?.departmentCode || 'ERP'}</Text>
-      </LinearGradient>
+        <LinearGradient
+          colors={theme.gradientPrimary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.brand}
+        >
+          <View style={styles.brandIcon}>
+            <GraduationCap size={20} color={colors.white} />
+          </View>
+          <Text style={styles.brandName}>Faculty Portal</Text>
+          <Text style={styles.brandDept}>SVCE — Engineering College ERP</Text>
+        </LinearGradient>
+      </TouchableOpacity>
 
       {/* User card */}
       <View style={styles.userSection}>
         <View style={styles.userCard}>
-          <Avatar src={user?.photo} name={user?.name} size="sm" />
+          <Avatar src={resolveFileUrl(user?.photoUrl)} name={user?.name} size="sm" />
           <View style={styles.userInfo}>
             <Text style={styles.userName} numberOfLines={1}>{user?.name}</Text>
             <Text style={styles.userRole} numberOfLines={1}>

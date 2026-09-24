@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronDown, ChevronUp, Pencil, Trash2, Users } from '../../components/icons';
-import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
+import { colors, shadows, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface ActivityStudent {
   id?: string | number | null;
@@ -45,17 +46,20 @@ export default function ActivityCard({
   subtitle,
   chips = [],
   students = [],
-  accentColor = primaryScale[600],
+  accentColor,
   onEdit,
   onDelete,
   onEditStudent,
   onDeleteStudent,
 }: ActivityCardProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
+  const accent = accentColor ?? theme.primary;
   const [expanded, setExpanded] = useState(false);
   const visibleStudents = students.filter((student) => student.name || student.usn);
 
   return (
-    <View style={[s.card, { borderLeftColor: accentColor }]}> 
+    <View style={[s.card, { borderLeftColor: accent }]}>
       <View style={s.top}>
         <View style={s.info}>
           <Text style={s.title} numberOfLines={2}>{display(title)}</Text>
@@ -70,7 +74,7 @@ export default function ActivityCard({
             .map((c, i) => (
               <View key={`${c.label}-${i}`} style={s.chip}>
                 <Text style={s.chipLabel}>{c.label}</Text>
-                <Text style={[s.chipValue, c.highlight ? { color: accentColor } : undefined]}>
+                <Text style={[s.chipValue, c.highlight ? { color: accent } : undefined]}>
                   {display(c.value)}
                 </Text>
               </View>
@@ -84,10 +88,10 @@ export default function ActivityCard({
         activeOpacity={0.75}
       >
         <View style={s.studentToggleLeft}>
-          <Users size={15} color={accentColor} />
+          <Users size={15} color={accent} />
           <Text style={s.studentCount}>STUDENTS ({visibleStudents.length})</Text>
         </View>
-        {expanded ? <ChevronUp size={16} color={neutral[500]} /> : <ChevronDown size={16} color={neutral[500]} />}
+        {expanded ? <ChevronUp size={16} color={theme.textMuted} /> : <ChevronDown size={16} color={theme.textMuted} />}
       </TouchableOpacity>
 
       {expanded && (
@@ -122,7 +126,7 @@ export default function ActivityCard({
                             style={s.studentActionBtn}
                             hitSlop={6}
                           >
-                            <Pencil size={12} color={primaryScale[500]} />
+                            <Pencil size={12} color={theme.primary} />
                           </TouchableOpacity>
                         )}
                         {onDeleteStudent && canAct && (
@@ -147,12 +151,12 @@ export default function ActivityCard({
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     borderLeftWidth: 3,
     marginHorizontal: 16,
     marginVertical: 4,
@@ -162,37 +166,37 @@ const s = StyleSheet.create({
   },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   info: { flex: 1, gap: 2 },
-  title: { fontSize: 14, fontWeight: '600', color: neutral[900] },
-  subtitle: { fontSize: 12, color: neutral[500] },
+  title: { fontSize: 14, fontWeight: '600', color: theme.textPrimary },
+  subtitle: { fontSize: 12, color: theme.textSecondary },
   actions: { flexDirection: 'row', gap: 4 },
-  actionBtn: { padding: 6, borderRadius: 8, backgroundColor: primaryScale[50] },
+  actionBtn: { padding: 6, borderRadius: 8, backgroundColor: theme.primarySoft },
   deleteBtn: { backgroundColor: colors.red[50] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: neutral[50], borderRadius: 8,
+    backgroundColor: theme.background, borderRadius: 8,
     paddingHorizontal: 8, paddingVertical: 4,
   },
-  chipLabel: { fontSize: 10, color: neutral[400], fontWeight: '500' },
-  chipValue: { fontSize: 11, color: neutral[700], fontWeight: '600' },
+  chipLabel: { fontSize: 10, color: theme.textMuted, fontWeight: '500' },
+  chipValue: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
   studentToggle: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderTopWidth: 1, borderTopColor: neutral[100], paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 10,
   },
   studentToggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  studentCount: { fontSize: 11, fontWeight: '700', color: neutral[700], letterSpacing: 0.2 },
-  studentTableWrap: { borderWidth: 1, borderColor: neutral[100], borderRadius: 10, overflow: 'hidden' },
+  studentCount: { fontSize: 11, fontWeight: '700', color: theme.textSecondary, letterSpacing: 0.2 },
+  studentTableWrap: { borderWidth: 1, borderColor: theme.border, borderRadius: 10, overflow: 'hidden' },
   studentTable: { width: '100%' },
-  studentHeaderRow: { flexDirection: 'row', backgroundColor: neutral[50], borderBottomWidth: 1, borderBottomColor: neutral[100], paddingVertical: 9, paddingHorizontal: 8 },
-  studentRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: neutral[50], paddingVertical: 10, paddingHorizontal: 8 },
-  studentHeader: { fontSize: 9, fontWeight: '700', color: neutral[500] },
-  studentCell: { fontSize: 11, color: neutral[800] },
+  studentHeaderRow: { flexDirection: 'row', backgroundColor: theme.background, borderBottomWidth: 1, borderBottomColor: theme.border, paddingVertical: 9, paddingHorizontal: 8 },
+  studentRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: theme.border, paddingVertical: 10, paddingHorizontal: 8 },
+  studentHeader: { fontSize: 9, fontWeight: '700', color: theme.textSecondary },
+  studentCell: { fontSize: 11, color: theme.textPrimary },
   colName: { flex: 1.55 },
   colUsn: { flex: 1.05 },
   colSem: { flex: 0.55, textAlign: 'center' },
   colSection: { flex: 0.65, textAlign: 'center' },
   colActions: { flex: 0.7, flexDirection: 'row', justifyContent: 'center' },
   studentActions: { flexDirection: 'row', gap: 4 },
-  studentActionBtn: { padding: 5, borderRadius: 7, backgroundColor: primaryScale[50] },
-  noStudents: { padding: 14, fontSize: 12, color: neutral[400], textAlign: 'center' },
+  studentActionBtn: { padding: 5, borderRadius: 7, backgroundColor: theme.primarySoft },
+  noStudents: { padding: 14, fontSize: 12, color: theme.textMuted, textAlign: 'center' },
 });

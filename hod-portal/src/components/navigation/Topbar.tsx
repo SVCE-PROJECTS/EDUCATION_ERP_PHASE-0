@@ -6,12 +6,14 @@ import {
   Modal,
   StyleSheet,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { Menu, ArrowLeft, Sun, Moon, ChevronDown, User, LogOut } from '../../components/icons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { authService } from '../../services/auth.service';
+import { resolveFileUrl } from '../../services/api';
 import Avatar from '../ui/Avatar';
 import { RoleBadge } from '../ui/Badge';
 import { ROUTES } from '../../navigation/routes';
@@ -30,6 +32,8 @@ export default function Topbar({ title }: TopbarProps) {
   const { user, logout } = useAuth();
   const { isDark, toggleDark, colors: theme } = useTheme();
   const styles = getStyles(theme);
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width >= 768;
 
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -65,24 +69,15 @@ export default function Topbar({ title }: TopbarProps) {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity
-          onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
-          style={styles.iconBtn}
-          accessibilityLabel="Open menu"
-        >
-          <Menu size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
-
-        <View style={styles.titleWrap}>
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-          {user?.department?.name || user?.departmentCode ? (
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {user?.department?.name || user?.departmentCode}
-            </Text>
-          ) : null}
-        </View>
+        {!isLargeScreen && (
+          <TouchableOpacity
+            onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+            style={styles.iconBtn}
+            accessibilityLabel="Open menu"
+          >
+            <Menu size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── Right: dark mode + profile ─────────────────────────────────── */}
@@ -98,7 +93,7 @@ export default function Topbar({ title }: TopbarProps) {
           style={styles.profileBtn}
           activeOpacity={0.8}
         >
-          <Avatar src={user?.photo} name={user?.name} size="xs" />
+          <Avatar src={resolveFileUrl(user?.photoUrl)} name={user?.name} size="xs" />
           <Text style={styles.profileName} numberOfLines={1}>
             {user?.name?.split(' ')[0]}
           </Text>
@@ -137,7 +132,7 @@ function ProfileModal({ visible, onClose, user, onViewProfile, onLogout }: Profi
       <View style={styles.profileSheet}>
         {/* User info */}
         <View style={styles.profileInfo}>
-          <Avatar src={(user as any)?.photo} name={user?.name} size="md" />
+          <Avatar src={resolveFileUrl(user?.photoUrl)} name={user?.name} size="md" />
           <View style={styles.profileDetails}>
             <Text style={styles.profileFullName} numberOfLines={1}>
               {user?.name}
@@ -191,16 +186,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     gap: 8,
     flex: 1,
   },
-  title: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: theme.textPrimary,
-    lineHeight: 20,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: theme.textSecondary,
-  },
   right: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,10 +195,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     padding: 8,
     borderRadius: 12,
     position: 'relative',
-  },
-  titleWrap: {
-    flexShrink: 1,
-    minWidth: 0,
   },
   profileBtn: {
     flexDirection: 'row',

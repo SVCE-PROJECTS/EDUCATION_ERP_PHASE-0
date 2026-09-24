@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   FlatList,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { facultyService } from '../../services/faculty.service';
+import { resolveFileUrl } from '../../services/api';
 import studentListService from '../../services/studentList.service';
 
 import Avatar from '../../components/ui/Avatar';
@@ -28,12 +30,12 @@ import {
 
 import ScreenWrapper from '../../layouts/ScreenWrapper';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useTheme } from '../../context/ThemeContext';
 
 import {
   colors,
   shadows,
-  primaryScale,
-  neutral,
+  ThemeColors,
 } from '../../theme/colors';
 
 import { ROUTES } from '../../navigation/routes';
@@ -87,6 +89,8 @@ function FacultyRow({
   allocationCount,
   onPress,
 }: FacultyRowProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <TouchableOpacity
       style={s.row}
@@ -94,7 +98,7 @@ function FacultyRow({
       activeOpacity={0.8}
     >
       <Avatar
-        src={faculty.photo}
+        src={resolveFileUrl(faculty.photoUrl)}
         name={faculty.name}
         size="sm"
       />
@@ -126,7 +130,7 @@ function FacultyRow({
 
       <ChevronRight
         size={16}
-        color={neutral[400]}
+        color={theme.textMuted}
       />
     </TouchableOpacity>
   );
@@ -144,6 +148,9 @@ function AllocationModal({
   onRemoveAllocation,
   onClose,
 }: AllocationModalProps) {
+
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
 
   const facultyId =
     (faculty as any)?.employeeId ||
@@ -163,6 +170,24 @@ function AllocationModal({
 
   const [subjectCode, setSubjectCode] =
     useState<string | null>(null);
+
+
+  // ─────────────────────────────────────────────
+  // SUBJECT INPUT MODE
+  // Default is manual entry — the HOD can type the subject name/code
+  // directly rather than depending on the timetable being filled in.
+  // Switching to "From Timetable" fills both fields from a dropdown
+  // sourced from the class's existing timetable instead.
+  // ─────────────────────────────────────────────
+
+  const [subjectMode, setSubjectMode] =
+    useState<'manual' | 'timetable'>('manual');
+
+  const [manualSubjectName, setManualSubjectName] =
+    useState('');
+
+  const [manualSubjectCode, setManualSubjectCode] =
+    useState('');
 
 
   // ─────────────────────────────────────────────
@@ -285,6 +310,9 @@ function AllocationModal({
     setSemester(null);
     setSection(null);
     setSubjectCode(null);
+    setSubjectMode('manual');
+    setManualSubjectName('');
+    setManualSubjectCode('');
   };
 
 
@@ -292,22 +320,34 @@ function AllocationModal({
   // SAVE ALLOCATION LOCALLY
   // ─────────────────────────────────────────────
 
+  // Resolved subject name/code, whichever mode produced them.
+  const resolvedSubjectName =
+    subjectMode === 'manual'
+      ? manualSubjectName.trim()
+      : subjectOptions.find((option) => option.value === subjectCode)?.label || subjectCode || '';
+
+  const resolvedSubjectCode =
+    subjectMode === 'manual'
+      ? manualSubjectCode.trim()
+      : subjectCode || '';
+
+  const canAssign =
+    !!semester &&
+    !!section &&
+    !!resolvedSubjectName &&
+    !!resolvedSubjectCode;
+
   const handleAssign = () => {
 
     if (
       !semester ||
       !section ||
-      !subjectCode ||
+      !resolvedSubjectName ||
+      !resolvedSubjectCode ||
       !faculty
     ) {
       return;
     }
-
-    const subject =
-      subjectOptions.find(
-        (option) =>
-          option.value === subjectCode
-      );
 
 
     // Prevent duplicate allocation
@@ -316,7 +356,7 @@ function AllocationModal({
         (allocation) =>
           allocation.semester === semester &&
           allocation.section === section &&
-          allocation.subjectCode === subjectCode
+          allocation.subjectCode === resolvedSubjectCode
       );
 
     if (alreadyExists) {
@@ -326,7 +366,7 @@ function AllocationModal({
 
     const newAllocation: FacultyAllocation = {
       id:
-        `${facultyId}-${semester}-${section}-${subjectCode}-${Date.now()}`,
+        `${facultyId}-${semester}-${section}-${resolvedSubjectCode}-${Date.now()}`,
 
       facultyId,
 
@@ -338,10 +378,10 @@ function AllocationModal({
       section,
 
       subject:
-        subject?.label ||
-        subjectCode,
+        resolvedSubjectName,
 
-      subjectCode,
+      subjectCode:
+        resolvedSubjectCode,
     };
 
 
@@ -371,7 +411,7 @@ function AllocationModal({
       <View style={s.modalFacultyRow}>
 
         <Avatar
-          src={faculty.photo}
+          src={resolveFileUrl(faculty.photoUrl)}
           name={faculty.name}
           size="md"
         />
@@ -557,31 +597,110 @@ function AllocationModal({
         />
 
 
-        {/* Subject */}
+        {/* Subject — manual entry (default) or pick from timetable */}
 
-        <Dropdown
-          label="Subject (from timetable)"
+        <View>
 
-          placeholder={
-            !section
-              ? 'Select a class first'
-              : subjLoading
-                ? 'Loading subjects…'
-                : 'Choose subject'
-          }
+          <Text style={s.fieldLabel}>
+            Subject
+          </Text>
 
-          value={subjectCode}
+          <View style={s.modeToggle}>
 
-          options={subjectOptions}
+            <TouchableOpacity
+              style={[
+                s.modeToggleBtn,
+                subjectMode === 'manual' && s.modeToggleBtnActive,
+              ]}
+              onPress={() => setSubjectMode('manual')}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  s.modeToggleText,
+                  subjectMode === 'manual' && s.modeToggleTextActive,
+                ]}
+              >
+                Type manually
+              </Text>
+            </TouchableOpacity>
 
-          onChange={setSubjectCode}
+            <TouchableOpacity
+              style={[
+                s.modeToggleBtn,
+                subjectMode === 'timetable' && s.modeToggleBtnActive,
+              ]}
+              onPress={() => setSubjectMode('timetable')}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  s.modeToggleText,
+                  subjectMode === 'timetable' && s.modeToggleTextActive,
+                ]}
+              >
+                From timetable
+              </Text>
+            </TouchableOpacity>
 
-          disabled={!section}
+          </View>
 
-          emptyText={
-            "No subjects found in this class's timetable yet."
-          }
-        />
+          {subjectMode === 'manual' ? (
+
+            <View style={s.manualFields}>
+
+              <TextInput
+                style={s.textInput}
+                placeholder="Subject name (e.g. Data Structures)"
+                placeholderTextColor={theme.textMuted}
+                value={manualSubjectName}
+                onChangeText={setManualSubjectName}
+                autoCapitalize="words"
+              />
+
+              <TextInput
+                style={s.textInput}
+                placeholder="Subject code (e.g. CS301)"
+                placeholderTextColor={theme.textMuted}
+                value={manualSubjectCode}
+                onChangeText={setManualSubjectCode}
+                autoCapitalize="characters"
+              />
+
+            </View>
+
+          ) : (
+
+            <Dropdown
+              placeholder={
+                !section
+                  ? 'Select a class first'
+                  : subjLoading
+                    ? 'Loading subjects…'
+                    : 'Choose subject'
+              }
+
+              value={subjectCode}
+
+              options={subjectOptions}
+
+              onChange={(value) => {
+                setSubjectCode(value);
+                const picked = subjectOptions.find((o) => o.value === value);
+                setManualSubjectName(picked?.label || '');
+                setManualSubjectCode(value);
+              }}
+
+              disabled={!section}
+
+              emptyText={
+                "No subjects found in this class's timetable yet."
+              }
+            />
+
+          )}
+
+        </View>
 
 
         {/* Assign */}
@@ -591,19 +710,11 @@ function AllocationModal({
           style={[
             s.assignBtn,
 
-            (
-              !semester ||
-              !section ||
-              !subjectCode
-            ) &&
+            !canAssign &&
               s.assignBtnDisabled,
           ]}
 
-          disabled={
-            !semester ||
-            !section ||
-            !subjectCode
-          }
+          disabled={!canAssign}
 
           onPress={handleAssign}
 
@@ -628,6 +739,9 @@ function AllocationModal({
 // ─────────────────────────────────────────────────────────────
 
 export default function FacultyAllocation() {
+
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
 
   const queryClient =
     useQueryClient();
@@ -889,14 +1003,14 @@ export default function FacultyAllocation() {
 
             <ActivityIndicator
               size={16}
-              color={neutral[400]}
+              color={theme.textMuted}
             />
 
           ) : (
 
             <RefreshCw
               size={16}
-              color={neutral[400]}
+              color={theme.textMuted}
             />
 
           )}
@@ -912,7 +1026,7 @@ export default function FacultyAllocation() {
 
         <ActivityIndicator
           style={{ marginTop: 40 }}
-          color={primaryScale[500]}
+          color={theme.primary}
         />
 
       ) : facultyList.length === 0 ? (
@@ -921,7 +1035,7 @@ export default function FacultyAllocation() {
 
           <BookOpen
             size={28}
-            color={neutral[300]}
+            color={theme.border}
           />
 
           <Text style={s.emptyText}>
@@ -981,11 +1095,11 @@ export default function FacultyAllocation() {
               onRefresh={refetch}
 
               tintColor={
-                primaryScale[500]
+                theme.primary
               }
 
               colors={[
-                primaryScale[500],
+                theme.primary,
               ]}
             />
 
@@ -1028,7 +1142,7 @@ export default function FacultyAllocation() {
 // STYLES
 // ─────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
 
   header: {
     paddingHorizontal: 4,
@@ -1039,12 +1153,12 @@ const s = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   subtitle: {
     fontSize: 13,
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
 
@@ -1060,10 +1174,10 @@ const s = StyleSheet.create({
     height: 40,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: neutral[200],
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
   },
 
 
@@ -1076,10 +1190,10 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 14,
     ...shadows.card,
   },
@@ -1092,19 +1206,19 @@ const s = StyleSheet.create({
   rowName: {
     fontSize: 14,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   rowDesig: {
     fontSize: 11,
-    color: neutral[400],
+    color: theme.textMuted,
     marginTop: 1,
   },
 
 
   countPill: {
     backgroundColor:
-      primaryScale[50],
+      theme.primarySoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
@@ -1113,7 +1227,7 @@ const s = StyleSheet.create({
   countPillText: {
     fontSize: 11,
     fontWeight: '600',
-    color: primaryScale[700],
+    color: theme.primary,
   },
 
 
@@ -1130,7 +1244,7 @@ const s = StyleSheet.create({
 
   emptyText: {
     fontSize: 14,
-    color: neutral[400],
+    color: theme.textMuted,
   },
 
 
@@ -1148,19 +1262,19 @@ const s = StyleSheet.create({
   modalFacultyName: {
     fontSize: 15,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   modalFacultyDesig: {
     fontSize: 12,
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
 
   modalSectionLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: neutral[500],
+    color: theme.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginBottom: 8,
@@ -1168,7 +1282,7 @@ const s = StyleSheet.create({
 
   modalEmptyText: {
     fontSize: 13,
-    color: neutral[400],
+    color: theme.textMuted,
     marginBottom: 8,
   },
 
@@ -1182,7 +1296,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
     borderRadius: 12,
     padding: 12,
   },
@@ -1190,18 +1304,18 @@ const s = StyleSheet.create({
   allocChipSubject: {
     fontSize: 13,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
   allocChipCode: {
     fontSize: 11,
     fontWeight: '500',
-    color: primaryScale[600],
+    color: theme.primary,
   },
 
   allocChipClass: {
     fontSize: 11,
-    color: neutral[500],
+    color: theme.textSecondary,
     marginTop: 2,
   },
 
@@ -1217,9 +1331,62 @@ const s = StyleSheet.create({
     gap: 14,
   },
 
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    marginBottom: 6,
+  },
+
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: theme.background,
+    borderRadius: 10,
+    padding: 3,
+    gap: 3,
+    marginBottom: 10,
+  },
+
+  modeToggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+
+  modeToggleBtnActive: {
+    backgroundColor: theme.surface,
+    ...shadows.card,
+  },
+
+  modeToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary,
+  },
+
+  modeToggleTextActive: {
+    color: theme.primary,
+  },
+
+  manualFields: {
+    gap: 10,
+  },
+
+  textInput: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 13,
+    color: theme.textPrimary,
+    backgroundColor: theme.surface,
+  },
+
   assignBtn: {
     backgroundColor:
-      colors.primary,
+      theme.primary,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
@@ -1229,7 +1396,7 @@ const s = StyleSheet.create({
 
   assignBtnDisabled: {
     backgroundColor:
-      neutral[300],
+      theme.border,
   },
 
   assignBtnText: {

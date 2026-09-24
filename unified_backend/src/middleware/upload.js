@@ -66,13 +66,15 @@ const photoFilter = (req, file, cb) => {
  * File filter for documents
  */
 const documentFilter = (req, file, cb) => {
-  const allowed = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt'];
+  // Includes jpg/jpeg/png — faculty document uploads (ID proof, certificates,
+  // scanned records) are commonly photos/scans, not just office documents.
+  const allowed = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.jpg', '.jpeg', '.png'];
   const ext = path.extname(file.originalname).toLowerCase();
-  
+
   if (allowed.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error('Only PDF, DOC, DOCX, XLS, XLSX, and TXT files are allowed'), false);
+    cb(new Error('Only PDF, DOC, DOCX, XLS, XLSX, TXT, JPG, and PNG files are allowed'), false);
   }
 };
 

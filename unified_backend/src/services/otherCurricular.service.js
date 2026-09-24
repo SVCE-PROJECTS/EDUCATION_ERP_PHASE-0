@@ -6,6 +6,7 @@
 
 const otherCurricularRepo = require('../repositories/otherCurricular.repository');
 const studentRepo = require('../repositories/studentRepository');
+const { logActivity } = require('./activityAudit.helper');
 
 const parseQuery = (q) => ({
   page:      Math.max(1, parseInt(q.page)  || 1),
@@ -39,16 +40,18 @@ const getById = async (id, departmentCode) => {
   return record;
 };
 
-const create = async (data, departmentCode) => {
+const create = async (data, departmentCode, performedBy) => {
   if (!data.student_id) throw { statusCode: 400, message: 'Student USN is required.' };
   // FIXED: this field now takes the student's USN (the identifier actually
   // visible in the Student Management screen) instead of the raw internal
   // library_id, which was never shown anywhere in the app.
   const student = await studentRepo.findByUsn(String(data.student_id).trim());
   if (!student) throw { statusCode: 404, message: `No student found with USN "${data.student_id}". Please check and try again.` };
+  if (departmentCode && student.department_code !== departmentCode)
+    throw { statusCode: 404, message: `No student found with USN "${data.student_id}" in your department.` };
   if (!data.eventName)  throw { statusCode: 400, message: 'eventName is required.' };
 
-  return otherCurricularRepo.create({
+  const record = await otherCurricularRepo.create({
     studentId:   student.library_id,
     facultyId:   data.faculty_id || null,
     title:       data.eventName.trim(),
@@ -62,9 +65,17 @@ const create = async (data, departmentCode) => {
     academicYear: data.academicYear || (data.year ? String(data.year) : null),
     status:       'Completed',
   });
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'CREATE_OTHER_CURRICULAR', module: 'other_curricular', recordId: record.id,
+    details: { title: record.title, studentUsn: student.usn },
+  });
+
+  return record;
 };
 
-const update = async (id, data, departmentCode) => {
+const update = async (id, data, departmentCode, performedBy) => {
   const existing = await otherCurricularRepo.findById(id);
   if (!existing) throw { statusCode: 404, message: 'Activity not found.' };
   if (departmentCode && existing.department_code !== departmentCode)
@@ -81,15 +92,30 @@ const update = async (id, data, departmentCode) => {
   if (data.year              !== undefined) desc.year              = parseInt(data.year);
   updateData.description = JSON.stringify(desc);
 
-  return otherCurricularRepo.update(id, updateData);
+  const record = await otherCurricularRepo.update(id, updateData);
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'UPDATE_OTHER_CURRICULAR', module: 'other_curricular', recordId: id,
+    details: { title: record.title, updatedFields: Object.keys(updateData) },
+  });
+
+  return record;
 };
 
-const remove = async (id, departmentCode) => {
+const remove = async (id, departmentCode, performedBy) => {
   const existing = await otherCurricularRepo.findById(id);
   if (!existing) throw { statusCode: 404, message: 'Activity not found.' };
   if (departmentCode && existing.department_code !== departmentCode)
     throw { statusCode: 403, message: 'Access denied.' };
   await otherCurricularRepo.remove(id);
+
+  await logActivity({
+    performedBy, departmentCode,
+    action: 'DELETE_OTHER_CURRICULAR', module: 'other_curricular', recordId: id,
+    details: { title: existing.title, studentUsn: existing.usn },
+  });
+
   return { message: 'Activity deleted successfully.' };
 };
 

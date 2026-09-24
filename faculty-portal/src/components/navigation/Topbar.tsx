@@ -10,8 +10,8 @@ import { Menu, ArrowLeft, Sun, Moon, ChevronDown, User, LogOut } from '../icons'
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { authService } from '../../services/auth.service';
+import { resolveFileUrl } from '../../services/api';
 import Avatar from '../ui/Avatar';
-import SVCELogo from '../ui/SVCELogo';
 import { RoleBadge } from '../ui/Badge';
 import { ROUTES } from '../../navigation/routes';
 import { colors, shadows, ThemeColors } from '../../theme/colors';
@@ -43,7 +43,7 @@ export default function Topbar({ title }: TopbarProps) {
 
   return (
     <View style={styles.bar}>
-      {/* Left: back (when navigable) + SVCE logo (tap → dashboard) + hamburger (mobile only) + title */}
+      {/* Left: back (when navigable) + hamburger (mobile only) */}
       <View style={styles.left}>
         {navigation.canGoBack() && (
           <TouchableOpacity onPress={() => navigation.goBack()}
@@ -51,24 +51,12 @@ export default function Topbar({ title }: TopbarProps) {
             <ArrowLeft size={20} color={theme.textSecondary} />
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          onPress={() => navigation.navigate(ROUTES.FACULTY_DASHBOARD)}
-          accessibilityLabel="Go to Dashboard"
-        >
-          <SVCELogo size="md" showText={isLargeScreen} />
-        </TouchableOpacity>
         {!isLargeScreen && (
           <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             style={styles.iconBtn} accessibilityLabel="Open menu">
             <Menu size={20} color={theme.textSecondary} />
           </TouchableOpacity>
         )}
-        <View style={styles.titleContainer}>
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
-          {user?.departmentCode ? (
-            <Text style={styles.subtitle} numberOfLines={1}>{user.departmentCode}</Text>
-          ) : null}
-        </View>
       </View>
 
       {/* Right: dark mode + profile */}
@@ -77,7 +65,7 @@ export default function Topbar({ title }: TopbarProps) {
           {isDark ? <Sun size={18} color={theme.textSecondary} /> : <Moon size={18} color={theme.textSecondary} />}
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setProfileOpen(true)} style={styles.profileBtn} activeOpacity={0.8}>
-          <Avatar src={user?.photo} name={user?.name} size="xs" />
+          <Avatar src={resolveFileUrl(user?.photoUrl)} name={user?.name} size="xs" />
           <Text style={styles.profileName} numberOfLines={1}>{user?.name?.split(' ')[0]}</Text>
           <ChevronDown size={13} color={theme.textMuted} />
         </TouchableOpacity>
@@ -104,7 +92,7 @@ function ProfileModal({ visible, onClose, user, onViewProfile, onLogout }: Profi
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       <View style={styles.profileSheet}>
         <View style={styles.profileInfo}>
-          <Avatar src={(user as any)?.photo} name={user?.name} size="md" />
+          <Avatar src={resolveFileUrl(user?.photoUrl)} name={user?.name} size="md" />
           <View style={styles.profileDetails}>
             <Text style={styles.profileFullName} numberOfLines={1}>{user?.name}</Text>
             <Text style={styles.profileUsername} numberOfLines={1}>{user?.username}</Text>
@@ -139,9 +127,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     backgroundColor: theme.surface, borderBottomWidth: 1, borderBottomColor: theme.border,
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  titleContainer: { flex: 1, minWidth: 0 },
-  title: { fontSize: 15, fontWeight: '600', color: theme.textPrimary, lineHeight: 20 },
-  subtitle: { fontSize: 11, color: theme.textSecondary },
   right: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   iconBtn: { padding: 8, borderRadius: 12 },
   profileBtn: {

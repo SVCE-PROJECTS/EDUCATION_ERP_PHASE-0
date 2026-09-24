@@ -82,3 +82,19 @@ export const fetchTransferHistory = async (studentId) => {
   return response?.data || response;
 };
 
+// GET /api/transfer — every transfer ever made, newest first, with both the
+// previous and new department/program/semester/section for each student.
+// Backs the Dashboard's "Transferred Students" tap-to-view detail screen.
+export const fetchAllTransfers = async () => {
+  const response = await axiosInstance.get('/transfer');
+  return response?.data || response;
+};
+
+// responseType: 'blob' — the interceptor unwraps to response.data, so the
+// resolved value here is the Blob itself, ready to save/share (same pattern
+// as exportService.downloadExport).
+export const downloadTransferExport = async (format) => axiosInstance.get(
+  '/transfer/export',
+  { params: { format }, responseType: 'blob' },
+);
+

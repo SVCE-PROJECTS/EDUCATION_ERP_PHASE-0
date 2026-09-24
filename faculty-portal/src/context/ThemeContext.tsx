@@ -1,17 +1,21 @@
 /**
  * Faculty Portal — ThemeContext
- * Light/dark toggle, persisted to AsyncStorage.
+ * Light/dark toggle, persisted to AsyncStorage. Exposes a resolved `colors`
+ * palette (light or dark) so components can render real dark-mode UI instead
+ * of only flipping the page background.
  * Mirrors hod-portal/src/context/ThemeContext.tsx.
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { lightColors, darkColors, ThemeColors } from '../theme/colors';
 
 const STORAGE_KEY = 'faculty-erp-theme-v1';
 
-interface ThemeContextValue {
+export interface ThemeContextValue {
   isDark: boolean;
   toggleTheme: () => void;
+  colors: ThemeColors;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -33,8 +37,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const value = useMemo<ThemeContextValue>(
+    () => ({ isDark, toggleTheme, colors: isDark ? darkColors : lightColors }),
+    [isDark, toggleTheme],
+  );
+
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

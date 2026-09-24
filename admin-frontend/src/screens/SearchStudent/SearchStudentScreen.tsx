@@ -8,9 +8,12 @@ import EmptyState from '../../components/EmptyState/EmptyState';
 import LoadingIndicator from '../../components/Loading/LoadingIndicator';
 import { useStudents } from '../../hooks/useStudents';
 import ScreenLayout from '../../navigation/ScreenLayout';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing } from '../../theme';
 
 const SearchStudentScreen = ({ navigation }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [query, setQuery] = useState('');
 
   const { data, isFetching } = useStudents(
@@ -57,7 +60,7 @@ const SearchStudentScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

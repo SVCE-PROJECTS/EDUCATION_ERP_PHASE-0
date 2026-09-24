@@ -16,13 +16,19 @@ import AddStudentScreen from '../screens/StudentRegistry/AddStudentScreen';
 import EditStudentScreen from '../screens/StudentRegistry/EditStudentScreen';
 import StudentDetailsScreen from '../screens/StudentRegistry/StudentDetailsScreen';
 
-import SearchStudentScreen from '../screens/SearchStudent/SearchStudentScreen';
 import TransferStudentScreen from '../screens/TransferStudent/TransferStudentScreen';
 import ExportStudentDataScreen from '../screens/ExportStudentData/ExportStudentDataScreen';
 
 import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 
 import FeeScreen from '../screens/Fee/FeeScreen';
+import AcademicFeeScreen from '../screens/Fee/AcademicFeeScreen';
+import FeeStubScreen from '../screens/Fee/FeeStubScreen';
+
+import ActivityLogScreen from '../screens/ActivityLog/ActivityLogScreen';
+import AdminUsersScreen from '../screens/AdminUsers/AdminUsersScreen';
+import SettingsScreen from '../screens/Settings/SettingsScreen';
+import TransferredStudentsScreen from '../screens/TransferredStudents/TransferredStudentsScreen';
 
 import FacultyListScreen from '../screens/FacultyRegistry/FacultyListScreen';
 import AddFacultyScreen from '../screens/FacultyRegistry/AddFacultyScreen';
@@ -33,7 +39,7 @@ import AddNonTeachingStaffScreen from '../screens/NonTeachingStaffRegistry/AddNo
 import EditNonTeachingStaffScreen from '../screens/NonTeachingStaffRegistry/EditNonTeachingStaffScreen';
 import NonTeachingStaffDetailsScreen from '../screens/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
 import { useAuth } from '../context/AuthContext';
-import { colors } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +47,8 @@ const Stack = createNativeStackNavigator();
 // Sidebar + content via ScreenLayout instead of a native header/drawer.
 const AppNavigator = () => {
   const { isAuthenticated, isReady } = useAuth();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
 
   // Wait for the stored session check before deciding
   // whether to show Login or the main application.
@@ -106,19 +114,13 @@ const AppNavigator = () => {
         component={StudentDetailsScreen}
       />
 
-      {/* Student Search */}
-      <Stack.Screen
-        name="SearchStudent"
-        component={SearchStudentScreen}
-      />
-
       {/* Student Transfer */}
       <Stack.Screen
         name="TransferStudent"
         component={TransferStudentScreen}
       />
 
-      {/* Export */}
+      {/* Download */}
       <Stack.Screen
         name="ExportStudentData"
         component={ExportStudentDataScreen}
@@ -141,11 +143,80 @@ const AppNavigator = () => {
       <Stack.Screen name="AddNonTeachingStaff" component={AddNonTeachingStaffScreen} />
       <Stack.Screen name="EditNonTeachingStaff" component={EditNonTeachingStaffScreen} />
       <Stack.Screen name="NonTeachingStaffDetails" component={NonTeachingStaffDetailsScreen} />
+
+      <Stack.Screen
+        name="AcademicFee"
+        component={AcademicFeeScreen}
+      />
+
+      <Stack.Screen
+        name="TuitionFee"
+        component={FeeStubScreen}
+        initialParams={{
+          title: 'Tuition Fees',
+          icon: 'currency-inr',
+          description: 'Tuition fee structure management is being built and will be available in a future update.',
+        }}
+      />
+
+      <Stack.Screen
+        name="ExamFee"
+        component={FeeStubScreen}
+        initialParams={{
+          title: 'Exam Fees',
+          icon: 'clipboard-text-outline',
+          description: 'Examination fee structure management is being built and will be available in a future update.',
+        }}
+      />
+
+      <Stack.Screen
+        name="TransportFee"
+        component={FeeStubScreen}
+        initialParams={{
+          title: 'Transport Fees',
+          icon: 'bus-outline',
+          description: 'Transport fee management is being built and will be available in a future update.',
+        }}
+      />
+
+      <Stack.Screen
+        name="HostelFee"
+        component={FeeStubScreen}
+        initialParams={{
+          title: 'Hostel Fees',
+          icon: 'home-city-outline',
+          description: 'Hostel fee management is being built and will be available in a future update.',
+        }}
+      />
+
+      {/* Activity Log */}
+      <Stack.Screen
+        name="ActivityLog"
+        component={ActivityLogScreen}
+      />
+
+      {/* Admin Users */}
+      <Stack.Screen
+        name="AdminUsers"
+        component={AdminUsersScreen}
+      />
+
+      {/* Settings */}
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+      />
+
+      {/* Transferred Students — reached by tapping the Dashboard stat card */}
+      <Stack.Screen
+        name="TransferredStudents"
+        component={TransferredStudentsScreen}
+      />
     </Stack.Navigator>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   loading: {
     flex: 1,
     alignItems: 'center',

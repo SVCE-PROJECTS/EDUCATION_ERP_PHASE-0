@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { colors, neutral } from '../../theme/colors';
+import { colors, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface ProgressBarProps {
   label: string;
@@ -13,6 +14,8 @@ export interface ProgressBarProps {
 
 /** Single horizontal progress row — used for at-a-glance % comparisons. */
 export default function ProgressBar({ label, percent, color = colors.primary, valueLabel }: ProgressBarProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   const pct = Math.max(0, Math.min(100, percent));
 
   return (
@@ -33,19 +36,19 @@ export default function ProgressBar({ label, percent, color = colors.primary, va
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   row: { gap: 6, width: '100%' },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  label: { fontSize: 12, color: neutral[600], fontWeight: '500', flex: 1 },
+  label: { fontSize: 12, color: theme.textSecondary, fontWeight: '500', flex: 1 },
   value: { fontSize: 12, fontWeight: '700' },
   track: {
     height: 8,
     borderRadius: 6,
-    backgroundColor: neutral[100],
+    backgroundColor: theme.border,
     overflow: 'hidden',
   },
   fill: {

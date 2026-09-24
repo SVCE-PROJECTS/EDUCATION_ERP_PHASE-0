@@ -13,17 +13,24 @@ import { useStudent, useDeleteStudent } from '../../hooks/useStudents';
 import { useTransferHistory } from '../../hooks/useTransferStudent';
 import ScreenLayout from '../../navigation/ScreenLayout';
 import { formatStudentId } from '../../utils/formatStudentId';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, typography } from '../../theme';
 import { API_ORIGIN } from '../../constants';
 
-const Field = ({ label, value }) => (
-  <View style={styles.fieldRow}>
-    <Text style={styles.fieldLabel}>{label}</Text>
-    <Text style={styles.fieldValue}>{value || '-'}</Text>
-  </View>
-);
+const Field = ({ label, value }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  return (
+    <View style={styles.fieldRow}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={styles.fieldValue}>{value || '-'}</Text>
+    </View>
+  );
+};
 
 const StudentDetailsScreen = ({ route, navigation }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { studentId } = route.params;
   const { data: student, isLoading, isError } = useStudent(studentId);
   const { data: history = [] } = useTransferHistory(studentId);
@@ -44,14 +51,14 @@ const StudentDetailsScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="AddStudent">
+      <ScreenLayout navigation={navigation} activeScreen="StudentList">
         <LoadingIndicator fullscreen label="Loading student details..." />
       </ScreenLayout>
     );
   }
   if (isError || !student) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="AddStudent">
+      <ScreenLayout navigation={navigation} activeScreen="StudentList">
         <EmptyState icon="alert-circle-outline" title="Student not found" />
       </ScreenLayout>
     );
@@ -64,7 +71,7 @@ const StudentDetailsScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="AddStudent">
+    <ScreenLayout navigation={navigation} activeScreen="StudentList">
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
         <View>
@@ -143,7 +150,7 @@ const StudentDetailsScreen = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

@@ -1,6 +1,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { success, ApiError } = require('../utils/apiResponse');
 const transferService = require('../services/transferService');
+const transferExportService = require('../services/transferExportService');
 
 const transfer = asyncHandler(async (req, res) => {
   if (!req.file) throw new ApiError(400, 'Supporting document is required');
@@ -18,7 +19,7 @@ const transfer = asyncHandler(async (req, res) => {
     newSectionId:    parseInt(newSectionId, 10),
     remarks,
     supportingDocumentUrl,
-  });
+  }, req.user?.id);
 
   success(res, result, null, 201);
 });
@@ -29,4 +30,37 @@ const history = asyncHandler(async (req, res) => {
   success(res, rows);
 });
 
-module.exports = { transfer, history };
+/**
+ * GET /api/transfer — every transfer, newest first. Backs the Dashboard's
+ * "Transferred Students" tap-to-view detail list.
+ */
+const listAll = asyncHandler(async (req, res) => {
+  const rows = await transferService.listAllTransfers();
+  success(res, rows);
+});
+
+/**
+ * GET /api/transfer/export?format=excel|pdf
+ */
+const exportTransfers = asyncHandler(async (req, res) => {
+  const format = (req.query.format || 'excel').toLowerCase();
+
+  if (format === 'pdf') {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="transferred-students.pdf"');
+    await transferExportService.buildTransferPdfStream(res);
+    return;
+  }
+
+  const buffer = await transferExportService.buildTransferExcelBuffer();
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  );
+  res.setHeader('Content-Disposition', 'attachment; filename="transferred-students.xlsx"');
+  res.send(buffer);
+});
+
+module.exports = {
+  transfer, history, listAll, exportTransfers,
+};

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { colors, neutral } from '../../theme/colors';
+import { colors, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 /**
  * BarChart — minimal, dependency-free vertical bar chart.
@@ -29,6 +30,8 @@ export interface BarChartProps {
 }
 
 export default function BarChart({ data, height = 160, showValues = true, unit = '' }: BarChartProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   const [trackWidth, setTrackWidth] = useState(0);
   const maxValue = Math.max(1, ...data.map((d) => d.value));
 
@@ -69,7 +72,7 @@ export default function BarChart({ data, height = 160, showValues = true, unit =
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   root: { width: '100%' },
   track: {
     flexDirection: 'row',
@@ -92,11 +95,11 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 11,
     fontWeight: '700',
-    color: neutral[700],
+    color: theme.textSecondary,
   },
   label: {
     fontSize: 10,
-    color: neutral[500],
+    color: theme.textSecondary,
     marginTop: 4,
     textAlign: 'center',
   },

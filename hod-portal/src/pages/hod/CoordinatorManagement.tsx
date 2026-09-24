@@ -8,7 +8,8 @@ import { RoleBadge } from '../../components/ui/Badge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { X } from '../../components/icons';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
-import { colors, shadows, neutral } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { colors, ThemeColors, shadows } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
 import { Faculty } from '../../types';
 
@@ -20,6 +21,9 @@ const COORDINATOR_SLUGS = [
 ];
 
 export default function CoordinatorManagement() {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
+
   const { data: facultyData, isLoading } = useQuery({
     queryKey: ['faculty', { page: 1, limit: 100 }],
     queryFn: () => facultyService.getAll({ page: 1, limit: 100 }),
@@ -76,6 +80,8 @@ interface CoordinatorRoleRef {
 }
 
 function CoordinatorRow({ faculty: f }: { faculty: Faculty }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [pendingRole, setPendingRole] = useState<CoordinatorRoleRef | null>(null);
 
   const syncMutation = useSyncRoles((f as any).employeeId, {
@@ -133,12 +139,12 @@ function CoordinatorRow({ faculty: f }: { faculty: Faculty }) {
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     overflow: 'hidden',
     ...shadows.card,
   },
@@ -149,16 +155,16 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[100],
+    borderBottomColor: theme.border,
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   cardCount: {
     fontSize: 13,
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
   // Row
@@ -176,11 +182,11 @@ const s = StyleSheet.create({
   rowName: {
     fontSize: 13,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   rowDesig: {
     fontSize: 11,
-    color: neutral[400],
+    color: theme.textMuted,
     marginTop: 1,
   },
   badges: {
@@ -202,7 +208,7 @@ const s = StyleSheet.create({
   },
   separator: {
     height: 1,
-    backgroundColor: neutral[50],
+    backgroundColor: theme.border,
   },
 
   // Loading
@@ -212,7 +218,7 @@ const s = StyleSheet.create({
   },
   skeleton: {
     height: 56,
-    backgroundColor: neutral[100],
+    backgroundColor: theme.border,
     borderRadius: 12,
   },
   empty: {
@@ -221,6 +227,6 @@ const s = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: neutral[400],
+    color: theme.textMuted,
   },
 });

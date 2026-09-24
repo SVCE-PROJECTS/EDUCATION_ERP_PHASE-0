@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import { neutral, colors } from '../../theme/colors';
+import { ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface PieChartDatum {
   label: string;
@@ -36,6 +37,8 @@ export default function PieChart({
   centerSubLabel,
   showLegend = true,
 }: PieChartProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const total = data.reduce((sum, d) => sum + d.value, 0) || 1;
@@ -52,7 +55,7 @@ export default function PieChart({
               cx={size / 2}
               cy={size / 2}
               r={radius}
-              stroke={neutral[100]}
+              stroke={theme.border}
               strokeWidth={strokeWidth}
               fill="none"
             />
@@ -106,14 +109,14 @@ export default function PieChart({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   root: { flexDirection: 'row', alignItems: 'center', gap: 20, flexWrap: 'wrap' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  centerLabel: { fontSize: 22, fontWeight: '700', color: neutral[900] },
-  centerSubLabel: { fontSize: 11, color: neutral[500], marginTop: 1 },
+  centerLabel: { fontSize: 22, fontWeight: '700', color: theme.textPrimary },
+  centerSubLabel: { fontSize: 11, color: theme.textSecondary, marginTop: 1 },
   legend: { gap: 10, flex: 1, minWidth: 120 },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  legendLabel: { fontSize: 12, color: neutral[600], flex: 1 },
-  legendValue: { fontSize: 12, fontWeight: '700', color: neutral[900] },
+  legendLabel: { fontSize: 12, color: theme.textSecondary, flex: 1 },
+  legendValue: { fontSize: 12, fontWeight: '700', color: theme.textPrimary },
 });

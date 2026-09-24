@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronDown, Star, CheckSquare } from '../../components/icons';
 import Modal from '../ui/Modal';
 import ProgressBar from '../ui/ProgressBar';
-import { colors, primaryScale, neutral } from '../../theme/colors';
+import { colors, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface PerformanceCellStudent {
   name: string;
@@ -26,6 +27,8 @@ interface PerformanceCellProps {
 
 /** Tappable "Performance %" table cell — opens a breakdown popup on tap. */
 export default function PerformanceCell({ student, textStyle }: PerformanceCellProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [open, setOpen] = useState(false);
   const performance = student.performance != null ? `${student.performance}%` : '—';
   const hasBreakdown = student.iaMarks != null || student.assignmentMarks != null;
@@ -39,7 +42,7 @@ export default function PerformanceCell({ student, textStyle }: PerformanceCellP
         accessibilityLabel={`View performance breakdown for ${student.name}`}
       >
         <Text style={textStyle}>{performance}</Text>
-        <ChevronDown size={12} color={primaryScale[400]} />
+        <ChevronDown size={12} color={theme.primary} />
       </TouchableOpacity>
 
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Performance Breakdown" size="sm">
@@ -92,29 +95,29 @@ export default function PerformanceCell({ student, textStyle }: PerformanceCellP
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   trigger: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  studentName: { fontSize: 12, color: neutral[500], marginBottom: 12 },
+  studentName: { fontSize: 12, color: theme.textSecondary, marginBottom: 12 },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: primaryScale[50],
+    backgroundColor: theme.primarySoft,
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
   },
-  totalLabel: { fontSize: 12, fontWeight: '600', color: primaryScale[700] },
-  totalValue: { fontSize: 18, fontWeight: '700', color: primaryScale[700] },
+  totalLabel: { fontSize: 12, fontWeight: '600', color: theme.primary },
+  totalValue: { fontSize: 18, fontWeight: '700', color: theme.primary },
   breakdown: { gap: 16 },
   breakdownRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   breakdownIcon: {
     width: 30,
     height: 30,
     borderRadius: 9,
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hint: { fontSize: 11, color: neutral[400], marginTop: 16, lineHeight: 16 },
+  hint: { fontSize: 11, color: theme.textMuted, marginTop: 16, lineHeight: 16 },
 });

@@ -8,7 +8,8 @@ import CustomDropdown from '../../components/Dropdown/CustomDropdown';
 import CustomButton from '../../components/Button/CustomButton';
 import InfoCard from '../../components/Card/InfoCard';
 import { useDropdown, useSectionsBySemester } from '../../hooks/useDropdowns';
-import { colors, spacing, typography, radius } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, typography, radius } from '../../theme';
 
 const DEFAULTS = {
   name: '',
@@ -23,17 +24,23 @@ const DEFAULTS = {
   usn: '',
 };
 
-const IconBadge = ({ name }) => (
-  <View style={styles.iconBadge}>
-    <Icon source={name} size={18} color={colors.primary} />
-  </View>
-);
+const IconBadge = ({ name }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  return (
+    <View style={styles.iconBadge}>
+      <Icon source={name} size={18} color={colors.primary} />
+    </View>
+  );
+};
 
 const StudentForm = ({
   initialValues, onSubmit, onSaveAndContinue, onCancel,
   submitLabel = 'Save Student Data', submitting = false, continuing = false,
   breadcrumbLabel = 'Add Student',
 }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const {
     control, handleSubmit, reset, formState: { errors },
   } = useForm({ defaultValues: initialValues || DEFAULTS });
@@ -280,7 +287,7 @@ const StudentForm = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   scrollView: {
     flex: 1,
     width: '100%',

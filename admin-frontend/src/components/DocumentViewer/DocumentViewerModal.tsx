@@ -6,8 +6,9 @@ import {
 import {
   Portal, Modal, Text, IconButton,
 } from 'react-native-paper';
+import { useTheme } from '../../context/ThemeContext';
 import {
-  colors, spacing, radius, typography,
+  spacing, radius, typography,
 } from '../../theme';
 
 const isImageUrl = (url = '') => /\.(jpe?g|png|gif|webp)$/i.test(url);
@@ -17,6 +18,8 @@ const isImageUrl = (url = '') => /\.(jpe?g|png|gif|webp)$/i.test(url);
 const DocumentViewerModal = ({
   visible, onDismiss, documentUrl, title = 'Supporting Document',
 }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   if (!documentUrl) return null;
   const isImage = isImageUrl(documentUrl);
 
@@ -61,7 +64,7 @@ const DocumentViewerModal = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     margin: spacing.xl,

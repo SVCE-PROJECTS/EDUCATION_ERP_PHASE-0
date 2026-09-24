@@ -20,7 +20,8 @@ import { studentService, StudentOption } from '../../services/student.service';
 import Button from '../../components/ui/Button';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
-import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
+import { colors, shadows, primaryScale, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { ROUTES } from '../../navigation/routes';
 
 interface IARow {
@@ -39,6 +40,8 @@ interface IARow {
 
 // ── Mark row ──────────────────────────────────────────────────────────────────
 function MarkRow({ item, onEdit, onDelete }: { item: IARow; onEdit: () => void; onDelete: () => void }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const avg = item.average ?? 0;
   const color = avg >= 20 ? colors.success : avg >= 12 ? colors.warning : colors.danger;
   const bg    = avg >= 20 ? colors.successBg : avg >= 12 ? colors.warningBg : colors.dangerBg;
@@ -60,7 +63,7 @@ function MarkRow({ item, onEdit, onDelete }: { item: IARow; onEdit: () => void; 
         </View>
         <View style={s.rowActions}>
           <TouchableOpacity onPress={onEdit} style={s.actionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Pencil size={14} color={primaryScale[500]} />
+            <Pencil size={14} color={theme.primary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onDelete} style={[s.actionBtn, s.actionBtnDanger]} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Trash2 size={14} color={colors.red[500]} />
@@ -78,6 +81,8 @@ function SelectSheet<T extends { label: string }>({
   visible: boolean; onClose: () => void; label: string;
   options: T[]; value: string; onChange: (v: T) => void; emptyMsg?: string;
 }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <RNModal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <TouchableOpacity style={s.sheetBackdrop} activeOpacity={1} onPress={onClose} />
@@ -85,7 +90,7 @@ function SelectSheet<T extends { label: string }>({
         <View style={s.sheetHeader}>
           <Text style={s.sheetTitle}>{label}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <X size={18} color={neutral[400]} />
+            <X size={18} color={theme.textMuted} />
           </TouchableOpacity>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 360 }}>
@@ -99,7 +104,7 @@ function SelectSheet<T extends { label: string }>({
                     <Text style={[s.sheetOptionText, active && s.sheetOptionTextActive]} numberOfLines={2}>
                       {opt.label}
                     </Text>
-                    {active && <Check size={14} color={primaryScale[600]} />}
+                    {active && <Check size={14} color={theme.primary} />}
                   </TouchableOpacity>
                 );
               })}
@@ -125,6 +130,8 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, myClasses }: 
   visible: boolean; onClose: () => void; initial?: IARow | null;
   onSubmit: (d: IAMarksPayload) => void; loading: boolean; myClasses: any[];
 }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [form, setForm]                 = useState<FormState>(EMPTY);
   const [classSheet, setClassSheet]     = useState(false);
   const [studentSheet, setStudentSheet] = useState(false);
@@ -220,7 +227,7 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, myClasses }: 
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{initial ? 'Edit IA Marks' : 'Add IA Marks'}</Text>
               <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <X size={18} color={neutral[400]} />
+                <X size={18} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -233,7 +240,7 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, myClasses }: 
                   <Text style={form.classLabel ? s.selectValue : s.selectPlaceholder} numberOfLines={1}>
                     {form.classLabel || 'Select class…'}
                   </Text>
-                  <ChevronDown size={16} color={neutral[400]} />
+                  <ChevronDown size={16} color={theme.textMuted} />
                 </TouchableOpacity>
               </View>
 
@@ -242,7 +249,7 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, myClasses }: 
                 <Text style={s.fieldLabel}>Student <Text style={s.required}>*</Text></Text>
                 {loadingStudents ? (
                   <View style={[s.input, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator size="small" color={primaryScale[500]} />
+                    <ActivityIndicator size="small" color={theme.primary} />
                   </View>
                 ) : (
                   <TouchableOpacity
@@ -256,7 +263,7 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, myClasses }: 
                     <Text style={form.studentLabel ? s.selectValue : s.selectPlaceholder} numberOfLines={1}>
                       {form.studentLabel || (form.classId ? 'Select student…' : 'Select class first')}
                     </Text>
-                    <ChevronDown size={16} color={neutral[400]} />
+                    <ChevronDown size={16} color={theme.textMuted} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -274,7 +281,7 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, myClasses }: 
                     value={form[key]}
                     onChangeText={set(key)}
                     placeholder="Leave blank to skip"
-                    placeholderTextColor={neutral[400]}
+                    placeholderTextColor={theme.placeholder}
                     keyboardType="numeric"
                   />
                 </View>
@@ -315,6 +322,8 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, myClasses }: 
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function IAMarks() {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [classFilter, setClassFilter]   = useState<number | null>(null);
   const [formVisible, setFormVisible]   = useState(false);
   const [editing, setEditing]           = useState<IARow | null>(null);
@@ -372,26 +381,26 @@ export default function IAMarks() {
             ))}
         <TouchableOpacity onPress={() => qc.invalidateQueries({ queryKey: ['ia-marks'] })} style={s.refreshBtn}>
           {isFetching
-            ? <ActivityIndicator size={14} color={neutral[400]} />
-            : <RefreshCw size={14} color={neutral[400]} />}
+            ? <ActivityIndicator size={14} color={theme.textMuted} />
+            : <RefreshCw size={14} color={theme.textMuted} />}
         </TouchableOpacity>
       </ScrollView>
 
       {/* List */}
       {isLoading ? (
-        <View style={s.center}><ActivityIndicator size="large" color={primaryScale[500]} /></View>
+        <View style={s.center}><ActivityIndicator size="large" color={theme.primary} /></View>
       ) : (
         <View style={s.sectionCard}>
           <View style={s.cardHeader}>
             <View style={s.cardHeaderLeft}>
-              <Award size={16} color={primaryScale[600]} />
+              <Award size={16} color={theme.primary} />
               <Text style={s.cardTitle}>Internal Assessment Records</Text>
             </View>
             <Text style={s.cardCount}>{marks.length} entries</Text>
           </View>
           {marks.length === 0 ? (
             <View style={s.empty}>
-              <Award size={44} color={neutral[200]} />
+              <Award size={44} color={theme.border} />
               <Text style={s.emptyTitle}>No IA marks yet</Text>
               <Text style={s.emptyDesc}>Tap "Add" to enter marks for a student.</Text>
             </View>
@@ -403,7 +412,7 @@ export default function IAMarks() {
               ItemSeparatorComponent={() => <View style={s.separator} />}
               refreshControl={
                 <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch}
-                  tintColor={primaryScale[500]} colors={[primaryScale[500]]} />
+                  tintColor={theme.primary} colors={[theme.primary]} />
               }
             />
           )}
@@ -433,62 +442,62 @@ export default function IAMarks() {
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
-  pageTitle: { fontSize: 20, fontWeight: '700', color: neutral[900] },
-  pageSubtitle: { fontSize: 12, color: neutral[500], marginTop: 2 },
+  pageTitle: { fontSize: 20, fontWeight: '700', color: theme.textPrimary },
+  pageSubtitle: { fontSize: 12, color: theme.textSecondary, marginTop: 2 },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: primaryScale[600], paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, ...shadows.card },
   addBtnText: { fontSize: 13, fontWeight: '600', color: colors.white },
   chipRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
-  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 1, borderColor: neutral[200], backgroundColor: colors.white },
+  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.surface },
   chipActive: { backgroundColor: primaryScale[600], borderColor: primaryScale[600] },
-  chipText: { fontSize: 12, fontWeight: '500', color: neutral[600] },
+  chipText: { fontSize: 12, fontWeight: '500', color: theme.textSecondary },
   chipTextActive: { color: colors.white, fontWeight: '600' },
-  refreshBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: neutral[200], alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
+  refreshBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
-  sectionCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: neutral[100], overflow: 'hidden', ...shadows.card, flex: 1 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: neutral[100], backgroundColor: neutral[50] },
+  sectionCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: theme.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.border, overflow: 'hidden', ...shadows.card, flex: 1 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border, backgroundColor: theme.background },
   cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardTitle: { fontSize: 14, fontWeight: '600', color: neutral[900] },
-  cardCount: { fontSize: 12, color: neutral[500] },
+  cardTitle: { fontSize: 14, fontWeight: '600', color: theme.textPrimary },
+  cardCount: { fontSize: 12, color: theme.textSecondary },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, gap: 12 },
   rowInfo: { flex: 1, minWidth: 0 },
-  rowStudent: { fontSize: 13, fontWeight: '600', color: neutral[900] },
-  rowMeta: { fontSize: 11, color: neutral[500], marginTop: 2 },
-  rowRight: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
-  scoreBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, alignItems: 'center', minWidth: 60 },
-  scoreText: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  rowStudent: { fontSize: 13, fontWeight: '600', color: theme.textPrimary },
+  rowMeta: { fontSize: 11, color: theme.textMuted, marginTop: 1 },
+  rowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  scoreBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  scoreText: { fontSize: 13, fontWeight: '700' },
   rowActions: { flexDirection: 'row', gap: 4 },
-  actionBtn: { padding: 7, borderRadius: 8, borderWidth: 1, borderColor: neutral[100], backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  actionBtn: { padding: 7, borderRadius: 8, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.surface, alignItems: 'center', justifyContent: 'center' },
   actionBtnDanger: { borderColor: colors.red[100] },
-  separator: { height: 1, backgroundColor: neutral[50] },
+  separator: { height: 1, backgroundColor: theme.border },
   empty: { padding: 48, alignItems: 'center', gap: 8 },
-  emptyTitle: { fontSize: 15, fontWeight: '600', color: neutral[500] },
-  emptyDesc: { fontSize: 13, color: neutral[400], textAlign: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  emptyTitle: { fontSize: 15, fontWeight: '600', color: theme.textSecondary },
+  emptyDesc: { fontSize: 13, color: theme.textMuted, textAlign: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
   modalKav: { justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: neutral[100], backgroundColor: neutral[50] },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: neutral[900] },
+  modalSheet: { backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border, backgroundColor: theme.background },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: theme.textPrimary },
   formBody: { padding: 20, gap: 14, paddingBottom: 8 },
   fieldGroup: { gap: 6 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: neutral[700] },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: theme.textSecondary },
   required: { color: colors.red[500] },
-  input: { borderWidth: 1, borderColor: neutral[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: neutral[900], backgroundColor: colors.white, minHeight: 46 },
+  input: { borderWidth: 1, borderColor: theme.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: theme.textPrimary, backgroundColor: theme.surface, minHeight: 46 },
   selectTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  selectValue: { flex: 1, fontSize: 14, color: neutral[900] },
-  selectPlaceholder: { flex: 1, fontSize: 14, color: neutral[400] },
+  selectValue: { flex: 1, fontSize: 14, color: theme.textPrimary },
+  selectPlaceholder: { flex: 1, fontSize: 14, color: theme.textMuted },
   infoBox: { backgroundColor: primaryScale[50], borderRadius: 10, padding: 12, borderWidth: 1, borderColor: primaryScale[100] },
   infoText: { fontSize: 12, color: primaryScale[700], textAlign: 'center' },
-  modalFooter: { flexDirection: 'row', gap: 10, padding: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: neutral[100], backgroundColor: neutral[50] },
+  modalFooter: { flexDirection: 'row', gap: 10, padding: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.border, backgroundColor: theme.background },
   footerBtn: { flex: 1 },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheetContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: neutral[100] },
-  sheetTitle: { fontSize: 15, fontWeight: '700', color: neutral[900] },
-  sheetEmpty: { textAlign: 'center', color: neutral[400], padding: 24, fontSize: 14 },
-  sheetOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: neutral[50], minHeight: 48 },
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.overlay },
+  sheetContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: theme.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: theme.border },
+  sheetTitle: { fontSize: 15, fontWeight: '700', color: theme.textPrimary },
+  sheetEmpty: { textAlign: 'center', color: theme.textMuted, padding: 24, fontSize: 14 },
+  sheetOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: theme.border, minHeight: 48 },
   sheetOptionActive: { backgroundColor: primaryScale[50], borderRadius: 10, paddingHorizontal: 10, borderBottomWidth: 0 },
-  sheetOptionText: { flex: 1, fontSize: 14, color: neutral[700], marginRight: 8 },
+  sheetOptionText: { flex: 1, fontSize: 14, color: theme.textSecondary, marginRight: 8 },
   sheetOptionTextActive: { color: primaryScale[700], fontWeight: '600' },
 });

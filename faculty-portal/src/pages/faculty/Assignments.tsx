@@ -21,7 +21,8 @@ import SearchBar from '../../components/ui/SearchBar';
 import Button from '../../components/ui/Button';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
 import { formatDate } from '../../utils/formatters';
-import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
+import { colors, shadows, primaryScale, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { ROUTES } from '../../navigation/routes';
 
 // ── Types matching actual DB rows ─────────────────────────────────────────────
@@ -52,6 +53,8 @@ const STATUS_OPTIONS = ['Open', 'Closed', 'Draft'];
 
 // ── Assignment card ───────────────────────────────────────────────────────────
 function AssignmentCard({ item, onEdit, onDelete }: { item: AssignmentRow; onEdit: () => void; onDelete: () => void }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const statusColor = item.status === 'Open' ? colors.success : item.status === 'Closed' ? colors.danger : colors.warning;
   const statusBg    = item.status === 'Open' ? colors.successBg : item.status === 'Closed' ? colors.dangerBg : colors.warningBg;
   return (
@@ -86,6 +89,8 @@ function AssignmentCard({ item, onEdit, onDelete }: { item: AssignmentRow; onEdi
 function SelectSheet<T extends { label: string }>({
   visible, onClose, label, options, value, onChange,
 }: { visible: boolean; onClose: () => void; label: string; options: T[]; value: string; onChange: (v: T) => void }) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <RNModal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <TouchableOpacity style={s.sheetBackdrop} activeOpacity={1} onPress={onClose} />
@@ -93,7 +98,7 @@ function SelectSheet<T extends { label: string }>({
         <View style={s.sheetHeader}>
           <Text style={s.sheetTitle}>{label}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <X size={18} color={neutral[400]} />
+            <X size={18} color={theme.textMuted} />
           </TouchableOpacity>
         </View>
         <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 360 }}>
@@ -103,7 +108,7 @@ function SelectSheet<T extends { label: string }>({
               <TouchableOpacity key={i} onPress={() => { onChange(opt); onClose(); }}
                 style={[s.sheetOption, active && s.sheetOptionActive]} activeOpacity={0.75}>
                 <Text style={[s.sheetOptionText, active && s.sheetOptionTextActive]} numberOfLines={2}>{opt.label}</Text>
-                {active && <Check size={14} color={primaryScale[600]} />}
+                {active && <Check size={14} color={theme.primary} />}
               </TouchableOpacity>
             );
           })}
@@ -120,6 +125,8 @@ const EMPTY_FORM: FormState = { classLabel: '', classId: null, title: '', descri
 interface FormSheetProps { visible: boolean; onClose: () => void; initial?: AssignmentRow | null; onSubmit: (d: AssignmentPayload) => void; loading: boolean; classes: any[]; }
 
 function FormSheet({ visible, onClose, initial, onSubmit, loading, classes }: FormSheetProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [classSheet, setClassSheet]   = useState(false);
   const [statusSheet, setStatusSheet] = useState(false);
@@ -149,7 +156,7 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, classes }: Fo
           <View style={s.modalSheet}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>{initial ? 'Edit Assignment' : 'New Assignment'}</Text>
-              <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}><X size={18} color={neutral[400]} /></TouchableOpacity>
+              <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}><X size={18} color={theme.textMuted} /></TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={s.formBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               {/* Class selector */}
@@ -157,35 +164,35 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, classes }: Fo
                 <Text style={s.fieldLabel}>Class (Subject · Section) <Text style={s.required}>*</Text></Text>
                 <TouchableOpacity style={[s.input, s.selectTrigger]} onPress={() => setClassSheet(true)} activeOpacity={0.8}>
                   <Text style={form.classLabel ? s.selectValue : s.selectPlaceholder} numberOfLines={1}>{form.classLabel || 'Select class…'}</Text>
-                  <ChevronDown size={16} color={neutral[400]} />
+                  <ChevronDown size={16} color={theme.textMuted} />
                 </TouchableOpacity>
               </View>
               {/* Title */}
               <View style={s.fieldGroup}>
                 <Text style={s.fieldLabel}>Title <Text style={s.required}>*</Text></Text>
-                <TextInput style={s.input} value={form.title} onChangeText={set('title')} placeholder="Assignment title" placeholderTextColor={neutral[400]} />
+                <TextInput style={s.input} value={form.title} onChangeText={set('title')} placeholder="Assignment title" placeholderTextColor={theme.placeholder} />
               </View>
               {/* Description */}
               <View style={s.fieldGroup}>
                 <Text style={s.fieldLabel}>Description</Text>
-                <TextInput style={[s.input, s.inputMulti]} value={form.description} onChangeText={set('description')} placeholder="Optional details…" placeholderTextColor={neutral[400]} multiline numberOfLines={3} textAlignVertical="top" />
+                <TextInput style={[s.input, s.inputMulti]} value={form.description} onChangeText={set('description')} placeholder="Optional details…" placeholderTextColor={theme.placeholder} multiline numberOfLines={3} textAlignVertical="top" />
               </View>
               {/* Due date */}
               <View style={s.fieldGroup}>
                 <Text style={s.fieldLabel}>Due Date</Text>
-                <TextInput style={s.input} value={form.dueDate} onChangeText={set('dueDate')} placeholder="YYYY-MM-DD" placeholderTextColor={neutral[400]} />
+                <TextInput style={s.input} value={form.dueDate} onChangeText={set('dueDate')} placeholder="YYYY-MM-DD" placeholderTextColor={theme.placeholder} />
               </View>
               {/* Marks */}
               <View style={s.fieldGroup}>
                 <Text style={s.fieldLabel}>Marks</Text>
-                <TextInput style={s.input} value={form.marks} onChangeText={set('marks')} placeholder="0" placeholderTextColor={neutral[400]} keyboardType="numeric" />
+                <TextInput style={s.input} value={form.marks} onChangeText={set('marks')} placeholder="0" placeholderTextColor={theme.placeholder} keyboardType="numeric" />
               </View>
               {/* Status */}
               <View style={s.fieldGroup}>
                 <Text style={s.fieldLabel}>Status</Text>
                 <TouchableOpacity style={[s.input, s.selectTrigger]} onPress={() => setStatusSheet(true)} activeOpacity={0.8}>
                   <Text style={s.selectValue}>{form.status}</Text>
-                  <ChevronDown size={16} color={neutral[400]} />
+                  <ChevronDown size={16} color={theme.textMuted} />
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -211,6 +218,8 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, classes }: Fo
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function Assignments() {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const [search, setSearch]             = useState('');
   const [formVisible, setFormVisible]   = useState(false);
   const [editing, setEditing]           = useState<AssignmentRow | null>(null);
@@ -262,7 +271,7 @@ export default function Assignments() {
       <View style={s.filterRow}>
         <SearchBar value={search} onChange={setSearch} placeholder="Search by title or subject…" style={s.searchBar} />
         <TouchableOpacity onPress={() => qc.invalidateQueries({ queryKey: ['assignments'] })} style={s.refreshBtn}>
-          {isFetching ? <ActivityIndicator size={16} color={neutral[400]} /> : <RefreshCw size={16} color={neutral[400]} />}
+          {isFetching ? <ActivityIndicator size={16} color={theme.textMuted} /> : <RefreshCw size={16} color={theme.textMuted} />}
         </TouchableOpacity>
       </View>
 
@@ -276,7 +285,7 @@ export default function Assignments() {
           refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={primaryScale[500]} colors={[primaryScale[500]]} />}
           ListEmptyComponent={
             <View style={s.empty}>
-              <ClipboardList size={44} color={neutral[200]} />
+              <ClipboardList size={44} color={theme.border} />
               <Text style={s.emptyTitle}>No assignments yet</Text>
               <Text style={s.emptyDesc}>Tap "New" to create your first assignment.</Text>
             </View>
@@ -296,56 +305,56 @@ export default function Assignments() {
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 12 },
-  pageTitle: { fontSize: 20, fontWeight: '700', color: neutral[900] },
-  pageSubtitle: { fontSize: 12, color: neutral[500], marginTop: 2 },
+  pageTitle: { fontSize: 20, fontWeight: '700', color: theme.textPrimary },
+  pageSubtitle: { fontSize: 12, color: theme.textSecondary, marginTop: 2 },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: primaryScale[600], paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, ...shadows.card },
   addBtnText: { fontSize: 13, fontWeight: '600', color: colors.white },
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
   searchBar: { flex: 1 },
-  refreshBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: neutral[200], alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
+  refreshBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.surface },
   listContent: { paddingHorizontal: 16, paddingBottom: 32, gap: 8 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
-  card: { backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: neutral[100], padding: 14, gap: 10, ...shadows.card },
+  card: { backgroundColor: theme.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.border, padding: 14, gap: 10, ...shadows.card },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardLeft: { flex: 1, minWidth: 0, marginRight: 8 },
-  cardTitle: { fontSize: 14, fontWeight: '600', color: neutral[900] },
+  cardTitle: { fontSize: 14, fontWeight: '600', color: theme.textPrimary },
   cardSubject: { fontSize: 12, color: primaryScale[600], marginTop: 2 },
   cardActions: { flexDirection: 'row', gap: 6 },
-  actionBtn: { padding: 6, borderRadius: 8, borderWidth: 1, borderColor: neutral[100], backgroundColor: colors.white },
+  actionBtn: { padding: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.surface },
   actionBtnDanger: { borderColor: colors.red[100] },
-  cardDesc: { fontSize: 12, color: neutral[500], lineHeight: 17 },
+  cardDesc: { fontSize: 12, color: theme.textSecondary, lineHeight: 17 },
   metaRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  metaChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: neutral[100] },
-  metaText: { fontSize: 11, color: neutral[600], fontWeight: '500' },
+  metaChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: theme.border },
+  metaText: { fontSize: 11, color: theme.textSecondary, fontWeight: '500' },
   metaChipDue: { backgroundColor: colors.warningBg },
   metaTextDue: { color: colors.warning },
   empty: { padding: 48, alignItems: 'center', gap: 8 },
-  emptyTitle: { fontSize: 15, fontWeight: '600', color: neutral[500] },
-  emptyDesc: { fontSize: 13, color: neutral[400], textAlign: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  emptyTitle: { fontSize: 15, fontWeight: '600', color: theme.textSecondary },
+  emptyDesc: { fontSize: 13, color: theme.textMuted, textAlign: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: theme.overlay, justifyContent: 'flex-end' },
   modalKav: { justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: neutral[100] },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: neutral[900] },
+  modalSheet: { backgroundColor: theme.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.border },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: theme.textPrimary },
   formBody: { padding: 20, gap: 14 },
   fieldGroup: { gap: 6 },
-  fieldLabel: { fontSize: 13, fontWeight: '500', color: neutral[700] },
+  fieldLabel: { fontSize: 13, fontWeight: '500', color: theme.textSecondary },
   required: { color: colors.red[500] },
-  input: { borderWidth: 1, borderColor: neutral[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: neutral[900], backgroundColor: colors.white, minHeight: 44 },
+  input: { borderWidth: 1, borderColor: theme.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: theme.textPrimary, backgroundColor: theme.surface, minHeight: 44 },
   inputMulti: { height: 80, textAlignVertical: 'top', paddingTop: 10 },
   selectTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  selectValue: { flex: 1, fontSize: 14, color: neutral[900] },
-  selectPlaceholder: { flex: 1, fontSize: 14, color: neutral[400] },
-  modalFooter: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: neutral[100] },
+  selectValue: { flex: 1, fontSize: 14, color: theme.textPrimary },
+  selectPlaceholder: { flex: 1, fontSize: 14, color: theme.textMuted },
+  modalFooter: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: theme.border },
   footerBtn: { flex: 1 },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheetContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 5 },
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: theme.overlay },
+  sheetContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: theme.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 5 },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  sheetTitle: { fontSize: 15, fontWeight: '700', color: neutral[900] },
-  sheetOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: neutral[50] },
+  sheetTitle: { fontSize: 15, fontWeight: '700', color: theme.textPrimary },
+  sheetOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: theme.border },
   sheetOptionActive: { backgroundColor: primaryScale[50], borderRadius: 10, paddingHorizontal: 10 },
-  sheetOptionText: { flex: 1, fontSize: 14, color: neutral[700], marginRight: 8 },
+  sheetOptionText: { flex: 1, fontSize: 14, color: theme.textSecondary, marginRight: 8 },
   sheetOptionTextActive: { color: primaryScale[600], fontWeight: '600' },
 });

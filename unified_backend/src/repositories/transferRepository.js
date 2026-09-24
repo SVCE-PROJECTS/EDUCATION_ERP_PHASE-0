@@ -93,4 +93,44 @@ async function findByStudentId(studentId) {
   return result.rows;
 }
 
-module.exports = { createTransfer, findByStudentId };
+/**
+ * Every transfer, newest first — old + new department/program/semester/section
+ * for each, plus who was transferred. Backs the admin Dashboard's "Transferred
+ * Students" detail view and its Excel/PDF export.
+ */
+async function findAll() {
+  const result = await query(
+    `SELECT
+       t.transfer_id AS id,
+       t.student_id AS "studentId",
+       s.name AS "studentName",
+       s.usn,
+       t.old_program_id AS "oldProgramId",       op.program_name AS "oldProgramName",
+       t.old_department_id AS "oldDepartmentId", od.department_name AS "oldDepartmentName",
+       t.old_semester_id AS "oldSemesterId",      os.semester_number AS "oldSemester",
+       t.old_section_id AS "oldSectionId",        osec.section_name AS "oldSectionName",
+       t.new_program_id AS "newProgramId",         np.program_name AS "newProgramName",
+       t.new_department_id AS "newDepartmentId",  nd.department_name AS "newDepartmentName",
+       t.new_semester_id AS "newSemesterId",       ns.semester_number AS "newSemester",
+       t.new_section_id AS "newSectionId",         nsec.section_name AS "newSectionName",
+       t.reason,
+       t.document_url AS "documentUrl",
+       t.transfer_date AS "transferDate"
+     FROM student_transfers t
+     JOIN students            s    ON s.library_id     = t.student_id
+     LEFT JOIN programs      op   ON op.program_id    = t.old_program_id
+     LEFT JOIN departments   od   ON od.department_id = t.old_department_id
+     LEFT JOIN semesters     os   ON os.semester_id   = t.old_semester_id
+     LEFT JOIN sections      osec ON osec.section_id  = t.old_section_id
+     LEFT JOIN programs      np   ON np.program_id    = t.new_program_id
+     LEFT JOIN departments   nd   ON nd.department_id = t.new_department_id
+     LEFT JOIN semesters     ns   ON ns.semester_id   = t.new_semester_id
+     LEFT JOIN sections      nsec ON nsec.section_id  = t.new_section_id
+     ORDER BY t.transfer_date DESC`,
+  );
+  return result.rows;
+}
+
+module.exports = {
+  createTransfer, findByStudentId, findAll,
+};

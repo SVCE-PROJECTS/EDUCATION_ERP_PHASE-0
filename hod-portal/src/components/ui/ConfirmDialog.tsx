@@ -3,7 +3,8 @@ import { View, Text, StyleSheet } from 'react-native';
 import { AlertTriangle } from '../../components/icons';
 import Modal from './Modal';
 import Button, { ButtonVariant } from './Button';
-import { colors, neutral } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { colors, ThemeColors } from '../../theme/colors';
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export default function ConfirmDialog({
   variant = 'danger',
   loading = false,
 }: ConfirmDialogProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   return (
     <Modal
       isOpen={isOpen}
@@ -53,7 +56,7 @@ export default function ConfirmDialog({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -68,7 +71,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
-    color: neutral[600],
+    color: theme.textSecondary,
     marginTop: 2,
   },
 });

@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import BarChart from '../ui/BarChart';
 import PieChart from '../ui/PieChart';
-import { colors, shadows, neutral } from '../../theme/colors';
+import { colors, shadows, ThemeColors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 const SCREEN_W = Dimensions.get('window').width;
 const IS_WIDE = SCREEN_W > 700;
@@ -32,6 +33,8 @@ export default function DashboardCharts({
   activityCount,
   performanceBuckets,
 }: DashboardChartsProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   const { excellent, average, needsImprovement } = performanceBuckets;
   const totalRated = excellent + average + needsImprovement;
 
@@ -53,52 +56,45 @@ export default function DashboardCharts({
       </View>
 
       {/* Performance donut */}
-      {/* Performance donut */}
-<View style={[s.card, IS_WIDE && s.cardHalf]}>
-  <Text style={s.cardTitle}>Overall Department Performance</Text>
-  <Text style={s.cardSub}>Students grouped by performance band</Text>
+      <View style={[s.card, IS_WIDE && s.cardHalf]}>
+        <Text style={s.cardTitle}>Overall Department Performance</Text>
+        <Text style={s.cardSub}>Students grouped by performance band</Text>
 
-  <PieChart
-    centerLabel="5"
-    centerSubLabel="students"
-    data={[
-      {
-        label: 'Excellent (>75%)',
-        value: 2,
-        color: colors.success,
-      },
-      {
-        label: 'Average (50-74%)',
-        value: 2,
-        color: colors.warning,
-      },
-      {
-        label: 'Needs Improvement (<50%)',
-        value: 1,
-        color: colors.danger,
-      },
-    ]}
-  />
-</View>
+        {totalRated > 0 ? (
+          <PieChart
+            centerLabel={String(totalRated)}
+            centerSubLabel="students"
+            data={[
+              { label: 'Excellent (≥75%)', value: excellent, color: colors.success },
+              { label: 'Average (50–74%)', value: average, color: colors.warning },
+              { label: 'Needs Improvement (<50%)', value: needsImprovement, color: colors.danger },
+            ]}
+          />
+        ) : (
+          <View style={s.empty}>
+            <Text style={s.emptyText}>No performance data available yet.</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   wrap: { gap: 16 },
   wrapRow: { flexDirection: 'row', alignItems: 'stretch' },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 20,
     gap: 4,
     ...shadows.card,
   },
   cardHalf: { flex: 1, minWidth: 0 },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: neutral[900] },
-  cardSub: { fontSize: 12, color: neutral[500], marginBottom: 14 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: theme.textPrimary },
+  cardSub: { fontSize: 12, color: theme.textSecondary, marginBottom: 14 },
   empty: { paddingVertical: 24, alignItems: 'center' },
-  emptyText: { fontSize: 13, color: neutral[400] },
+  emptyText: { fontSize: 13, color: theme.textMuted },
 });

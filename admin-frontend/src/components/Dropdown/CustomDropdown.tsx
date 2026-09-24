@@ -3,8 +3,9 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { HelperText, Text } from 'react-native-paper';
+import { useTheme } from '../../context/ThemeContext';
 import {
-  colors, spacing, typography, radius,
+  spacing, typography, radius,
 } from '../../theme';
 
 /**
@@ -19,6 +20,8 @@ const CustomDropdown = ({
   label, value, options = [], onSelect, error, placeholder = 'Select', loading = false,
   floatingLabel = true,
 }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const placeholderText = loading ? 'Loading...' : (floatingLabel ? label : placeholder);
 
   return (
@@ -47,7 +50,7 @@ const CustomDropdown = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     marginBottom: spacing.md,
   },

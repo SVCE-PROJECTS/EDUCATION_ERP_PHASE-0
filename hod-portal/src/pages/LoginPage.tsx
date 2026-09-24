@@ -144,7 +144,7 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={[primaryScale[500], primaryScale[700], primaryScale[900]]}
+      colors={colors.gradientPrimary}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={s.gradient}

@@ -72,4 +72,56 @@ const log = async ({ performedBy, action, facultyId, details }) => {
   });
 };
 
-module.exports = { create, log };
+/**
+ * Paginated, filterable read of audit_logs for the admin Activity Log screen.
+ * Joins users so each row can show who performed the action (null when the
+ * actor's id wasn't a numeric users.user_id — see the note above).
+ */
+const findAll = async ({
+  page = 1, pageSize = 25, module: moduleFilter, action, dateFrom, dateTo,
+} = {}) => {
+  const conditions = [];
+  const params = [];
+  let idx = 1;
+
+  if (moduleFilter) { conditions.push(`a.module = $${idx}`); params.push(moduleFilter); idx += 1; }
+  if (action)       { conditions.push(`a.action = $${idx}`); params.push(action); idx += 1; }
+  if (dateFrom)     { conditions.push(`a.created_at >= $${idx}`); params.push(dateFrom); idx += 1; }
+  if (dateTo)       { conditions.push(`a.created_at <= $${idx}`); params.push(dateTo); idx += 1; }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const countResult = await query(
+    `SELECT COUNT(*)::int AS total FROM audit_logs a ${whereClause}`,
+    params,
+  );
+  const total = countResult.rows[0]?.total || 0;
+
+  const limit = Math.min(Math.max(pageSize, 1), 100);
+  const offset = (Math.max(page, 1) - 1) * limit;
+  const dataParams = [...params, limit, offset];
+
+  const result = await query(
+    `SELECT
+       a.audit_id   AS "id",
+       a.action,
+       a.module,
+       a.record_id  AS "recordId",
+       a.old_value  AS "oldValue",
+       a.new_value  AS "newValue",
+       a.created_at AS "createdAt",
+       u.username   AS "performedBy"
+     FROM audit_logs a
+     LEFT JOIN users u ON u.user_id = a.user_id
+     ${whereClause}
+     ORDER BY a.created_at DESC
+     LIMIT $${idx} OFFSET $${idx + 1}`,
+    dataParams,
+  );
+
+  return { rows: result.rows, total };
+};
+
+module.exports = {
+  create, log, findAll,
+};

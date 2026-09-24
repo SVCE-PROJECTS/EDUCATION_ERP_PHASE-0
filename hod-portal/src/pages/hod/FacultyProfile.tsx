@@ -47,10 +47,11 @@ import {
 
 import {
   colors,
+  ThemeColors,
   shadows,
-  primaryScale,
-  neutral,
 } from '../../theme/colors';
+
+import { useTheme } from '../../context/ThemeContext';
 
 import { ROUTES } from '../../navigation/routes';
 
@@ -74,11 +75,13 @@ function InfoRow({
   label,
   value,
 }: InfoRowProps) {
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
   return (
     <View style={s.infoRow}>
       <Icon
         size={15}
-        color={neutral[400]}
+        color={theme.textMuted}
         style={s.infoIcon}
       />
 
@@ -101,6 +104,10 @@ function InfoRow({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function FacultyProfileScreen() {
+  const { colors: theme } = useTheme();
+
+  const s = getStyles(theme);
+
   const route = useRoute<any>();
 
   const navigation = useNavigation<any>();
@@ -150,7 +157,7 @@ export default function FacultyProfileScreen() {
       >
         <ActivityIndicator
           size="large"
-          color={primaryScale[500]}
+          color={theme.primary}
         />
       </View>
     );
@@ -307,7 +314,7 @@ export default function FacultyProfileScreen() {
       >
         <ArrowLeft
           size={16}
-          color={neutral[500]}
+          color={theme.textSecondary}
         />
 
         <Text style={s.backText}>
@@ -323,10 +330,7 @@ export default function FacultyProfileScreen() {
       <View style={s.profileCard}>
 
         <LinearGradient
-          colors={[
-            primaryScale[500],
-            colors.purple[600],
-          ]}
+          colors={theme.gradientPrimary}
           start={{
             x: 0,
             y: 0,
@@ -379,7 +383,7 @@ export default function FacultyProfileScreen() {
                 >
                   <Pencil
                     size={13}
-                    color={neutral[700]}
+                    color={theme.textSecondary}
                   />
 
                   <Text
@@ -587,12 +591,12 @@ export default function FacultyProfileScreen() {
 // Styles
 // ─────────────────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
 
   root: {
     flex: 1,
     backgroundColor:
-      neutral[50],
+      theme.background,
     paddingHorizontal: 16,
   },
 
@@ -602,13 +606,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor:
-      neutral[50],
+      theme.background,
   },
 
 
   errorText: {
     fontSize: 14,
-    color: neutral[500],
+    color: theme.textSecondary,
     textAlign: 'center',
     maxWidth: 280,
   },
@@ -621,7 +625,7 @@ const s = StyleSheet.create({
 
   backBtnText: {
     fontSize: 14,
-    color: primaryScale[600],
+    color: theme.primary,
   },
 
 
@@ -639,7 +643,7 @@ const s = StyleSheet.create({
 
   backText: {
     fontSize: 13,
-    color: neutral[500],
+    color: theme.textSecondary,
   },
 
 
@@ -649,10 +653,10 @@ const s = StyleSheet.create({
 
   profileCard: {
     backgroundColor:
-      colors.white,
+      theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     overflow: 'hidden',
     ...shadows.card,
   },
@@ -714,20 +718,20 @@ const s = StyleSheet.create({
 
   editBtnText: {
     fontSize: 12,
-    color: neutral[700],
+    color: theme.textSecondary,
   },
 
 
   profileName: {
     fontSize: 22,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
 
 
   profileSub: {
     fontSize: 13,
-    color: neutral[500],
+    color: theme.textSecondary,
     marginTop: 2,
   },
 
@@ -752,14 +756,14 @@ const s = StyleSheet.create({
 
   infoCard: {
     backgroundColor:
-      colors.white,
+      theme.surface,
 
     borderRadius: 20,
 
     borderWidth: 1,
 
     borderColor:
-      neutral[100],
+      theme.border,
 
     padding: 20,
 
@@ -772,7 +776,7 @@ const s = StyleSheet.create({
   infoSectionTitle: {
     fontSize: 10,
     fontWeight: '600',
-    color: neutral[500],
+    color: theme.textSecondary,
     letterSpacing: 0.8,
     marginBottom: 4,
   },
@@ -795,14 +799,14 @@ const s = StyleSheet.create({
 
   infoLabel: {
     fontSize: 11,
-    color: neutral[400],
+    color: theme.textMuted,
   },
 
 
   infoValue: {
     fontSize: 13,
     fontWeight: '500',
-    color: neutral[900],
+    color: theme.textPrimary,
     marginTop: 1,
   },
 
@@ -833,7 +837,7 @@ const s = StyleSheet.create({
     paddingVertical: 8,
 
     backgroundColor:
-      primaryScale[50],
+      theme.primarySoft,
 
     borderRadius: 14,
   },
@@ -841,7 +845,7 @@ const s = StyleSheet.create({
 
   coordSince: {
     fontSize: 11,
-    color: neutral[400],
+    color: theme.textMuted,
   },
 
 });

@@ -4,21 +4,31 @@
  * { totalStudents, attendancePercent, totalAssignments, openAssignments, iaAverage, recentActivities }
  */
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { ClipboardList, CheckSquare, Award, User, ChevronRight } from '../../components/icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ClipboardList, CheckSquare, Award, User, ChevronRight, LayoutDashboard } from '../../components/icons';
 import { dashboardService } from '../../services/faculty.service';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import ScreenWrapper from '../../layouts/ScreenWrapper';
 import SimpleBarChart from '../../components/ui/SimpleBarChart';
 import ProgressRing from '../../components/ui/ProgressRing';
-import { colors, shadows, primaryScale, neutral } from '../../theme/colors';
+import RoleNotifications from '../../components/ui/RoleNotifications';
+import { colors, shadows, primaryScale, ThemeColors } from '../../theme/colors';
 import { ROUTES } from '../../navigation/routes';
 
 const SCREEN_W = Dimensions.get('window').width;
 const CARD_W = SCREEN_W > 600 ? (SCREEN_W - 48 - 16) / 2 : SCREEN_W - 32;
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
 
 type TileColor = 'indigo' | 'blue' | 'purple' | 'amber';
 const COLOR_MAP: Record<TileColor, { light: string; icon: string; border: string }> = {
@@ -35,7 +45,7 @@ interface TileProps {
   stat?: string | number; statLabel?: string;
 }
 
-function ManagementCard({ title, description, icon: Icon, color, route, stat, statLabel }: TileProps) {
+function ManagementCard({ title, description, icon: Icon, color, route, stat, statLabel, theme, s }: TileProps & { theme: ThemeColors; s: ReturnType<typeof getStyles> }) {
   const navigation = useNavigation<any>();
   const c = COLOR_MAP[color];
   return (
@@ -46,7 +56,7 @@ function ManagementCard({ title, description, icon: Icon, color, route, stat, st
           <View style={[s.mgmtIconWrap, { backgroundColor: c.light, borderColor: c.border }]}>
             <Icon size={22} color={c.icon} />
           </View>
-          <ChevronRight size={16} color={neutral[400]} />
+          <ChevronRight size={16} color={theme.textMuted} />
         </View>
         <Text style={s.mgmtTitle}>{title}</Text>
         <Text style={s.mgmtDesc}>{description}</Text>
@@ -61,8 +71,28 @@ function ManagementCard({ title, description, icon: Icon, color, route, stat, st
   );
 }
 
+function QuickAction({ icon: Icon, label, color, onPress, s }: { icon: React.ComponentType<{ size?: number; color?: string }>; label: string; color: TileColor; onPress: () => void; s: ReturnType<typeof getStyles> }) {
+  const c = COLOR_MAP[color];
+  return (
+    <TouchableOpacity style={s.quickAction} onPress={onPress} activeOpacity={0.75}>
+      <View style={[s.quickActionIcon, { backgroundColor: c.light, borderColor: c.border }]}>
+        <Icon size={18} color={c.icon} />
+      </View>
+      <Text style={s.quickActionLabel} numberOfLines={1}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const { colors: theme } = useTheme();
+  const s = getStyles(theme);
+  const navigation = useNavigation<any>();
+
+  const today = React.useMemo(
+    () => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    []
+  );
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['faculty-dashboard'],
@@ -114,20 +144,35 @@ export default function Dashboard() {
     },
   ];
 
+  const quickActions: { key: string; label: string; icon: React.ComponentType<{ size?: number; color?: string }>; color: TileColor; route: string }[] = [
+    { key: 'assignments', label: 'Assignments', icon: ClipboardList, color: 'indigo', route: ROUTES.ASSIGNMENTS },
+    { key: 'attendance', label: 'Attendance', icon: CheckSquare, color: 'blue', route: ROUTES.ATTENDANCE },
+    { key: 'ia-marks', label: 'IA Marks', icon: Award, color: 'purple', route: ROUTES.IA_MARKS },
+    { key: 'profile', label: 'My Profile', icon: User, color: 'amber', route: ROUTES.MY_PROFILE },
+  ];
+
   return (
     <ScreenWrapper route={ROUTES.FACULTY_DASHBOARD}>
 
-      {/* Welcome */}
-      <View style={s.welcome}>
-        <Text style={s.welcomeHeading}>
-          Welcome to <Text style={s.welcomeBrand}>Faculty</Text>
-        </Text>
-        <Text style={s.welcomeSub}>
-          Hello, <Text style={s.welcomeName}>{user?.name?.split(' ')[0] || 'Faculty Member'}</Text>!{' '}
-          {user?.departmentCode ? `${user.departmentCode} Department` : 'Faculty Portal'}{' '}
-          — manage your academic tasks from here
-        </Text>
-      </View>
+      {/* Gradient greeting header */}
+      <LinearGradient
+        colors={theme.gradientPrimary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s.header}
+      >
+        <View>
+          <Text style={s.headerHeading}>
+            {getGreeting()}, {user?.name?.split(' ')[0] || 'Faculty'}
+          </Text>
+          <Text style={s.headerSub}>
+            {user?.departmentCode ? `${user.departmentCode} Department` : 'Faculty Portal'} · {today}
+          </Text>
+        </View>
+        <View style={s.headerIconWrap}>
+          <LayoutDashboard size={26} color={colors.white} />
+        </View>
+      </LinearGradient>
 
       {/* Error state */}
       {isError && (
@@ -200,11 +245,31 @@ export default function Dashboard() {
           contentContainerStyle={SCREEN_W > 600 ? s.cardRowH : s.cardRowV}>
           {tiles.map((tile, i) => (
             <Animated.View key={tile.route} entering={FadeInUp.delay(i * 80).duration(400).springify()}>
-              <ManagementCard {...tile} />
+              <ManagementCard {...tile} theme={theme} s={s} />
             </Animated.View>
           ))}
         </ScrollView>
       )}
+
+      {/* Quick Actions */}
+      <View style={s.quickActionsCard}>
+        <Text style={s.sectionLabel}>QUICK ACTIONS</Text>
+        <View style={s.quickActionsRow}>
+          {quickActions.map((action) => (
+            <QuickAction
+              key={action.key}
+              icon={action.icon}
+              label={action.label}
+              color={action.color}
+              onPress={() => navigation.navigate(action.route)}
+              s={s}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* Role notifications */}
+      <RoleNotifications roles={user?.roles} />
 
       {/* Recent activity */}
       {!isLoading && stats.recentActivities?.length > 0 && (
@@ -223,22 +288,27 @@ export default function Dashboard() {
   );
 }
 
-const s = StyleSheet.create({
-  welcome: { gap: 4 },
-  welcomeHeading: { fontSize: 24, fontWeight: '700', color: neutral[900] },
-  welcomeBrand: { color: primaryScale[600] },
-  welcomeName: { color: primaryScale[600], fontWeight: '700' },
-  welcomeSub: { fontSize: 14, color: neutral[600], lineHeight: 20 },
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderRadius: 20, padding: 20, marginBottom: 4, ...shadows.card,
+  },
+  headerHeading: { fontSize: 20, fontWeight: '700', color: colors.white },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+  headerIconWrap: {
+    width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
 
-  errorBanner: { backgroundColor: colors.dangerBg, borderRadius: 12, padding: 12 },
-  errorText: { fontSize: 13, color: colors.danger, textAlign: 'center' },
+  errorBanner: { backgroundColor: theme.dangerBg, borderRadius: 12, padding: 12 },
+  errorText: { fontSize: 13, color: theme.danger, textAlign: 'center' },
 
   statsSection: { gap: 16 },
   statsCard: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     padding: 20,
     gap: 16,
     ...shadows.card,
@@ -246,7 +316,7 @@ const s = StyleSheet.create({
   statsCardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   attendanceRow: {
     flexDirection: 'row',
@@ -263,17 +333,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: neutral[50],
+    backgroundColor: theme.background,
     borderRadius: 12,
   },
   attendanceStatValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: neutral[900],
+    color: theme.textPrimary,
   },
   attendanceStatLabel: {
     fontSize: 12,
-    color: neutral[600],
+    color: theme.textSecondary,
     fontWeight: '500',
   },
 
@@ -282,22 +352,35 @@ const s = StyleSheet.create({
   skeletonRow: { gap: 12 },
 
   mgmtCard: {
-    backgroundColor: colors.white, borderRadius: 20, borderWidth: 1,
-    borderColor: neutral[100], padding: 20, gap: 8, minHeight: 168,
+    backgroundColor: theme.surface, borderRadius: 20, borderWidth: 1,
+    borderColor: theme.border, padding: 20, gap: 8, minHeight: 168,
     justifyContent: 'space-between', ...shadows.card,
   },
   mgmtCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
   mgmtIconWrap: { padding: 12, borderRadius: 16, borderWidth: 1 },
-  mgmtTitle: { fontSize: 16, fontWeight: '700', color: neutral[900] },
-  mgmtDesc: { fontSize: 12, color: neutral[500], lineHeight: 17 },
-  mgmtStat: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: neutral[100] },
-  mgmtStatValue: { fontSize: 24, fontWeight: '700', color: neutral[900] },
-  mgmtStatLabel: { fontSize: 12, color: neutral[500] },
-  skeleton: { height: 160, backgroundColor: neutral[100], borderRadius: 20 },
+  mgmtTitle: { fontSize: 16, fontWeight: '700', color: theme.textPrimary },
+  mgmtDesc: { fontSize: 12, color: theme.textSecondary, lineHeight: 17 },
+  mgmtStat: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.border },
+  mgmtStatValue: { fontSize: 24, fontWeight: '700', color: theme.textPrimary },
+  mgmtStatLabel: { fontSize: 12, color: theme.textSecondary },
+  skeleton: { height: 160, backgroundColor: theme.border, borderRadius: 20 },
 
-  activityCard: { backgroundColor: colors.white, borderRadius: 20, borderWidth: 1, borderColor: neutral[100], padding: 20, gap: 10, ...shadows.card },
-  activityTitle: { fontSize: 14, fontWeight: '600', color: neutral[900] },
+  quickActionsCard: {
+    backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border,
+    borderRadius: 20, padding: 20, gap: 12, ...shadows.card,
+  },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: theme.textSecondary, letterSpacing: 0.6 },
+  quickActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  quickAction: {
+    flexGrow: 1, minWidth: 140, flexDirection: 'row', alignItems: 'center', gap: 10,
+    padding: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.primarySoft,
+  },
+  quickActionIcon: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  quickActionLabel: { fontSize: 13, fontWeight: '600', color: theme.textPrimary, flexShrink: 1 },
+
+  activityCard: { backgroundColor: theme.surface, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: 20, gap: 10, ...shadows.card },
+  activityTitle: { fontSize: 14, fontWeight: '600', color: theme.textPrimary },
   activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   activityDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: primaryScale[400], marginTop: 6 },
-  activityText: { flex: 1, fontSize: 12, color: neutral[600], lineHeight: 18 },
+  activityText: { flex: 1, fontSize: 12, color: theme.textSecondary, lineHeight: 18 },
 });

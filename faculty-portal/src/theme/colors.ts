@@ -8,6 +8,10 @@ export const colors = {
   primary: '#1D4ED8',
   primaryDark: '#1E3A8A',
   primaryLight: '#DBEAFE',
+  primarySoft: '#EFF6FF',
+
+  secondary: '#7C3AED',
+  secondaryLight: '#EDE9FE',
 
   background: '#F8FAFC',
   surface: '#FFFFFF',
@@ -31,6 +35,10 @@ export const colors = {
   black: '#000000',
   transparent: 'transparent',
   overlay: 'rgba(15, 23, 42, 0.5)',
+
+  // Blue → violet gradient used for the drawer brand panel, login screen and
+  // dashboard greeting header — the same identity admin-frontend uses.
+  gradientPrimary: ['#1D4ED8', '#7C3AED'] as [string, string],
 
   green: {
     50: '#f0fdf4', 100: '#dcfce7', 300: '#86efac', 400: '#4ade80',
@@ -114,3 +122,46 @@ export const avatarColors: string[] = [
   colors.violet[500], colors.blue[500], colors.emerald[500], colors.orange[500],
   colors.pink[500],   colors.cyan[500], colors.rose[500],    colors.teal[500],
 ];
+
+// ── Dark theme ─────────────────────────────────────────────────────────────────
+// A parallel semantic palette for page chrome (backgrounds/surfaces/borders/
+// text) — NOT a re-derivation of the neutral/primaryScale numeric scales,
+// which are used throughout the app with hardcoded lightness assumptions
+// and would be unsafe to invert wholesale. Components that want real
+// dark-mode support read this via useTheme().colors instead of importing
+// `colors` statically; badge/accent colors (roleBadgeColors, avatarColors,
+// the extended hue scales) deliberately stay the same in both themes, same
+// as small colored chips commonly do in most design systems.
+export type ThemeColors = {
+  [K in keyof typeof colors]: (typeof colors)[K] extends string ? string : (typeof colors)[K];
+};
+
+export const darkColors: ThemeColors = {
+  ...colors,
+  primary: '#3B82F6',
+  primaryDark: '#60A5FA',
+  primaryLight: '#1E3A5F',
+  primarySoft: '#15233A',
+
+  secondary: '#A78BFA',
+  secondaryLight: '#2E2350',
+
+  background: '#0B1220',
+  surface: '#131B2C',
+
+  border: '#26324A',
+  borderFocus: '#3B82F6',
+
+  textPrimary: '#F1F5F9',
+  textSecondary: '#94A3B8',
+  textMuted: '#64748B',
+  placeholder: '#64748B',
+
+  successBg: '#123321',
+  warningBg: '#3A2A0A',
+  dangerBg: '#3A1414',
+
+  overlay: 'rgba(0, 0, 0, 0.6)',
+};
+
+export const lightColors: ThemeColors = colors;

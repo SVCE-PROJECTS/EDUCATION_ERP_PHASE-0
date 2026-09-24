@@ -10,36 +10,11 @@ import {
   TextStyle,
   GestureResponderEvent,
 } from 'react-native';
-import { colors, primaryScale, neutral } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { colors, primaryScale } from '../../theme/colors';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
-
-// ── Variant → style maps ──────────────────────────────────────────────────────
-
-const VARIANT_BG: Record<ButtonVariant, string> = {
-  primary: primaryScale[600],
-  secondary: neutral[100],
-  danger: colors.red[600],
-  ghost: colors.transparent,
-  outline: colors.transparent,
-};
-
-const VARIANT_TEXT: Record<ButtonVariant, string> = {
-  primary: colors.white,
-  secondary: neutral[800],
-  danger: colors.white,
-  ghost: neutral[700],
-  outline: neutral[700],
-};
-
-const VARIANT_BORDER: Record<ButtonVariant, string> = {
-  primary: primaryScale[600],
-  secondary: colors.transparent,
-  danger: colors.red[600],
-  ghost: colors.transparent,
-  outline: neutral[200],
-};
 
 // ── Size → padding maps ───────────────────────────────────────────────────────
 
@@ -80,7 +55,32 @@ export default function Button({
   style,
   textStyle,
 }: ButtonProps) {
+  const { colors: theme, isDark } = useTheme();
   const isDisabled = disabled || loading;
+
+  // Variant → style maps — read theme surface/text colors for secondary/
+  // ghost/outline so they adapt to dark mode instead of staying light-gray.
+  const VARIANT_BG: Record<ButtonVariant, string> = {
+    primary: primaryScale[600],
+    secondary: isDark ? theme.primarySoft : primaryScale[100],
+    danger: colors.red[600],
+    ghost: colors.transparent,
+    outline: colors.transparent,
+  };
+  const VARIANT_TEXT: Record<ButtonVariant, string> = {
+    primary: colors.white,
+    secondary: theme.textPrimary,
+    danger: colors.white,
+    ghost: theme.textSecondary,
+    outline: theme.textSecondary,
+  };
+  const VARIANT_BORDER: Record<ButtonVariant, string> = {
+    primary: primaryScale[600],
+    secondary: colors.transparent,
+    danger: colors.red[600],
+    ghost: colors.transparent,
+    outline: theme.border,
+  };
 
   return (
     <TouchableOpacity
@@ -132,12 +132,14 @@ export interface ButtonTextProps {
 }
 
 export function ButtonText({ children, variant = 'primary', size = 'md', style }: ButtonTextProps) {
+  const { colors: theme } = useTheme();
+  const textColor = variant === 'primary' || variant === 'danger' ? colors.white : theme.textSecondary;
   return (
     <Text
       style={[
         styles.text,
         {
-          color: VARIANT_TEXT[variant] ?? colors.white,
+          color: textColor,
           fontSize: SIZE_TEXT[size] ?? 13,
         },
         style,

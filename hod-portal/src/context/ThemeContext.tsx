@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { lightColors, darkColors, ThemeColors } from '../theme/colors';
 
 // Replaces the previous zustand-based themeStore.ts with plain React
 // Context + AsyncStorage. No non-React consumers exist for theme state
@@ -10,6 +11,7 @@ export interface ThemeContextValue {
   isDark: boolean;
   toggleDark: () => void;
   setDark: (value: boolean) => void;
+  colors: ThemeColors;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -35,8 +37,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const toggleDark = useCallback(() => setIsDark((d) => !d), []);
   const setDark = useCallback((value: boolean) => setIsDark(value), []);
 
+  const value = useMemo<ThemeContextValue>(
+    () => ({ isDark, toggleDark, setDark, colors: isDark ? darkColors : lightColors }),
+    [isDark, toggleDark, setDark],
+  );
+
   return (
-    <ThemeContext.Provider value={{ isDark, toggleDark, setDark }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

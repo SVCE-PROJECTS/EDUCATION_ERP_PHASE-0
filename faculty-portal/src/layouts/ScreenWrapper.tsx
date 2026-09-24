@@ -12,7 +12,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Topbar from '../components/navigation/Topbar';
 import { useTheme } from '../context/ThemeContext';
-import { primaryScale, neutral } from '../theme/colors';
+import { primaryScale } from '../theme/colors';
 import { SCREEN_TITLES, RouteName } from '../navigation/routes';
 
 export interface ScreenWrapperProps {
@@ -30,9 +30,9 @@ export default function ScreenWrapper({
   refreshing = false, onRefresh, style,
 }: ScreenWrapperProps) {
   const insets = useSafeAreaInsets();
-  const { isDark } = useTheme();
+  const { colors: theme } = useTheme();
   const resolvedTitle = title ?? (route ? SCREEN_TITLES[route] : '') ?? '';
-  const bg = isDark ? neutral[950] : neutral[50];
+  const bg = theme.background;
 
   useEffect(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

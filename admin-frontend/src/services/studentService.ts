@@ -38,3 +38,11 @@ export const deleteStudent = async (id) => {
   const response = await axiosInstance.delete(`/students/${id}`);
   return response.data;
 };
+
+// Used by the global top-bar search. Unlike the other endpoints here, GET
+// /students returns a bare array (no {success,data} envelope), so the
+// interceptor-unwrapped `response` IS the array itself.
+export const searchStudents = async (search, pageSize = 8) => {
+  const response = await axiosInstance.get('/students', { params: { search, pageSize } });
+  return Array.isArray(response) ? response : [];
+};

@@ -11,7 +11,8 @@ import {
   Platform,
 } from 'react-native';
 import { X } from '../../components/icons';
-import { colors, shadows, neutral } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
+import { colors, ThemeColors, shadows } from '../../theme/colors';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -36,6 +37,8 @@ export interface ModalProps {
 }
 
 export default function Modal({ isOpen, onClose, title, children, size = 'md', footer }: ModalProps) {
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
   const maxWidth = SIZE_MAX_WIDTH[size] ?? SIZE_MAX_WIDTH.md;
 
   return (
@@ -71,7 +74,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
               accessibilityLabel="Close"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <X size={18} color={neutral[400]} />
+              <X size={18} color={theme.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -93,19 +96,19 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', f
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: theme.overlay,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   sheet: {
-    backgroundColor: colors.white,
+    backgroundColor: theme.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: neutral[100],
+    borderColor: theme.border,
     maxHeight: SCREEN_HEIGHT * 0.85,
     ...shadows.soft,
   },
@@ -116,13 +119,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: neutral[100],
+    borderBottomColor: theme.border,
   },
   title: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: neutral[900],
+    color: theme.textPrimary,
     marginRight: 8,
   },
   closeBtn: {
@@ -144,6 +147,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: neutral[100],
+    borderTopColor: theme.border,
   },
 });

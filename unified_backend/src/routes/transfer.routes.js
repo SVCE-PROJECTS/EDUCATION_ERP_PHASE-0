@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const config = require('../config');
 const transferController = require('../controllers/transferController');
+const { authenticate } = require('../middleware/authenticate');
 const { validate } = require('../middleware/validate');
 const { transferStudentRules } = require('../validators/transferValidator');
 const { idParamRule } = require('../validators/studentValidator');
@@ -31,10 +32,13 @@ const upload = multer({
 
 router.post(
   '/',
+  authenticate,
   upload.single('supportingDocument'),
   validate(transferStudentRules),
   transferController.transfer,
 );
-router.get('/:id/history', validate(idParamRule), transferController.history);
+router.get('/', authenticate, transferController.listAll);
+router.get('/export', authenticate, transferController.exportTransfers);
+router.get('/:id/history', authenticate, validate(idParamRule), transferController.history);
 
 module.exports = router;

@@ -15,22 +15,29 @@ import { useDropdown, useSectionsBySemester } from '../../hooks/useDropdowns';
 import { previewExport, downloadExport } from '../../services/exportService';
 import { EXPORT_FORMATS } from '../../constants';
 import ScreenLayout from '../../navigation/ScreenLayout';
-import { colors, spacing, typography, radius } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { spacing, typography, radius } from '../../theme';
 
 const FormatOption = ({
   icon, title, subtitle, selected, onPress,
-}) => (
-  <TouchableOpacity
-    style={[styles.formatCard, selected && styles.formatCardSelected]}
-    onPress={onPress}
-  >
-    <Text style={styles.formatIcon}>{icon}</Text>
-    <Text style={styles.formatTitle}>{title}</Text>
-    <Text style={styles.formatSubtitle}>{subtitle}</Text>
-  </TouchableOpacity>
-);
+}) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  return (
+    <TouchableOpacity
+      style={[styles.formatCard, selected && styles.formatCardSelected]}
+      onPress={onPress}
+    >
+      <Text style={styles.formatIcon}>{icon}</Text>
+      <Text style={styles.formatTitle}>{title}</Text>
+      <Text style={styles.formatSubtitle}>{subtitle}</Text>
+    </TouchableOpacity>
+  );
+};
 
 const ExportStudentDataScreen = ({ navigation }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [programId, setProgramId] = useState();
   const [departmentId, setDepartmentId] = useState();
   const [academicYear, setAcademicYear] = useState();
@@ -130,7 +137,7 @@ const ExportStudentDataScreen = ({ navigation }) => {
         reader.readAsDataURL(blob);
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Export failed. Please try again.');
+      setErrorMessage(err.message || 'Download failed. Please try again.');
     } finally {
       setDownloading(false);
     }
@@ -139,7 +146,7 @@ const ExportStudentDataScreen = ({ navigation }) => {
   return (
     <ScreenLayout navigation={navigation} activeScreen="ExportStudentData">
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Export Student Records</Text>
+      <Text style={styles.heading}>Download Student Records</Text>
       <Text style={styles.subheading}>
         Configure filters and format to generate a batch data distribution report.
       </Text>
@@ -151,7 +158,7 @@ const ExportStudentDataScreen = ({ navigation }) => {
         <CustomDropdown label="Section" value={sectionId} options={sections} onSelect={setSectionId} floatingLabel={false} />
       </InfoCard>
 
-      <InfoCard title="Export Format">
+      <InfoCard title="Download Format">
         <View style={styles.formatRow}>
           <FormatOption
             icon="📊"
@@ -170,7 +177,7 @@ const ExportStudentDataScreen = ({ navigation }) => {
         </View>
       </InfoCard>
 
-      <InfoCard title="Export Summary">
+      <InfoCard title="Download Summary">
         {!hasAnyFilter ? (
           <Text style={styles.summaryPlaceholder}>
             Select at least one filter above to see how many students match.
@@ -218,7 +225,7 @@ const ExportStudentDataScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

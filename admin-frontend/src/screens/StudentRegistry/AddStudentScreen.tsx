@@ -6,9 +6,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import StudentForm from './StudentForm';
 import ScreenLayout from '../../navigation/ScreenLayout';
 import { useCreateStudent } from '../../hooks/useStudents';
-import { colors } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const AddStudentScreen = ({ navigation }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { mutateAsync, isPending } = useCreateStudent();
   const queryClient = useQueryClient();
   const [continuing, setContinuing] = useState(false);
@@ -41,7 +43,7 @@ const AddStudentScreen = ({ navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="AddStudent">
+    <ScreenLayout navigation={navigation} activeScreen="StudentList">
       <View style={styles.container}>
         <StudentForm
           breadcrumbLabel="Add Student"
@@ -72,7 +74,7 @@ const AddStudentScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

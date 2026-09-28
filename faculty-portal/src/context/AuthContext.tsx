@@ -12,9 +12,12 @@ import React, {
   createContext, useContext, useEffect, useState, useCallback,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import axios from 'axios';
 import { AuthUser } from '../types';
 
 const STORAGE_KEY = 'faculty-erp-auth-v1';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000/api';
 
 export interface AuthContextValue {
   user: AuthUser | null;
@@ -49,10 +52,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading]       = useState(true);
 
-  // Restore persisted session on mount.
+  // Load persisted session OR auto-login from ?token= URL param (web only)
   useEffect(() => {
     (async () => {
       try {
+        // ── Web: check for ?token= from unified-frontend ──────────────────
+        if (Platform.OS === 'web') {
+          const params = new URLSearchParams(window.location.search);
+          const urlToken = params.get('token');
+          if (urlToken) {
+            window.history.replaceState({}, '', window.location.pathname);
+            try {
+              const res = await axios.get(`${API_BASE}/auth/me`, {
+                headers: { Authorization: `Bearer ${urlToken}` },
+              });
+              const u = res.data?.data ?? res.data;
+              const authUser: AuthUser = {
+                id:             u.id,
+                name:           u.name ?? u.fullName ?? u.username,
+                username:       u.username,
+                email:          u.email ?? '',
+                designation:    u.designation ?? '',
+                department:     u.department ?? { id: '', name: '', code: u.departmentCode ?? '' },
+                departmentCode: u.departmentCode ?? u.department?.code ?? '',
+                isHOD:          u.isHOD ?? u.is_hod ?? false,
+                roles:          u.roles ?? [],
+                profilePhoto:   u.profilePhoto ?? null,
+              } as any;
+              setUser(authUser);
+              setToken(urlToken);
+              setIsAuthenticated(true);
+              return;
+            } catch {
+              // invalid token — fall through
+            }
+          }
+        }
+        // ── Restore persisted session ─────────────────────────────────────
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
@@ -61,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(parsed.isAuthenticated ?? false);
         }
       } catch {
-        // Corrupt storage — stay logged out.
+        // Corrupt storage — stay logged out
       } finally {
         setIsLoading(false);
       }

@@ -1,8 +1,8 @@
 // Faculty Portal — Icon components (MaterialCommunityIcons wrapper)
-// Identical to hod-portal/src/components/icons.tsx
+// Uses @expo/vector-icons for web compatibility
 
 import React from 'react';
-import VectorIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleProp, ViewStyle } from 'react-native';
 
 export interface IconProps {
@@ -13,7 +13,7 @@ export interface IconProps {
 
 function makeIcon(glyphName: string) {
   const Component = ({ size = 24, color = '#000', style }: IconProps) => (
-    <VectorIcon name={glyphName} size={size} color={color} style={style as any} />
+    <MaterialCommunityIcons name={glyphName as any} size={size} color={color} style={style as any} />
   );
   Component.displayName = `Icon(${glyphName})`;
   return Component;

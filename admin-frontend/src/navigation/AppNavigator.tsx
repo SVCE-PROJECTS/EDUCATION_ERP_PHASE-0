@@ -40,6 +40,7 @@ import EditNonTeachingStaffScreen from '../screens/NonTeachingStaffRegistry/Edit
 import NonTeachingStaffDetailsScreen from '../screens/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useTokenFromUrl } from '../hooks/useTokenFromUrl';
 
 const Stack = createNativeStackNavigator();
 
@@ -49,6 +50,8 @@ const AppNavigator = () => {
   const { isAuthenticated, isReady } = useAuth();
   const { colors } = useTheme();
   const styles = getStyles(colors);
+  // Auto-login when arriving from unified-frontend with ?token= in URL
+  useTokenFromUrl();
 
   // Wait for the stored session check before deciding
   // whether to show Login or the main application.

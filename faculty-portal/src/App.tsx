@@ -28,6 +28,7 @@ import { ROUTES } from './navigation/routes';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { lightTheme, darkTheme } from './theme/paperTheme';
+import { useTokenFromUrl } from './hooks/useTokenFromUrl';
 
 // ── Screens ──────────────────────────────────────────────────────────────────
 import LoginPage   from './pages/LoginPage';
@@ -120,6 +121,8 @@ function RootNavigator() {
 function AppShell() {
   const { isDark } = useTheme();
   const theme = isDark ? darkTheme : lightTheme;
+  // Auto-login when arriving from the unified-frontend with ?token= in URL
+  useTokenFromUrl();
 
   return (
     <GestureHandlerRootView style={styles.root}>

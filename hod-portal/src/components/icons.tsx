@@ -1,5 +1,5 @@
 import React from 'react';
-import VectorIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleProp, ViewStyle } from 'react-native';
 
 // Replaces lucide-react-native. MaterialCommunityIcons was chosen over
@@ -24,7 +24,7 @@ export interface IconProps {
 
 function makeIcon(glyphName: string) {
   const Component = ({ size = 24, color = '#000', style }: IconProps) => (
-    <VectorIcon name={glyphName} size={size} color={color} style={style} />
+    <MaterialCommunityIcons name={glyphName as any} size={size} color={color} style={style as any} />
   );
   Component.displayName = `Icon(${glyphName})`;
   return Component;

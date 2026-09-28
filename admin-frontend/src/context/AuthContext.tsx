@@ -1,10 +1,11 @@
-// @ts-nocheck
 import React, {
   createContext, useContext, useEffect, useMemo, useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { loginRequest } from '../services/authService';
 import { setToken as setAxiosToken, setLogoutHandler } from '../api/tokenStore';
+import axiosInstance from '../api/axiosInstance';
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
@@ -17,11 +18,32 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Restore a previously saved session on app start so the user isn't
-  // dropped back to the login screen every time the app reloads.
+  // Restore persisted session OR auto-login from ?token= URL param (web only)
   useEffect(() => {
     (async () => {
       try {
+        // ── Web: check for ?token= from unified-frontend ──────────────────
+        if (Platform.OS === 'web') {
+          const params = new URLSearchParams(window.location.search);
+          const urlToken = params.get('token');
+          if (urlToken) {
+            window.history.replaceState({}, '', window.location.pathname);
+            try {
+              setAxiosToken(urlToken);
+              const res: any = await axiosInstance.get('/auth/me');
+              const u = res.data ?? res;
+              await AsyncStorage.setItem(TOKEN_KEY, urlToken);
+              await AsyncStorage.setItem(USER_KEY, JSON.stringify(u));
+              setAxiosToken(urlToken);
+              setUser(u);
+              return;
+            } catch {
+              setAxiosToken(null);
+              // fall through to normal restore
+            }
+          }
+        }
+        // ── Restore persisted session ─────────────────────────────────────
         const [storedToken, storedUser] = await Promise.all([
           AsyncStorage.getItem(TOKEN_KEY),
           AsyncStorage.getItem(USER_KEY),

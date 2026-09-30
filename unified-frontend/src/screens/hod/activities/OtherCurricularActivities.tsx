@@ -18,7 +18,7 @@ const TYPE_OPTIONS = [
 ];
 
 const FIELDS: FieldDescriptor[] = [
-  { name: 'student_id', label: 'Student USN', required: true },
+  { name: 'student_id', label: 'Student', required: true, type: 'student-search' },
   { name: 'eventName', label: 'Activity Name', required: true },
   { name: 'organizingCollege', label: 'Organizer' },
   { name: 'achievement', label: 'Achievement / Certificate' },

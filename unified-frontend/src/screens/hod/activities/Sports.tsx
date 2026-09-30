@@ -15,7 +15,7 @@ const LEVEL_OPTIONS = [
 ];
 
 const FIELDS: FieldDescriptor[] = [
-  { name: 'student_id', label: 'Student USN', required: true },
+  { name: 'student_id', label: 'Student', required: true, type: 'student-search' },
   { name: 'sportName', label: 'Sport Name', required: true },
   { name: 'competitionLevel', label: 'Level', required: true, type: 'select', options: LEVEL_OPTIONS },
   { name: 'positionMedal', label: 'Position / Medal' },

@@ -35,6 +35,7 @@ const facultyRoutes = require('./faculty.routes');
 const roleRoutes = require('./role.routes');
 const studentListRoutes = require('./studentList.routes');
 const slAuthRoutes = require('./slAuth.routes');
+const hodAcademicRoutes = require('./hodAcademic.routes');
 
 // ── Extracurricular Activities (education_erp) ───────────────────────────────
 const culturalActivityRoutes = require('./culturalActivity.routes');
@@ -78,6 +79,7 @@ router.use('/ai-checker', aiCheckerRoutes);
 router.use('/faculty', facultyRoutes);
 router.use('/roles', roleRoutes);
 router.use('/hod/student-list', studentListRoutes);  // HOD section dashboard
+router.use('/hod/academic', hodAcademicRoutes);
 router.use('/hod/auth', slAuthRoutes);               // HOD alt auth
 
 // Admin-only registries (no department scoping)

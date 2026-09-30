@@ -26,6 +26,7 @@ import type { LucideIconType } from '../../components/hod/icons';
 import studentListService from '../../services/hod/studentList.service';
 import ScreenWrapper from '../../layouts/hod/ScreenWrapper';
 import PerformanceCell from '../../components/hod/student/PerformanceCell';
+import AcademicManager from '../../components/hod/student/AcademicManager';
 import BarChart from '../../components/hod/ui/BarChart';
 import {
   colors,
@@ -1112,15 +1113,25 @@ function SectionDashboard({
       </View>
 
       {tab === 'timetable' && (
-        <TimetableGrid
-          slots={timetable}
-        />
+        <AcademicManager
+          semester={semester}
+          sectionId={section?.id ?? ''}
+          sectionName={section?.name ?? ''}
+          mode="timetable"
+        >
+          <TimetableGrid slots={timetable} />
+        </AcademicManager>
       )}
 
       {tab === 'subjects' && (
-        <SubjectFacultyTable
-          mapping={mapping}
-        />
+        <AcademicManager
+          semester={semester}
+          sectionId={section?.id ?? ''}
+          sectionName={section?.name ?? ''}
+          mode="subjects"
+        >
+          <SubjectFacultyTable mapping={mapping} />
+        </AcademicManager>
       )}
 
       {tab === 'students' && (

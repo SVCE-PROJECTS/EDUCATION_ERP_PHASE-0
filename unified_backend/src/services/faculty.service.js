@@ -291,7 +291,10 @@ const syncRoles = async (facultyId, { add, remove }, syncedBy, departmentCode) =
  * Format faculty object for API response
  */
 const sanitizeFaculty = (f) => {
-  const { passwordHash, ...safe } = f;
+  // normalizeFacultyRow spreads the raw pg row AND adds camelCase aliases,
+  // so the hash exists under both password_hash and passwordHash — dropping
+  // only one leaked the raw column straight into the API response.
+  const { passwordHash, password_hash, ...safe } = f;
   
   // Convert coordinatorRoles string to roles array for frontend
   const coordinatorRoles = f.coordinatorRoles 

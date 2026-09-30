@@ -17,6 +17,17 @@ const authService = require('../services/authService');
 const adminLogin = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
   const result = await authService.login({ username, password });
+
+  // Set HTTP-only cookie, matching facultyLogin/login below — previously
+  // only those two set it, so an admin session relied on the Bearer header
+  // alone while every other login flow also got a cookie.
+  res.cookie('token', result.token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 8 * 60 * 60 * 1000, // 8 hours
+  });
+
   success(res, result);
 });
 

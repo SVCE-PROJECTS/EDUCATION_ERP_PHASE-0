@@ -21,7 +21,7 @@ import ActivitiesPage        from '../../screens/hod/activities/ActivitiesPage';
 import FacultyAllocation     from '../../screens/hod/FacultyAllocation';
 import ActivityLog           from '../../screens/hod/ActivityLog';
 import HODDrawerContent      from '../../layouts/hod/HODDrawerContent';
-// import SnackbarHost          from '../../components/hod/ui/SnackbarHost';
+import SnackbarHost          from '../../components/hod/ui/SnackbarHost';
 
 // ── HOD-specific providers ────────────────────────────────────────────────────
 import { AuthProvider as HODAuthProvider, useAuth as useHODAuth } from '../../context/hod/AuthContext';
@@ -56,7 +56,7 @@ function HODTokenBridge() {
       departmentCode: unifiedUser.departmentCode ?? '',
       isHOD:          true,
       roles:          unifiedUser.roles ?? [],
-      profilePhoto:   unifiedUser.profilePhoto ?? null,
+      photoUrl:       unifiedUser.profilePhoto ?? null,
     };
     login(hodUser, unifiedToken);
   }, [unifiedToken]);
@@ -140,7 +140,7 @@ function HODShell() {
         <HODTokenBridge />
         <HODLogoutBridge />
         <HODNavigator />
-        {/* <SnackbarHost /> */}
+        <SnackbarHost />
       </QueryClientProvider>
     </PaperProvider>
   );

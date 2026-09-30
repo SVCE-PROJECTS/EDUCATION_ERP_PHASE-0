@@ -108,8 +108,12 @@ async function login({ departmentCode, username, password }) {
  * Get current user profile
  */
 async function getMe(userId) {
-  // Try faculty first, then admin user
-  const faculty = await facultyRepo.findById(userId).catch(() => null);
+  // Try faculty first, then admin user.
+  // req.user.id for faculty/HOD tokens is the employee_id string (see
+  // utils/jwt.js generateToken), not the numeric faculty_id PK — must use
+  // findByEmployeeId here, matching every other consumer of req.user.id
+  // (attendanceController, iaMarksController, assignmentController, etc.).
+  const faculty = await facultyRepo.findByEmployeeId(userId).catch(() => null);
   if (faculty) return _sanitizeFaculty(faculty);
 
   const user = await userRepository.findById(userId);
@@ -123,7 +127,10 @@ async function getMe(userId) {
  * Strip sensitive fields from faculty object
  */
 function _sanitizeFaculty(faculty) {
-  const { passwordHash, ...safe } = faculty;
+  // normalizeFacultyRow spreads the raw pg row AND adds camelCase aliases,
+  // so the hash exists under both password_hash and passwordHash — dropping
+  // only one leaked the raw column straight into the login response.
+  const { passwordHash, password_hash, ...safe } = faculty;
 
   const roles = faculty.coordinatorRoles
     ? faculty.coordinatorRoles.split(',').map(r => ({

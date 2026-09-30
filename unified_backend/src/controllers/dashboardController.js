@@ -15,6 +15,20 @@ const { successResponse, errorResponse } = require('../utils/response');
  */
 const getDashboardStats = async (req, res) => {
   try {
+    const isAdmin = !!req.user.isAdmin;
+    const employeeId = req.user.id;
+
+    // Faculty see only stats for the classes assigned to them — an admin
+    // token still sees school-wide totals. Without this, a faculty member
+    // was shown the total assignment count across the whole school on the
+    // dashboard tile while the Assignments screen (correctly) only lists
+    // assignments for classes they actually teach.
+    const ownClasses = `
+      SELECT c.class_id FROM classes c
+      JOIN faculty f ON f.faculty_id = c.faculty_id
+      WHERE f.employee_id = $1
+    `;
+
     const [
       studentCount,
       transferredCount,
@@ -46,17 +60,43 @@ const getDashboardStats = async (req, res) => {
         GROUP BY d.department_name, st.academic_year
         ORDER BY d.department_name ASC, st.academic_year ASC
       `),
-      pool.query('SELECT COUNT(*) FROM assignments'),
-      pool.query("SELECT COUNT(*) FROM assignments WHERE status='Open'"),
-      pool.query('SELECT COUNT(*) FROM attendance'),
-      pool.query("SELECT COUNT(*) FROM attendance WHERE status='Present'"),
-      pool.query('SELECT AVG(average) AS avg FROM ia_marks'),
-      pool.query("SELECT 'Student added: ' || name AS activity, created_at FROM students ORDER BY created_at DESC LIMIT 2"),
-      pool.query("SELECT 'Assignment: ' || title AS activity, created_at FROM assignments ORDER BY created_at DESC LIMIT 2"),
-      pool.query(`SELECT 'IA Marks added for: ' || s.name AS activity, im.created_at
+      isAdmin
+        ? pool.query('SELECT COUNT(*) FROM assignments')
+        : pool.query(`SELECT COUNT(*) FROM assignments WHERE class_id IN (${ownClasses})`, [employeeId]),
+      isAdmin
+        ? pool.query("SELECT COUNT(*) FROM assignments WHERE status='Open'")
+        : pool.query(`SELECT COUNT(*) FROM assignments WHERE status='Open' AND class_id IN (${ownClasses})`, [employeeId]),
+      isAdmin
+        ? pool.query('SELECT COUNT(*) FROM attendance')
+        : pool.query(`SELECT COUNT(*) FROM attendance WHERE class_id IN (${ownClasses})`, [employeeId]),
+      isAdmin
+        ? pool.query("SELECT COUNT(*) FROM attendance WHERE status='Present'")
+        : pool.query(`SELECT COUNT(*) FROM attendance WHERE status='Present' AND class_id IN (${ownClasses})`, [employeeId]),
+      isAdmin
+        ? pool.query('SELECT AVG(average) AS avg FROM ia_marks')
+        : pool.query(`SELECT AVG(average) AS avg FROM ia_marks WHERE class_id IN (${ownClasses})`, [employeeId]),
+      isAdmin
+        ? pool.query("SELECT 'Student added: ' || name AS activity, created_at FROM students ORDER BY created_at DESC LIMIT 2")
+        : Promise.resolve({ rows: [] }),
+      isAdmin
+        ? pool.query("SELECT 'Assignment: ' || title AS activity, created_at FROM assignments ORDER BY created_at DESC LIMIT 2")
+        : pool.query(
+            `SELECT 'Assignment: ' || title AS activity, created_at FROM assignments WHERE class_id IN (${ownClasses}) ORDER BY created_at DESC LIMIT 2`,
+            [employeeId],
+          ),
+      isAdmin
+        ? pool.query(`SELECT 'IA Marks added for: ' || s.name AS activity, im.created_at
        FROM ia_marks im
        JOIN students s ON s.library_id = im.student_id
-       ORDER BY im.created_at DESC LIMIT 2`),
+       ORDER BY im.created_at DESC LIMIT 2`)
+        : pool.query(
+            `SELECT 'IA Marks added for: ' || s.name AS activity, im.created_at
+       FROM ia_marks im
+       JOIN students s ON s.library_id = im.student_id
+       WHERE im.class_id IN (${ownClasses})
+       ORDER BY im.created_at DESC LIMIT 2`,
+            [employeeId],
+          ),
     ]);
 
     const attPercent = Number(totalAtt.rows[0].count) > 0
@@ -109,8 +149,12 @@ const getDashboardStats = async (req, res) => {
  */
 const getWeeklyAttendance = async (req, res) => {
   try {
-    // Last 7 calendar days (today inclusive)
-    const result = await pool.query(`
+    const isAdmin = !!req.user.isAdmin;
+
+    // Last 7 calendar days (today inclusive) — scoped to the faculty's own
+    // classes, same as every other faculty-facing stat on this dashboard.
+    const result = await pool.query(
+      `
       SELECT
         attendance_date::date                         AS date,
         TO_CHAR(attendance_date::date, 'Dy')          AS day,
@@ -119,9 +163,16 @@ const getWeeklyAttendance = async (req, res) => {
       FROM attendance
       WHERE attendance_date >= CURRENT_DATE - INTERVAL '6 days'
         AND attendance_date <= CURRENT_DATE
+        ${isAdmin ? '' : `AND class_id IN (
+          SELECT c.class_id FROM classes c
+          JOIN faculty f ON f.faculty_id = c.faculty_id
+          WHERE f.employee_id = $1
+        )`}
       GROUP BY attendance_date::date
       ORDER BY attendance_date::date ASC
-    `);
+    `,
+      isAdmin ? [] : [req.user.id],
+    );
 
     // Build a map of date → stats
     const statsMap = {};

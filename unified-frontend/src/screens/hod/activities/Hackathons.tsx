@@ -16,7 +16,7 @@ const POSITION_OPTIONS = [
 ];
 
 const FIELDS: FieldDescriptor[] = [
-  { name: 'student_id', label: 'Student USN', required: true },
+  { name: 'student_id', label: 'Student', required: true, type: 'student-search' },
   { name: 'hackathonName', label: 'Hackathon Name', required: true },
   { name: 'position', label: 'Position', required: true, type: 'select', options: POSITION_OPTIONS },
   { name: 'year', label: 'Year', type: 'number' },

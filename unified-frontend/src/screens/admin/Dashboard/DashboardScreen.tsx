@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useMemo } from 'react';
 import {
-  View, ScrollView, StyleSheet, Platform, TouchableOpacity,
+  View, ScrollView, StyleSheet, Platform, TouchableOpacity, Linking,
 } from 'react-native';
 import { Text, Icon } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -57,6 +57,12 @@ const QUICK_ACTIONS = [
   },
   {
     key: 'Settings', label: 'Settings', icon: 'cog-outline', accent: 'amber', screen: 'Settings',
+  },
+];
+
+const FACILITIES = [
+  {
+    key: 'SlotBooking', label: 'Slot Booking System', icon: 'calendar-check-outline', accent: 'teal', url: 'https://cabin-entry.vercel.app/',
   },
 ];
 
@@ -289,6 +295,21 @@ const DashboardScreen = ({ navigation }) => {
                 label={action.label}
                 accent={action.accent}
                 onPress={() => navigation.navigate(action.screen)}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.quickActionsCard}>
+          <Text style={styles.sectionLabel}>Facilities</Text>
+          <View style={styles.quickActionsRow}>
+            {FACILITIES.map((facility) => (
+              <QuickAction
+                key={facility.key}
+                icon={facility.icon}
+                label={facility.label}
+                accent={facility.accent}
+                onPress={() => Linking.openURL(facility.url)}
               />
             ))}
           </View>

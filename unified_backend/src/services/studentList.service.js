@@ -37,7 +37,7 @@ const StudentListService = {
   /**
    * Returns all sections for a given semester number
    */
-  async getSectionsBySemester(semesterNumber) {
+  async getSectionsBySemester(semesterNumber, departmentCode) {
     const semester = await semesterRepo.findBySemesterNumber(semesterNumber);
     if (!semester) {
       const err = new Error(`Semester ${semesterNumber} not found`);
@@ -45,7 +45,7 @@ const StudentListService = {
       throw err;
     }
 
-    const sections = await sectionRepo.getSectionsBySemesterId(semester.id);
+    const sections = await sectionRepo.getSectionsBySemesterId(semester.id, departmentCode);
     if (!sections.length) {
       const err = new Error(`No sections found for Semester ${semesterNumber}`);
       err.statusCode = 404;
@@ -58,7 +58,7 @@ const StudentListService = {
   /**
    * Returns full section dashboard: timetable, subject-faculty mapping, students (paginated)
    */
-  async getSectionDashboard(semesterNumber, sectionName, pagination = {}) {
+  async getSectionDashboard(semesterNumber, sectionName, pagination = {}, departmentCode) {
     const semester = await semesterRepo.findBySemesterNumber(semesterNumber);
     if (!semester) {
       const err = new Error(`Semester ${semesterNumber} not found`);
@@ -66,7 +66,7 @@ const StudentListService = {
       throw err;
     }
 
-    const section = await sectionRepo.findBySemesterAndName(semester.id, sectionName.toUpperCase());
+    const section = await sectionRepo.findBySemesterAndName(semester.id, sectionName.toUpperCase(), departmentCode);
     if (!section) {
       const err = new Error(`Section "${sectionName.toUpperCase()}" not found for Semester ${semesterNumber}`);
       err.statusCode = 404;
@@ -78,8 +78,11 @@ const StudentListService = {
     const timetable = rawTimetable
       .sort((a, b) => (DAY_ORDER[a.day] || 99) - (DAY_ORDER[b.day] || 99) || a.period - b.period)
       .map(t => ({
+        timetableId: t.timetableId,
+        classId: t.classId,
         day: t.day,
         period: t.period,
+        roomNumber: t.roomNumber,
         subject: t.subject.subjectName,
         subjectCode: t.subject.subjectCode,
         facultyId: t.faculty.id,
@@ -89,6 +92,7 @@ const StudentListService = {
     // Subject → Faculty mapping
     const rawMapping = await timetableRepo.getSubjectFacultyMappingBySemesterAndSection(semester.id, section.id);
     const subjectFacultyMapping = rawMapping.map(m => ({
+      classId: m.classId,
       subject: m.subject,
       subjectCode: m.subjectCode,
       faculty: m.faculty,

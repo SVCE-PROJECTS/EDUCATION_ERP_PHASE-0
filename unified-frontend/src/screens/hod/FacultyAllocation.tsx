@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { facultyService } from '../../services/hod/faculty.service';
 import { resolveFileUrl } from '../../services/hod/api';
 import studentListService from '../../services/hod/studentList.service';
+import academicService from '../../services/hod/academic.service';
+import Toast from '../../services/hod/toast';
 
 import Avatar from '../../components/hod/ui/Avatar';
 import Modal from '../../components/hod/ui/Modal';
@@ -41,16 +43,6 @@ import {
 import { ROUTES } from '../../navigation/hod/routes';
 import { Faculty } from '../../types';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
-// ─────────────────────────────────────────────────────────────
-// LOCAL STORAGE
-// ─────────────────────────────────────────────────────────────
-
-const ALLOCATION_STORAGE_KEY = '@hod_faculty_allocations';
-
-
 // ─────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────
@@ -58,9 +50,13 @@ const ALLOCATION_STORAGE_KEY = '@hod_faculty_allocations';
 interface FacultyAllocation {
   id: string;
   facultyId: string;
+  facultyEmployeeId: string;
   facultyName: string;
   semester: string;
   section: string;
+  sectionId: string;
+  subjectId: string;
+  academicYear: string;
   subject: string;
   subjectCode: string;
 }
@@ -74,7 +70,7 @@ interface FacultyRowProps {
 interface AllocationModalProps {
   faculty: Faculty | null;
   allocations: FacultyAllocation[];
-  onSaveAllocation: (allocation: FacultyAllocation) => void;
+  onSaveAllocation: (allocation: FacultyAllocation) => Promise<boolean>;
   onRemoveAllocation: (allocationId: string) => void;
   onClose: () => void;
 }
@@ -159,7 +155,7 @@ function AllocationModal({
 
   const facultyAllocations = allocations.filter(
     (allocation) =>
-      allocation.facultyId === facultyId
+      allocation.facultyEmployeeId === facultyId
   );
 
   const [semester, setSemester] =
@@ -168,26 +164,8 @@ function AllocationModal({
   const [section, setSection] =
     useState<string | null>(null);
 
-  const [subjectCode, setSubjectCode] =
+  const [subjectId, setSubjectId] =
     useState<string | null>(null);
-
-
-  // ─────────────────────────────────────────────
-  // SUBJECT INPUT MODE
-  // Default is manual entry — the HOD can type the subject name/code
-  // directly rather than depending on the timetable being filled in.
-  // Switching to "From Timetable" fills both fields from a dropdown
-  // sourced from the class's existing timetable instead.
-  // ─────────────────────────────────────────────
-
-  const [subjectMode, setSubjectMode] =
-    useState<'manual' | 'timetable'>('manual');
-
-  const [manualSubjectName, setManualSubjectName] =
-    useState('');
-
-  const [manualSubjectCode, setManualSubjectCode] =
-    useState('');
 
 
   // ─────────────────────────────────────────────
@@ -217,89 +195,26 @@ function AllocationModal({
   // SECTIONS
   // ─────────────────────────────────────────────
 
-  const { data: secData } = useQuery({
-    queryKey: ['sections', semester],
-
-    queryFn: () =>
-      studentListService.getSections(
-        Number(semester)
-      ),
-
+  const { data: academicOptions } = useQuery({
+    queryKey: ['hodAcademicOptions', Number(semester)],
+    queryFn: () => academicService.getOptions(Number(semester)),
     enabled: !!semester,
   });
 
-  const sections: {
-    id: string;
-    name: string;
-  }[] =
-    (secData as any)?.data || [];
+  const sections = academicOptions?.sections || [];
 
   const sectionOptions: DropdownOption[] =
     sections.map((sec) => ({
       label: `Section ${sec.name}`,
-      value: sec.name,
+      value: String(sec.id),
     }));
 
 
-  // ─────────────────────────────────────────────
-  // SUBJECTS FROM TIMETABLE
-  // ─────────────────────────────────────────────
-
-  const {
-    data: dashData,
-    isLoading: subjLoading,
-  } = useQuery({
-    queryKey: [
-      'sectionDashboard-forAllocation',
-      semester,
-      section,
-    ],
-
-    queryFn: () =>
-      studentListService.getSectionDashboard(
-        Number(semester),
-        section as string,
-        1,
-        1
-      ),
-
-    enabled:
-      !!semester &&
-      !!section,
-  });
-
-  const timetable: any[] =
-    (dashData as any)?.data?.timetable || [];
-
-
-  const subjectOptions: DropdownOption[] =
-    useMemo(() => {
-
-      const seen =
-        new Map<string, DropdownOption>();
-
-      timetable.forEach((slot) => {
-
-        if (
-          slot.subjectCode &&
-          !seen.has(slot.subjectCode)
-        ) {
-          seen.set(
-            slot.subjectCode,
-            {
-              label: slot.subject,
-              value: slot.subjectCode,
-              meta: slot.subjectCode,
-            }
-          );
-        }
-      });
-
-      return Array.from(
-        seen.values()
-      );
-
-    }, [timetable]);
+  const subjectOptions: DropdownOption[] = (academicOptions?.subjects || []).map((subject) => ({
+    label: subject.subjectName,
+    value: String(subject.id),
+    meta: subject.subjectCode,
+  }));
 
 
   // ─────────────────────────────────────────────
@@ -309,41 +224,28 @@ function AllocationModal({
   const resetForm = () => {
     setSemester(null);
     setSection(null);
-    setSubjectCode(null);
-    setSubjectMode('manual');
-    setManualSubjectName('');
-    setManualSubjectCode('');
+    setSubjectId(null);
   };
 
 
   // ─────────────────────────────────────────────
-  // SAVE ALLOCATION LOCALLY
+  // SAVE ALLOCATION
   // ─────────────────────────────────────────────
 
-  // Resolved subject name/code, whichever mode produced them.
-  const resolvedSubjectName =
-    subjectMode === 'manual'
-      ? manualSubjectName.trim()
-      : subjectOptions.find((option) => option.value === subjectCode)?.label || subjectCode || '';
-
-  const resolvedSubjectCode =
-    subjectMode === 'manual'
-      ? manualSubjectCode.trim()
-      : subjectCode || '';
+  const selectedSubject = academicOptions?.subjects.find((subject) => String(subject.id) === subjectId);
+  const selectedSection = sections.find((item) => String(item.id) === section);
 
   const canAssign =
     !!semester &&
     !!section &&
-    !!resolvedSubjectName &&
-    !!resolvedSubjectCode;
+    !!selectedSubject;
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
 
     if (
       !semester ||
       !section ||
-      !resolvedSubjectName ||
-      !resolvedSubjectCode ||
+      !selectedSubject ||
       !faculty
     ) {
       return;
@@ -355,8 +257,8 @@ function AllocationModal({
       facultyAllocations.some(
         (allocation) =>
           allocation.semester === semester &&
-          allocation.section === section &&
-          allocation.subjectCode === resolvedSubjectCode
+          allocation.sectionId === section &&
+          allocation.subjectId === subjectId
       );
 
     if (alreadyExists) {
@@ -365,32 +267,28 @@ function AllocationModal({
 
 
     const newAllocation: FacultyAllocation = {
-      id:
-        `${facultyId}-${semester}-${section}-${resolvedSubjectCode}-${Date.now()}`,
-
-      facultyId,
+      id: '',
+      facultyId: String((faculty as any).facultyId || faculty.id),
+      facultyEmployeeId: String((faculty as any).employeeId || faculty.id),
 
       facultyName:
         faculty.name,
 
       semester,
 
-      section,
+      section: selectedSection?.name || '',
+      sectionId: section,
+      subjectId: String(selectedSubject.id),
+      academicYear: academicOptions?.academicYear || '',
 
-      subject:
-        resolvedSubjectName,
+      subject: selectedSubject.subjectName,
 
-      subjectCode:
-        resolvedSubjectCode,
+      subjectCode: selectedSubject.subjectCode,
     };
 
 
     // Send to parent
-    onSaveAllocation(
-      newAllocation
-    );
-
-    resetForm();
+    if (await onSaveAllocation(newAllocation)) resetForm();
   };
 
 
@@ -564,7 +462,7 @@ function AllocationModal({
 
             setSection(null);
 
-            setSubjectCode(null);
+            setSubjectId(null);
 
           }}
         />
@@ -589,7 +487,7 @@ function AllocationModal({
 
             setSection(value);
 
-            setSubjectCode(null);
+            setSubjectId(null);
 
           }}
 
@@ -597,110 +495,15 @@ function AllocationModal({
         />
 
 
-        {/* Subject — manual entry (default) or pick from timetable */}
-
-        <View>
-
-          <Text style={s.fieldLabel}>
-            Subject
-          </Text>
-
-          <View style={s.modeToggle}>
-
-            <TouchableOpacity
-              style={[
-                s.modeToggleBtn,
-                subjectMode === 'manual' && s.modeToggleBtnActive,
-              ]}
-              onPress={() => setSubjectMode('manual')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  s.modeToggleText,
-                  subjectMode === 'manual' && s.modeToggleTextActive,
-                ]}
-              >
-                Type manually
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                s.modeToggleBtn,
-                subjectMode === 'timetable' && s.modeToggleBtnActive,
-              ]}
-              onPress={() => setSubjectMode('timetable')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  s.modeToggleText,
-                  subjectMode === 'timetable' && s.modeToggleTextActive,
-                ]}
-              >
-                From timetable
-              </Text>
-            </TouchableOpacity>
-
-          </View>
-
-          {subjectMode === 'manual' ? (
-
-            <View style={s.manualFields}>
-
-              <TextInput
-                style={s.textInput}
-                placeholder="Subject name (e.g. Data Structures)"
-                placeholderTextColor={theme.textMuted}
-                value={manualSubjectName}
-                onChangeText={setManualSubjectName}
-                autoCapitalize="words"
-              />
-
-              <TextInput
-                style={s.textInput}
-                placeholder="Subject code (e.g. CS301)"
-                placeholderTextColor={theme.textMuted}
-                value={manualSubjectCode}
-                onChangeText={setManualSubjectCode}
-                autoCapitalize="characters"
-              />
-
-            </View>
-
-          ) : (
-
-            <Dropdown
-              placeholder={
-                !section
-                  ? 'Select a class first'
-                  : subjLoading
-                    ? 'Loading subjects…'
-                    : 'Choose subject'
-              }
-
-              value={subjectCode}
-
-              options={subjectOptions}
-
-              onChange={(value) => {
-                setSubjectCode(value);
-                const picked = subjectOptions.find((o) => o.value === value);
-                setManualSubjectName(picked?.label || '');
-                setManualSubjectCode(value);
-              }}
-
-              disabled={!section}
-
-              emptyText={
-                "No subjects found in this class's timetable yet."
-              }
-            />
-
-          )}
-
-        </View>
+        <Dropdown
+          label="Subject"
+          placeholder={!section ? 'Select a class first' : !academicOptions ? 'Loading subjects…' : 'Choose subject'}
+          value={subjectId}
+          options={subjectOptions}
+          onChange={setSubjectId}
+          disabled={!section}
+          emptyText="Add a subject in Subject–Faculty first."
+        />
 
 
         {/* Assign */}
@@ -758,131 +561,62 @@ export default function FacultyAllocation() {
     useState<Faculty | null>(null);
 
 
-  // ALL LOCAL ALLOCATIONS
-  const [allocations, setAllocations] =
-    useState<FacultyAllocation[]>([]);
+  const { data: classRows = [], refetch: refetchAllocations } = useQuery({
+    queryKey: ['hodAcademicClasses'],
+    queryFn: () => academicService.getClasses(),
+  });
 
+  const allocations: FacultyAllocation[] = classRows.map((item) => ({
+    id: String(item.id),
+    facultyId: String(item.facultyId),
+    facultyEmployeeId: item.facultyEmployeeId,
+    facultyName: item.facultyName,
+    semester: String(item.semesterNumber),
+    section: item.sectionName,
+    sectionId: String(item.sectionId),
+    subjectId: String(item.subjectId),
+    academicYear: item.academicYear,
+    subject: item.subjectName,
+    subjectCode: item.subjectCode,
+  }));
 
-  // ─────────────────────────────────────────────
-  // LOAD SAVED ALLOCATIONS
-  // ─────────────────────────────────────────────
+  const handleSaveAllocation = async (allocation: FacultyAllocation): Promise<boolean> => {
+    try {
+      await academicService.createClass({
+        semesterNumber: Number(allocation.semester),
+        sectionId: allocation.sectionId,
+        subjectId: allocation.subjectId,
+        facultyId: allocation.facultyId,
+        academicYear: allocation.academicYear,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['hodAcademicClasses'] });
+      await queryClient.invalidateQueries({ queryKey: ['hodAcademicOptions', Number(allocation.semester)] });
+      Toast.show({ type: 'success', text1: 'Allocation saved' });
+      return true;
+    } catch (error: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Allocation not saved',
+        text2: error?.response?.data?.message || 'Could not save this allocation.',
+      });
+      return false;
+    }
+  };
 
-  useEffect(() => {
-
-    const loadAllocations =
-      async () => {
-
-        try {
-
-          const saved =
-            await AsyncStorage.getItem(
-              ALLOCATION_STORAGE_KEY
-            );
-
-          if (saved) {
-
-            const parsed =
-              JSON.parse(saved);
-
-            if (Array.isArray(parsed)) {
-
-              setAllocations(parsed);
-
-            }
-
-          }
-
-        } catch (error) {
-
-          console.error(
-            'Failed to load allocations:',
-            error
-          );
-
-        }
-
-      };
-
-
-    loadAllocations();
-
-  }, []);
-
-
-  // ─────────────────────────────────────────────
-  // SAVE ALL ALLOCATIONS
-  // ─────────────────────────────────────────────
-
-  const persistAllocations =
-    async (
-      updatedAllocations:
-        FacultyAllocation[]
-    ) => {
-
-      try {
-
-        await AsyncStorage.setItem(
-          ALLOCATION_STORAGE_KEY,
-          JSON.stringify(
-            updatedAllocations
-          )
-        );
-
-      } catch (error) {
-
-        console.error(
-          'Failed to save allocations:',
-          error
-        );
-
-      }
-
-    };
-
-
-  // ─────────────────────────────────────────────
-  // ADD ALLOCATION
-  // ─────────────────────────────────────────────
-
-  const handleSaveAllocation =
-    (
-      newAllocation:
-        FacultyAllocation
-    ) => {
-
-      const updated = [
-        ...allocations,
-        newAllocation,
-      ];
-
-      setAllocations(updated);
-
-      persistAllocations(updated);
-
-    };
-
-
-  // ─────────────────────────────────────────────
-  // REMOVE ALLOCATION
-  // ─────────────────────────────────────────────
-
-  const handleRemoveAllocation =
-    (
-      allocationId: string
-    ) => {
-
-      const updated =
-        allocations.filter(
-          (allocation) =>
-            allocation.id !==
-            allocationId
-        );
-
-      setAllocations(updated);
-
-      persistAllocations(updated);
-
-    };
+  const handleRemoveAllocation = async (allocationId: string) => {
+    try {
+      await academicService.deleteClass(allocationId);
+      await queryClient.invalidateQueries({ queryKey: ['hodAcademicClasses'] });
+      await queryClient.invalidateQueries({ queryKey: ['sectionDashboard'] });
+      Toast.show({ type: 'success', text1: 'Allocation removed' });
+    } catch (error: any) {
+      Toast.show({
+        type: 'error',
+        text1: 'Allocation not removed',
+        text2: error?.response?.data?.message || 'Could not remove this allocation.',
+      });
+    }
+  };
 
 
   // ─────────────────────────────────────────────
@@ -938,7 +672,7 @@ export default function FacultyAllocation() {
 
       return allocations.filter(
         (allocation) =>
-          allocation.facultyId ===
+          allocation.facultyEmployeeId ===
           facultyId
       ).length;
 
@@ -1092,7 +826,10 @@ export default function FacultyAllocation() {
                 !isLoading
               }
 
-              onRefresh={refetch}
+              onRefresh={() => {
+                void refetch();
+                void refetchAllocations();
+              }}
 
               tintColor={
                 theme.primary

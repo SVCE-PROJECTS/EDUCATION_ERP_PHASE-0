@@ -237,16 +237,27 @@ export default function LoginScreen() {
 
       {/* ── Theme toggle ───────────────────────────────────────────────── */}
       <View style={s.themeToggleWrap}>
-        <TouchableOpacity
-          style={s.themeToggleBtn}
-          onPress={() => setIsDark((d) => !d)}
-          activeOpacity={0.8}
-          accessibilityLabel="Toggle dark mode"
-        >
-          {/* Light mode = show Moon (click to go dark). Dark mode = show Sun (click to go light) */}
-          <Text style={s.themeIcon}>{isDark ? '☀️' : '🌙'}</Text>
-          <Text style={s.themeLabel}>{isDark ? 'Light' : 'Dark'}</Text>
-        </TouchableOpacity>
+        <Text style={s.themeToggleTitle}>Appearance</Text>
+        <View style={s.themeToggleGroup}>
+          <TouchableOpacity
+            style={[s.themeToggleOption, !isDark && s.themeToggleOptionActive]}
+            onPress={() => setIsDark(false)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: !isDark }}
+          >
+            <Text style={[s.themeToggleText, !isDark && s.themeToggleTextActive]}>Light</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.themeToggleOption, isDark && s.themeToggleOptionActive]}
+            onPress={() => setIsDark(true)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isDark }}
+          >
+            <Text style={[s.themeToggleText, isDark && s.themeToggleTextActive]}>Dark</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -363,7 +374,7 @@ export default function LoginScreen() {
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={s.eyeBtn}
                   >
-                    <Text style={s.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+                    <Text style={[s.eyeText, { color: role.accent }]}>{showPassword ? 'Hide' : 'Show'}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -441,20 +452,28 @@ const getStyles = (C, isDark) => StyleSheet.create({
     top: Platform.OS === 'ios' ? 52 : 20,
     right: 20,
     zIndex: 10,
+    alignItems: 'flex-end',
+    gap: 4,
   },
-  themeToggleBtn: {
+  themeToggleTitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: isDark ? 'rgba(255,255,255,0.72)' : 'rgba(15,32,68,0.72)',
+  },
+  themeToggleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(15,32,68,0.12)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    gap: 2,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(15,32,68,0.10)',
+    borderRadius: 9,
+    padding: 3,
     borderWidth: 1,
-    borderColor: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(15,32,68,0.20)',
+    borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(15,32,68,0.16)',
   },
-  themeIcon: { fontSize: 16 },
-  themeLabel: { fontSize: 12, fontWeight: '600', color: isDark ? '#FFFFFF' : '#0F2044' },
+  themeToggleOption: { minWidth: 48, alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  themeToggleOptionActive: { backgroundColor: isDark ? '#FFFFFF' : '#0F2044' },
+  themeToggleText: { fontSize: 11, fontWeight: '600', color: isDark ? '#FFFFFF' : '#0F2044' },
+  themeToggleTextActive: { color: isDark ? '#0F2044' : '#FFFFFF' },
 
   scroll: {
     flexGrow: 1,
@@ -545,8 +564,8 @@ const getStyles = (C, isDark) => StyleSheet.create({
   },
   inputPrefix: { fontSize: 15, marginRight: 8 },
   input: { flex: 1, fontSize: 14, padding: 0 },
-  eyeBtn:  { marginLeft: 6, padding: 2 },
-  eyeIcon: { fontSize: 15 },
+  eyeBtn:  { marginLeft: 6, paddingVertical: 2, paddingHorizontal: 4 },
+  eyeText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
 
   errorBox: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
   errorText: { fontSize: 13, fontWeight: '500' },

@@ -3,12 +3,15 @@ const multer = require('multer');
 const path = require('path');
 const config = require('../config');
 const transferController = require('../controllers/transferController');
-const { authenticate } = require('../middleware/authenticate');
+const { authenticate, requireAdmin } = require('../middleware/authenticate');
 const { validate } = require('../middleware/validate');
 const { transferStudentRules } = require('../validators/transferValidator');
 const { idParamRule } = require('../validators/studentValidator');
 
 const router = express.Router();
+
+// Admin-only feature — verified no HOD/faculty frontend calls this router.
+router.use(authenticate, requireAdmin);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(process.cwd(), config.uploadDir)),
@@ -32,13 +35,12 @@ const upload = multer({
 
 router.post(
   '/',
-  authenticate,
   upload.single('supportingDocument'),
   validate(transferStudentRules),
   transferController.transfer,
 );
-router.get('/', authenticate, transferController.listAll);
-router.get('/export', authenticate, transferController.exportTransfers);
-router.get('/:id/history', authenticate, validate(idParamRule), transferController.history);
+router.get('/', transferController.listAll);
+router.get('/export', transferController.exportTransfers);
+router.get('/:id/history', validate(idParamRule), transferController.history);
 
 module.exports = router;

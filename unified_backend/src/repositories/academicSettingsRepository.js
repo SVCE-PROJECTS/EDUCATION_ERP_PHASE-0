@@ -2,14 +2,19 @@ const { query } = require('../config/db');
 
 const AcademicSettingsRepository = {
   /**
-   * Returns the most recent academic settings row.
+   * Returns the most recently saved academic settings row — i.e. whatever
+   * the admin last set, regardless of which academic_year string it's
+   * under. Ordering by setting_id was wrong: an UPDATE (via the upsert's
+   * ON CONFLICT) doesn't change the row's id, so saving against an
+   * academic_year that already had a lower id than some other row would
+   * silently update the DB but never surface as "current" anywhere.
    */
   async getCurrentSettings() {
     const result = await query(
       `SELECT academic_year AS "academicYear",
               current_semester_type AS "currentSemesterType"
        FROM academic_settings
-       ORDER BY setting_id DESC
+       ORDER BY updated_at DESC, setting_id DESC
        LIMIT 1`,
     );
     return result.rows[0] || null;

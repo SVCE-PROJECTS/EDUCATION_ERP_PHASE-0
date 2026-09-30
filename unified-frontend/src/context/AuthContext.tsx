@@ -51,6 +51,7 @@ const ALL_SESSION_KEYS = [
   'auth_token',         // admin
   'auth_user',          // admin
   'dept-erp-auth-v3',   // hod (zustand persist)
+  'faculty-erp-auth-v1', // faculty (context/faculty/AuthContext.tsx persist)
 ];
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -164,7 +165,11 @@ export async function doFacultyLogin(
   }
 
   const user: UnifiedUser = {
-    id:             faculty.id,
+    // The faculty record has no plain `id` field — only `employee_id` /
+    // `employeeId` (string) and `faculty_id` / `facultyId` (numeric PK).
+    // This must match the JWT's own `id` claim (employee_id, see utils/jwt.js)
+    // since screens like MyProfile use this id to call GET /faculty/:id.
+    id:             faculty.employeeId ?? faculty.employee_id ?? faculty.id,
     username:       faculty.username ?? username,
     name:           faculty.name ?? faculty.fullName ?? username,
     fullName:       faculty.name ?? faculty.fullName,
@@ -175,7 +180,7 @@ export async function doFacultyLogin(
     designation:    faculty.designation ?? '',
     department:     faculty.department ?? { code: departmentCode },
     roles:          (faculty.roles ?? []).map(toRoleSlug).filter(Boolean),
-    profilePhoto:   faculty.profilePhoto ?? null,
+    profilePhoto:   faculty.photoUrl ?? faculty.photo_url ?? faculty.profilePhoto ?? null,
   };
   return { user, token: raw.token };
 }

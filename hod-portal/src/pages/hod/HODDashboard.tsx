@@ -156,33 +156,44 @@ export default function HODDashboard() {
 
           if (!semesters.length) return { totalCount: 0, buckets };
 
-          let totalCount = 0;
+          // Fetch every semester's sections in parallel (was sequential —
+          // 4 semesters x 4 sections took ~3s one-at-a-time on a small
+          // department; this cuts it to the slowest single call).
+          const sectionsBySem = await Promise.all(
+            semesters.map((sem) => studentListService.getSections(sem)),
+          );
 
-          for (const sem of semesters) {
-            const secRes = await studentListService.getSections(sem);
+          const targets: { sem: number; secName: string }[] = [];
+          semesters.forEach((sem, i) => {
+            const secRes = sectionsBySem[i];
             const sections: any[] = Array.isArray(secRes) ? secRes : secRes?.data || [];
-
-            for (const sec of sections) {
+            sections.forEach((sec) => {
               const secName = typeof sec === 'string' ? sec : sec?.name || sec?.id;
-              if (secName) {
-                const dashData = await studentListService.getSectionDashboard(sem, secName, 1, 100);
+              if (secName) targets.push({ sem, secName });
+            });
+          });
 
-                // Extract total count from pagination or data array length
-                const paginationTotal = dashData?.students?.pagination?.total ?? dashData?.data?.students?.pagination?.total;
-                const studentList = dashData?.students?.data ?? dashData?.students ?? [];
+          // Fetch every section's dashboard in parallel too, for the same reason.
+          const dashResults = await Promise.all(
+            targets.map(({ sem, secName }) => studentListService.getSectionDashboard(sem, secName, 1, 100)),
+          );
 
-                totalCount += paginationTotal ?? studentList.length ?? 0;
+          let totalCount = 0;
+          dashResults.forEach((dashData) => {
+            // Extract total count from pagination or data array length
+            const paginationTotal = dashData?.students?.pagination?.total ?? dashData?.data?.students?.pagination?.total;
+            const studentList = dashData?.students?.data ?? dashData?.students ?? [];
 
-                studentList.forEach((st: any) => {
-                  const perf = st?.performance;
-                  if (perf == null) return;
-                  if (perf >= 75) buckets.excellent += 1;
-                  else if (perf >= 50) buckets.average += 1;
-                  else buckets.needsImprovement += 1;
-                });
-              }
-            }
-          }
+            totalCount += paginationTotal ?? studentList.length ?? 0;
+
+            studentList.forEach((st: any) => {
+              const perf = st?.performance;
+              if (perf == null) return;
+              if (perf >= 75) buckets.excellent += 1;
+              else if (perf >= 50) buckets.average += 1;
+              else buckets.needsImprovement += 1;
+            });
+          });
           return { totalCount, buckets };
         } catch (err) {
           console.error('Failed to resolve student count:', err);

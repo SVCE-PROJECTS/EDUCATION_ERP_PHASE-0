@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   LayoutDashboard, Users, ClipboardList, CheckSquare,
-  Award, GraduationCap, LogOut,
+  Award, GraduationCap, LogOut, Sun, Moon,
 } from '../../components/faculty/icons';
 import Avatar from '../../components/faculty/ui/Avatar';
 import { useAuth } from '../../context/faculty/AuthContext';
@@ -129,7 +129,7 @@ export default function FacultyDrawerContent(props: DrawerContentComponentProps)
         </TouchableOpacity>
         <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn} activeOpacity={0.7}
           accessibilityLabel="Toggle dark mode">
-          <Text style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</Text>
+          {isDark ? <Sun size={16} color={theme.textSecondary} /> : <Moon size={16} color={theme.textSecondary} />}
         </TouchableOpacity>
         <TouchableOpacity onPress={handleLogout} style={styles.signOutBtn} activeOpacity={0.7}
           accessibilityLabel="Sign out">

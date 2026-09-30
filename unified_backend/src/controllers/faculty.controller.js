@@ -89,7 +89,9 @@ const getMyProfile = async (req, res, next) => {
     const facultyRepo = require('../repositories/faculty.repository');
     const faculty = await facultyRepo.findByEmployeeId(req.user.id);
     if (!faculty) return errorResponse(res, 'Faculty not found.', 404);
-    const { passwordHash, ...safe } = faculty;
+    // normalizeFacultyRow spreads the raw pg row AND adds camelCase aliases,
+    // so the hash exists under both password_hash and passwordHash.
+    const { passwordHash, password_hash, ...safe } = faculty;
     return successResponse(res, safe);
   } catch (err) {
     if (err.statusCode) return errorResponse(res, err.message, err.statusCode);

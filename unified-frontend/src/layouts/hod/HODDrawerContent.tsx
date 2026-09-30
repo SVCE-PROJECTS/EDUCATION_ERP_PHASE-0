@@ -12,6 +12,8 @@ import {
   CalendarClock,
   History,
   LogOut,
+  Sun,
+  Moon,
 } from '../../components/hod/icons';
 import Avatar from '../../components/hod/ui/Avatar';
 import { useAuth } from '../../context/hod/AuthContext';
@@ -154,7 +156,7 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
         {/* Theme toggle */}
         <TouchableOpacity onPress={toggleDark} style={styles.iconBtn} activeOpacity={0.7}
           accessibilityLabel="Toggle dark mode">
-          <Text style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</Text>
+          {isDark ? <Sun size={16} color={theme.textSecondary} /> : <Moon size={16} color={theme.textSecondary} />}
         </TouchableOpacity>
 
         {/* Sign out */}

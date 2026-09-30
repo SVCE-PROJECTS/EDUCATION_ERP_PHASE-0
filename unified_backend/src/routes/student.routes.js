@@ -6,7 +6,7 @@
 const express = require('express');
 const { param } = require('express-validator');
 const studentController = require('../controllers/studentController');
-const { authenticate } = require('../middleware/authenticate');
+const { authenticate, requireAdmin } = require('../middleware/authenticate');
 const { validate, validateId } = require('../middleware/validate');
 const {
   createStudentRules, updateStudentRules, idParamRule, listStudentsRules,
@@ -57,13 +57,13 @@ router.get('/:id/profile', authenticate, validate(idParamRule), studentControlle
 // ── Get by ID ─────────────────────────────────────────────────────────────────
 router.get('/:id', authenticate, validate(idParamRule), studentController.getById);
 
-// ── Create ────────────────────────────────────────────────────────────────────
-router.post('/', authenticate, validate(createStudentRules), studentController.createStudent);
+// ── Create (admin-only — registry ownership belongs to admin-frontend) ────────
+router.post('/', authenticate, requireAdmin, validate(createStudentRules), studentController.createStudent);
 
-// ── Update ────────────────────────────────────────────────────────────────────
-router.put('/:id', authenticate, validate(updateStudentRules), studentController.updateStudent);
+// ── Update (admin-only) ────────────────────────────────────────────────────────
+router.put('/:id', authenticate, requireAdmin, validate(updateStudentRules), studentController.updateStudent);
 
-// ── Delete ────────────────────────────────────────────────────────────────────
-router.delete('/:id', authenticate, validate(idParamRule), studentController.deleteStudent);
+// ── Delete (admin-only) ────────────────────────────────────────────────────────
+router.delete('/:id', authenticate, requireAdmin, validate(idParamRule), studentController.deleteStudent);
 
 module.exports = router;

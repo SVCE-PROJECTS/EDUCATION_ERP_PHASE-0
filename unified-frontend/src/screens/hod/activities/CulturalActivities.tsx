@@ -13,7 +13,7 @@ const PARTICIPATION_OPTIONS = [
   { label: 'Runner-Up', value: 'RUNNER_UP' },
 ];
 const FIELDS: FieldDescriptor[] = [
-  { name: 'student_id', label: 'Student USN', required: true },
+  { name: 'student_id', label: 'Student', required: true, type: 'student-search' },
   { name: 'eventName', label: 'Event Name', required: true },
   { name: 'category', label: 'Category', required: true },
   { name: 'participation', label: 'Participation', required: true, type: 'select', options: PARTICIPATION_OPTIONS },

@@ -16,7 +16,7 @@ import Assignments          from '../../screens/faculty/Assignments';
 import Attendance           from '../../screens/faculty/Attendance';
 import IAMarks              from '../../screens/faculty/IAMarks';
 import FacultyDrawerContent from '../../layouts/faculty/FacultyDrawerContent';
-// import SnackbarHost         from '../../components/faculty/ui/SnackbarHost';
+import SnackbarHost         from '../../components/faculty/ui/SnackbarHost';
 
 // -- Faculty-specific providers -----------------------------------------------
 import { AuthProvider as FacultyAuthProvider, useAuth as useFacultyAuth } from '../../context/faculty/AuthContext';
@@ -49,7 +49,7 @@ function FacultyTokenBridge() {
       departmentCode: unifiedUser.departmentCode ?? '',
       isHOD:          false,
       roles:          unifiedUser.roles ?? [],
-      profilePhoto:   unifiedUser.profilePhoto ?? null,
+      photoUrl:       unifiedUser.profilePhoto ?? null,
     };
     login(facultyUser, unifiedToken);
   }, [unifiedToken]);
@@ -129,7 +129,7 @@ function FacultyShell() {
         <FacultyTokenBridge />
         <FacultyLogoutBridge />
         <FacultyNavigator />
-        {/* <SnackbarHost /> */}
+        <SnackbarHost />
       </QueryClientProvider>
     </PaperProvider>
   );

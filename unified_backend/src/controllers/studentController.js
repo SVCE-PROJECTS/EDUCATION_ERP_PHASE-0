@@ -271,7 +271,7 @@ const getSemesters = async (req, res, next) => {
 const getSections = async (req, res, next) => {
   try {
     const semesterNumber = parseInt(req.params.semester, 10);
-    const data = await studentListService.getSectionsBySemester(semesterNumber);
+    const data = await studentListService.getSectionsBySemester(semesterNumber, req.user?.departmentCode);
     return res.status(200).json({ success: true, message: 'Sections fetched successfully', data });
   } catch (err) {
     next(err);
@@ -288,7 +288,7 @@ const getSectionDashboard = async (req, res, next) => {
     const sectionName = req.params.section.toUpperCase();
     const pagination = { page: req.query.page, limit: req.query.limit };
 
-    const data = await studentListService.getSectionDashboard(semesterNumber, sectionName, pagination);
+    const data = await studentListService.getSectionDashboard(semesterNumber, sectionName, pagination, req.user?.departmentCode);
     return res.status(200).json({ success: true, message: 'Section dashboard fetched successfully', data });
   } catch (err) {
     next(err);

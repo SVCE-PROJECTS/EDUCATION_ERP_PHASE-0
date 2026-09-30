@@ -2,7 +2,7 @@
 /**
  * HODPortal — full hod-portal navigator embedded inside unified-frontend.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -33,7 +33,7 @@ import { ROUTES } from '../../navigation/hod/routes';
 const Stack  = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
 
-const queryClient = new QueryClient({
+const makeQueryClient = () => new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false } },
 });
 
@@ -134,6 +134,10 @@ function HODNavigator() {
 
 function HODShell() {
   const { isDark } = useHODTheme();
+  // Fresh per mount — see FacultyPortal.tsx for why this can't be a
+  // module-level singleton (it would leak one HOD's cached data to the
+  // next HOD who logs into the same browser tab).
+  const [queryClient] = useState(makeQueryClient);
   return (
     <PaperProvider theme={isDark ? darkTheme : lightTheme}>
       <QueryClientProvider client={queryClient}>

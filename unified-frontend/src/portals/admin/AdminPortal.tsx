@@ -4,7 +4,7 @@
  * Imports screens directly from admin-frontend/src/screens.
  * Uses its own AuthProvider so the admin token/user is isolated.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -47,7 +47,7 @@ import { useAuth as useUnifiedAuth } from '../../context/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
-const queryClient = new QueryClient({
+const makeQueryClient = () => new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
@@ -148,6 +148,10 @@ function AdminNavigator() {
 
 function AdminShell() {
   const { isDark } = useAdminTheme();
+  // Fresh per mount — see FacultyPortal.tsx for why this can't be a
+  // module-level singleton (it would leak one admin's cached data to the
+  // next admin who logs into the same browser tab).
+  const [queryClient] = useState(makeQueryClient);
   return (
     <PaperProvider theme={isDark ? paperDarkTheme : paperTheme}>
       <QueryClientProvider client={queryClient}>

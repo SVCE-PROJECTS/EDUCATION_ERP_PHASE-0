@@ -65,7 +65,15 @@ export default function App() {
     <GestureHandlerRootView style={s.root}>
       <SafeAreaProvider>
         <AuthProvider>
-          <NavigationContainer>
+          <NavigationContainer
+            documentTitle={{
+              // Before any screen has mounted (initial loading spinner) there's
+              // no active route, so the default formatter falls through to
+              // `route?.name` = undefined — and the browser tab silently shows
+              // the literal text "undefined" until a screen finally mounts.
+              formatter: (options, route) => options?.title ?? route?.name ?? 'SVCE ERP',
+            }}
+          >
             <StatusBar style="light" />
             <RootNavigator />
           </NavigationContainer>

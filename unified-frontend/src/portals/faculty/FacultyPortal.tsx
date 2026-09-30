@@ -2,7 +2,7 @@
 /**
  * FacultyPortal - full faculty-portal navigator embedded inside unified-frontend.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -28,7 +28,7 @@ import { ROUTES } from '../../navigation/faculty/routes';
 const Stack  = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
 
-const queryClient = new QueryClient({
+const makeQueryClient = () => new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false } },
 });
 
@@ -123,6 +123,11 @@ function FacultyNavigator() {
 
 function FacultyShell() {
   const { isDark } = useFacultyTheme();
+  // Fresh per mount — App.tsx remounts FacultyPortal (via `key`) on every
+  // login, but a module-level QueryClient would survive that remount and
+  // keep serving one faculty's cached data (e.g. their classes) to the
+  // next faculty who logs into the same browser tab.
+  const [queryClient] = useState(makeQueryClient);
   return (
     <PaperProvider theme={isDark ? darkTheme : lightTheme}>
       <QueryClientProvider client={queryClient}>

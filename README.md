@@ -4,9 +4,7 @@ This is the official repo.
 
 A department ERP system: one shared PostgreSQL database and Express API
 (`unified_backend`) behind `unified-frontend`, a single React Native / Expo
-app covering the admin, HOD and faculty portals. (`admin-frontend`,
-`hod-portal` and `faculty-portal` are the older, separate per-portal apps
-that `unified-frontend` replaces; kept around for reference.)
+app covering the admin, HOD and faculty portals.
 
 ## Prerequisites
 
@@ -34,16 +32,6 @@ then `npm run dev`.
 
 ```bash
 cd unified-frontend
-cp .env.example .env      # set EXPO_PUBLIC_API_URL
-npm install
-npm start
-```
-
-The older `admin-frontend`, `hod-portal` and `faculty-portal` apps are set up
-the same way, each pointed at `unified_backend` via its own `.env`:
-
-```bash
-cd admin-frontend   # or hod-portal / faculty-portal
 cp .env.example .env      # set EXPO_PUBLIC_API_URL
 npm install
 npm start

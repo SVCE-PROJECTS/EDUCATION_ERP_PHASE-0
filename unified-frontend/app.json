@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "SVCE ERP",
+    "slug": "svce-erp-unified",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true },
+    "android": { "adaptiveIcon": { "backgroundColor": "#1E3A5F" } },
+    "web": { "bundler": "metro" }
+  }
+}

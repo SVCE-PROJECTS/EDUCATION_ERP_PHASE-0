@@ -306,7 +306,7 @@ const getStyles = (colors) => StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: spacing.lg,
+    bottom: 80,
     backgroundColor: colors.primary,
   },
   modalHint: {

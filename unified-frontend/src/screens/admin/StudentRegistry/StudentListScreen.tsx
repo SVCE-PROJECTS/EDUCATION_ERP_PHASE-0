@@ -38,12 +38,24 @@ const StudentListScreen = ({ navigation }) => {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [snackbar, setSnackbar] = useState('');
 
+  // Column filter state
+  const [filterDeptId, setFilterDeptId] = useState(undefined);
+  const [filterSemId, setFilterSemId]   = useState(undefined);
+  const [filterSecId, setFilterSecId]   = useState(undefined);
+
   const { data, isLoading, isFetching } = useStudents({
-    search: search || undefined, page, pageSize: PAGE_SIZE,
+    search: search || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+    departmentId: filterDeptId || undefined,
+    semester: filterSemId || undefined,
+    sectionId: filterSecId || undefined,
   });
   const updateMutation = useUpdateStudent();
 
   const { data: semesters = [] } = useDropdown('semester');
+  const { data: departments = [] } = useDropdown('department');
+  const { data: sections = [] } = useDropdown('section');
   const { data: reassignSections = [] } = useSectionsBySemester(reassignSemester);
 
   const students = data?.data || [];
@@ -149,6 +161,37 @@ const StudentListScreen = ({ navigation }) => {
           />
         </View>
 
+        {/* Column filters */}
+        <View style={styles.filterRow}>
+          <View style={styles.filterItem}>
+            <CustomDropdown
+              label="Dept"
+              value={filterDeptId ?? ''}
+              options={departments}
+              onSelect={(v) => { setFilterDeptId(v || undefined); setPage(1); }}
+              floatingLabel={false}
+            />
+          </View>
+          <View style={styles.filterItem}>
+            <CustomDropdown
+              label="Semester"
+              value={filterSemId ?? ''}
+              options={semesters}
+              onSelect={(v) => { setFilterSemId(v || undefined); setPage(1); }}
+              floatingLabel={false}
+            />
+          </View>
+          <View style={styles.filterItem}>
+            <CustomDropdown
+              label="Section"
+              value={filterSecId ?? ''}
+              options={sections}
+              onSelect={(v) => { setFilterSecId(v || undefined); setPage(1); }}
+              floatingLabel={false}
+            />
+          </View>
+        </View>
+
         {selectedIds.size > 0 && (
           <BulkActionBar
             count={selectedIds.size}
@@ -232,14 +275,14 @@ const StudentListScreen = ({ navigation }) => {
           label="Semester"
           value={reassignSemester}
           options={semesters}
-          onSelect={(v) => { setReassignSemester(v); setReassignSectionId(undefined); }}
+          onSelect={(v) => { setReassignSemester(v || undefined); setReassignSectionId(undefined); }}
           floatingLabel={false}
         />
         <CustomDropdown
           label="Section"
           value={reassignSectionId}
           options={reassignSections}
-          onSelect={setReassignSectionId}
+          onSelect={(v) => setReassignSectionId(v || undefined)}
           floatingLabel={false}
         />
         <CustomButton
@@ -281,6 +324,17 @@ const getStyles = (colors) => StyleSheet.create({
   searchWrap: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  filterItem: {
+    flex: 1,
+    minWidth: 120,
   },
   paginationRow: {
     flexDirection: 'row',

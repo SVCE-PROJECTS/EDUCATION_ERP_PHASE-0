@@ -6,8 +6,10 @@ import SearchBar from '../../../components/SearchBar/SearchBar';
 import FacultyTable from '../../../components/Table/FacultyTable';
 import LoadingIndicator from '../../../components/Loading/LoadingIndicator';
 import EmptyState from '../../../components/EmptyState/EmptyState';
+import CustomDropdown from '../../../components/Dropdown/CustomDropdown';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
 import { useFaculty } from '../../../hooks/admin/useFaculty';
+import { useDropdown } from '../../../hooks/admin/useDropdowns';
 import { PAGE_SIZE } from '../../../constants';
 import { colors, spacing, typography } from '../../../theme';
 
@@ -15,12 +17,49 @@ const FacultyListScreen = ({ navigation }) => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
+  // Column filter state
+  const [filterDeptId, setFilterDeptId]   = useState(undefined);
+  const [filterDesig, setFilterDesig]     = useState('');
+  const [filterStatus, setFilterStatus]   = useState('');
+
   const { data, isLoading, isFetching } = useFaculty({
-    search: search || undefined, page, pageSize: PAGE_SIZE,
+    search: search || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+    departmentId: filterDeptId || undefined,
+    designation: filterDesig || undefined,
+    status: filterStatus || undefined,
   });
 
   const members = data?.data || [];
   const meta    = data?.meta;
+
+  // Dropdown data
+  const { data: departments = [] } = useDropdown('department');
+
+  const desigOptions = React.useMemo(() => {
+    const seen = new Set();
+    const opts = [];
+    (members || []).forEach(f => {
+      if (f.designation && !seen.has(f.designation)) {
+        seen.add(f.designation);
+        opts.push({ id: f.designation, name: f.designation });
+      }
+    });
+    return opts.sort((a, b) => a.name.localeCompare(b.name));
+  }, [members]);
+
+  const statusOptions = React.useMemo(() => {
+    const seen = new Set();
+    const opts = [];
+    (members || []).forEach(f => {
+      if (f.status && !seen.has(f.status)) {
+        seen.add(f.status);
+        opts.push({ id: f.status, name: f.status });
+      }
+    });
+    return opts.sort((a, b) => a.name.localeCompare(b.name));
+  }, [members]);
 
   return (
     <ScreenLayout navigation={navigation} activeScreen="FacultyList">
@@ -37,6 +76,37 @@ const FacultyListScreen = ({ navigation }) => {
             onSubmit={() => setPage(1)}
             placeholder="Search by Employee ID, Name, Email or Designation..."
           />
+        </View>
+
+        {/* Column filters */}
+        <View style={styles.filterRow}>
+          <View style={styles.filterItem}>
+            <CustomDropdown
+              label="Designation"
+              value={filterDesig}
+              options={desigOptions}
+              onSelect={(v) => { setFilterDesig(v || ''); setPage(1); }}
+              floatingLabel={false}
+            />
+          </View>
+          <View style={styles.filterItem}>
+            <CustomDropdown
+              label="Department"
+              value={filterDeptId ?? ''}
+              options={departments}
+              onSelect={(v) => { setFilterDeptId(v || undefined); setPage(1); }}
+              floatingLabel={false}
+            />
+          </View>
+          <View style={styles.filterItem}>
+            <CustomDropdown
+              label="Status"
+              value={filterStatus}
+              options={statusOptions}
+              onSelect={(v) => { setFilterStatus(v || ''); setPage(1); }}
+              floatingLabel={false}
+            />
+          </View>
         </View>
 
         {isLoading ? (
@@ -94,6 +164,17 @@ const styles = StyleSheet.create({
   title:           { ...typography.h1, color: colors.textPrimary },
   subtitle:        { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs },
   searchWrap:      { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  filterItem: {
+    flex: 1,
+    minWidth: 120,
+  },
   paginationRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,

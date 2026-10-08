@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
-  RefreshControl, ScrollView, FlatList, useWindowDimensions,
+  RefreshControl, ScrollView, FlatList, useWindowDimensions, Modal,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useQueryClient } from '@tanstack/react-query';
@@ -168,17 +168,33 @@ function BulkMarkPanel({
             </Text>
             <ChevronDown size={15} color={theme.textMuted} />
           </TouchableOpacity>
-          {classOpen && (
-            <View style={s.dropdownList}>
-              {myClasses.map(cls => (
-                <TouchableOpacity key={cls.class_id} style={[s.dropdownItem, selectedClass?.class_id === cls.class_id && s.dropdownItemActive]}
-                  onPress={() => { setSelectedClass(cls); setClassOpen(false); }} activeOpacity={0.75}>
-                  <Text style={[s.dropdownItemText, selectedClass?.class_id === cls.class_id && s.dropdownItemTextActive]} numberOfLines={1}>{cls.label}</Text>
-                  {selectedClass?.class_id === cls.class_id && <Check size={13} color={theme.primary} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+          
+          {/* Modal overlay for dropdown */}
+          <Modal visible={classOpen} transparent animationType="fade" onRequestClose={() => setClassOpen(false)}>
+            <TouchableOpacity 
+              style={s.dropdownOverlay} 
+              activeOpacity={1} 
+              onPress={() => setClassOpen(false)}
+            >
+              <View style={s.dropdownModal}>
+                <ScrollView style={s.dropdownScroll} nestedScrollEnabled>
+                  {myClasses.map(cls => (
+                    <TouchableOpacity 
+                      key={cls.class_id} 
+                      style={[s.dropdownItem, selectedClass?.class_id === cls.class_id && s.dropdownItemActive]}
+                      onPress={() => { setSelectedClass(cls); setClassOpen(false); }} 
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[s.dropdownItemText, selectedClass?.class_id === cls.class_id && s.dropdownItemTextActive]} numberOfLines={1}>
+                        {cls.label}
+                      </Text>
+                      {selectedClass?.class_id === cls.class_id && <Check size={13} color={theme.primary} />}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </TouchableOpacity>
+          </Modal>
         </View>
 
         {/* Date input */}
@@ -349,7 +365,7 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   bulkTitle: { fontSize: 16, fontWeight: '700', color: theme.textPrimary },
 
   bulkTopRow: { flexDirection: 'row', gap: 12 },
-  bulkField: { flex: 1, gap: 6, position: 'relative' },
+  bulkField: { flex: 1, gap: 6 },
   bulkLabel: { fontSize: 12, fontWeight: '600', color: theme.textSecondary },
   bulkDropdown: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -359,12 +375,37 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   bulkDropdownText: { flex: 1, fontSize: 13, color: theme.textPrimary, marginRight: 6 },
   bulkDropdownPlaceholder: { color: theme.textMuted },
-  dropdownList: {
-    position: 'absolute', top: 68, left: 0, right: 0, zIndex: 100,
-    backgroundColor: theme.surface, borderRadius: 12, borderWidth: 1,
-    borderColor: theme.border, ...shadows.card, maxHeight: 220,
+  
+  // Modal overlay dropdown
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  dropdownItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.border },
+  dropdownModal: {
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: 400,
+    ...shadows.card,
+  },
+  dropdownScroll: {
+    maxHeight: 400,
+  },
+  dropdownItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 16, 
+    paddingVertical: 14, 
+    borderBottomWidth: 1, 
+    borderBottomColor: theme.border 
+  },
   dropdownItemActive: { backgroundColor: primaryScale[50] },
   dropdownItemText: { flex: 1, fontSize: 13, color: theme.textSecondary, marginRight: 8 },
   dropdownItemTextActive: { color: primaryScale[700], fontWeight: '600' },

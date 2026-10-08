@@ -3,8 +3,16 @@ const { successResponse, errorResponse } = require('../utils/response');
 
 const getList = async (req, res, next) => {
   try {
-    const { items, total } = await svc.getList(req.user.departmentCode, req.query);
-    return successResponse(res, items, 'Success');
+    const { items, pagination } = await svc.getList(req.user.departmentCode, req.query);
+    // Return items as data + pagination at top level so the frontend can read
+    // both res.data.data (items) and res.data.pagination (paging meta).
+    return res.status(200).json({
+      success: true,
+      message: 'Success',
+      data: items,
+      pagination,
+      timestamp: new Date().toISOString(),
+    });
   } catch (err) {
     if (err.statusCode) return errorResponse(res, err.message, err.statusCode);
     next(err);

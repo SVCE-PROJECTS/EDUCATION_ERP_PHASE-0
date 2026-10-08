@@ -8,21 +8,26 @@ import { useTheme } from '../../context/admin/ThemeContext';
 import { spacing, typography } from '../../theme';
 import { STATUS_COLOR_KEY } from '../../constants';
 import { formatStudentId } from '../../utils/admin/formatStudentId';
+import ColumnFilter from './ColumnFilter';
 
 const BASE_COLUMNS = [
-  { key: 'idLabel', label: 'USN / ID', flex: 1.2 },
-  { key: 'name', label: 'Student Name', flex: 1.6 },
-  { key: 'departmentName', label: 'Dept', flex: 1 },
-  { key: 'semester', label: 'Sem', flex: 0.6 },
-  { key: 'sectionName', label: 'Sec', flex: 0.6 },
+  { key: 'idLabel', label: 'USN / ID', flex: 1.2, filterable: false },
+  { key: 'name', label: 'Student Name', flex: 1.6, filterable: false },
+  { key: 'departmentName', label: 'Dept', flex: 1, filterable: true, filterKey: 'department' },
+  { key: 'semester', label: 'Sem', flex: 0.6, filterable: true, filterKey: 'semester' },
+  { key: 'sectionName', label: 'Sec', flex: 0.6, filterable: true, filterKey: 'section' },
 ];
-const STATUS_COLUMN = { key: 'status', label: 'Status', flex: 1 };
+const STATUS_COLUMN = { key: 'status', label: 'Status', flex: 1, filterable: false };
 
 // showStatus: set to true to show the Status column (off by default - not used anywhere currently).
 // selectable: turns on a leading checkbox column for bulk actions (Student Registry).
 const StudentTable = ({
   students, onRowPress, showStatus = false,
   selectable = false, selectedIds, onToggleSelect, onToggleSelectAll,
+  // Filter props
+  filterOptions = {},
+  filterValues = {},
+  onFilterChange = () => {},
 }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -49,7 +54,16 @@ const StudentTable = ({
         </View>
       )}
       {columns.map((col) => (
-        <Text key={col.key} style={[styles.headerCell, { flex: col.flex }]}>{col.label}</Text>
+        <View key={col.key} style={[styles.headerCellContainer, { flex: col.flex }]}>
+          <Text style={styles.headerCell}>{col.label}</Text>
+          {col.filterable && filterOptions[col.filterKey] && (
+            <ColumnFilter
+              options={filterOptions[col.filterKey]}
+              selectedValue={filterValues[col.filterKey]}
+              onSelect={(value) => onFilterChange(col.filterKey, value)}
+            />
+          )}
+        </View>
       ))}
     </View>
   );
@@ -125,6 +139,11 @@ const getStyles = (colors) => StyleSheet.create({
   },
   checkboxCell: {
     width: 40,
+  },
+  headerCellContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   headerCell: {
     ...typography.label,

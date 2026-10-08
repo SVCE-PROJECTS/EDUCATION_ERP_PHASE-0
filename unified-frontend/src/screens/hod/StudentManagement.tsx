@@ -1218,7 +1218,7 @@ function SectionDashboard({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export default function StudentManagement() {
+export default function StudentManagement({ route }: { route?: any }) {
   const { colors: theme } = useTheme();
   const s = getStyles(theme);
   const [view, setView] =
@@ -1229,6 +1229,18 @@ export default function StudentManagement() {
 
   const [section, setSection] =
     useState<SectionMeta | null>(null);
+
+  // Check if route params contain semester and section for direct navigation
+  React.useEffect(() => {
+    const paramSemester = route?.params?.semester;
+    const paramSection = route?.params?.section;
+
+    if (paramSemester && paramSection) {
+      setSemester(paramSemester);
+      setSection({ id: paramSection, name: paramSection });
+      setView(VIEW.DASHBOARD);
+    }
+  }, [route?.params?.semester, route?.params?.section]);
 
   const handleSemesterSelect = (
     sem: number

@@ -132,4 +132,63 @@ const saveAttendanceBulk = async (req, res) => {
   }
 };
 
-module.exports = { getAttendance, saveAttendance, saveAttendanceBulk };
+// GET /attendance/class-statistics  — attendance % for each class of the requesting faculty
+const getClassStatistics = async (req, res) => {
+  try {
+    // Get all classes for this faculty
+    const classesResult = await pool.query(
+      `SELECT c.class_id, sub.subject_name, sub.subject_code,
+              sec.name AS section_name, sem.semester_number
+       FROM classes c
+       JOIN faculty f    ON f.faculty_id = c.faculty_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       JOIN sections sec ON sec.section_id = c.section_id
+       JOIN semesters sem ON sem.semester_id = c.semester_id
+       WHERE f.employee_id = $1`,
+      [req.user.id]
+    );
+
+    const classes = classesResult.rows;
+
+    // For each class, calculate attendance percentage
+    const statistics = await Promise.all(
+      classes.map(async (cls) => {
+        const attendanceResult = await pool.query(
+          `SELECT 
+             COUNT(*) FILTER (WHERE status = 'Present') as present_count,
+             COUNT(*) as total_count,
+             COUNT(DISTINCT student_id) as student_count
+           FROM attendance
+           WHERE class_id = $1`,
+          [cls.class_id]
+        );
+
+        const stats = attendanceResult.rows[0];
+        const totalCount = parseInt(stats.total_count) || 0;
+        const presentCount = parseInt(stats.present_count) || 0;
+        const studentCount = parseInt(stats.student_count) || 0;
+
+        const attendancePercent = totalCount > 0
+          ? Math.round((presentCount / totalCount) * 100)
+          : null;
+
+        return {
+          class_id: cls.class_id,
+          subject_name: cls.subject_name,
+          subject_code: cls.subject_code,
+          semester: cls.semester_number,
+          section: cls.section_name,
+          attendancePercent,
+          studentCount,
+        };
+      })
+    );
+
+    res.json(statistics);
+  } catch (err) {
+    console.error('Error fetching class statistics:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getAttendance, saveAttendance, saveAttendanceBulk, getClassStatistics };

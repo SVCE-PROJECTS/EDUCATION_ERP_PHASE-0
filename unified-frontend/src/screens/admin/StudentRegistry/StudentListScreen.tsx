@@ -161,37 +161,6 @@ const StudentListScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Column filters */}
-        <View style={styles.filterRow}>
-          <View style={styles.filterItem}>
-            <CustomDropdown
-              label="Dept"
-              value={filterDeptId ?? ''}
-              options={departments}
-              onSelect={(v) => { setFilterDeptId(v || undefined); setPage(1); }}
-              floatingLabel={false}
-            />
-          </View>
-          <View style={styles.filterItem}>
-            <CustomDropdown
-              label="Semester"
-              value={filterSemId ?? ''}
-              options={semesters}
-              onSelect={(v) => { setFilterSemId(v || undefined); setPage(1); }}
-              floatingLabel={false}
-            />
-          </View>
-          <View style={styles.filterItem}>
-            <CustomDropdown
-              label="Section"
-              value={filterSecId ?? ''}
-              options={sections}
-              onSelect={(v) => { setFilterSecId(v || undefined); setPage(1); }}
-              floatingLabel={false}
-            />
-          </View>
-        </View>
-
         {selectedIds.size > 0 && (
           <BulkActionBar
             count={selectedIds.size}
@@ -219,6 +188,22 @@ const StudentListScreen = ({ navigation }) => {
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
               onToggleSelectAll={toggleSelectAll}
+              filterOptions={{
+                department: departments,
+                semester: semesters,
+                section: sections,
+              }}
+              filterValues={{
+                department: filterDeptId,
+                semester: filterSemId,
+                section: filterSecId,
+              }}
+              onFilterChange={(key, value) => {
+                if (key === 'department') setFilterDeptId(value);
+                else if (key === 'semester') setFilterSemId(value);
+                else if (key === 'section') setFilterSecId(value);
+                setPage(1);
+              }}
             />
             {meta && (
               <View style={styles.paginationRow}>
@@ -324,17 +309,6 @@ const getStyles = (colors) => StyleSheet.create({
   searchWrap: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  filterItem: {
-    flex: 1,
-    minWidth: 120,
   },
   paginationRow: {
     flexDirection: 'row',

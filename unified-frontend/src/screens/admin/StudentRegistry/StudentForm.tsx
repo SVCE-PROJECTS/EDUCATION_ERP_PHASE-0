@@ -16,13 +16,39 @@ const DEFAULTS = {
   phone: '',
   gender: undefined,
   academicYear: '',
+  academicYearFrom: '',
+  academicYearTo: '',
   programId: undefined,
   departmentId: undefined,
   semester: undefined,
   sectionId: undefined,
   libraryId: '',
   usn: '',
+  admissionCategory: undefined,
+  rank: '',
 };
+
+// Generate year options: current year ± 5
+const generateYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = -5; i <= 5; i++) {
+    const year = currentYear + i;
+    years.push({
+      id: String(year),
+      name: String(year),
+    });
+  }
+  return years;
+};
+
+// Admission categories
+const ADMISSION_CATEGORIES = [
+  { id: 'CET', name: 'CET' },
+  { id: 'COMEDK', name: 'COMEDK' },
+  { id: 'AICTE', name: 'AICTE' },
+  { id: 'Management', name: 'Management' },
+];
 
 const IconBadge = ({ name }) => {
   const { colors } = useTheme();
@@ -42,11 +68,40 @@ const StudentForm = ({
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const {
-    control, handleSubmit, reset, formState: { errors },
+    control, handleSubmit, reset, formState: { errors }, setValue, watch,
   } = useForm({ defaultValues: initialValues || DEFAULTS });
 
   // Watch semester to filter sections
   const selectedSemester = useWatch({ control, name: 'semester' });
+  
+  // Watch academic year from/to to combine them
+  const academicYearFrom = watch('academicYearFrom');
+  const academicYearTo = watch('academicYearTo');
+
+  useEffect(() => {
+    if (initialValues) {
+      // If editing, parse academicYear into from/to
+      if (initialValues.academicYear && typeof initialValues.academicYear === 'string') {
+        const [from, to] = initialValues.academicYear.split('-');
+        reset({
+          ...initialValues,
+          academicYearFrom: from || '',
+          academicYearTo: to || '',
+        });
+      } else {
+        reset(initialValues);
+      }
+    }
+  }, [initialValues, reset]);
+
+  // Combine academicYearFrom and academicYearTo into academicYear before submission
+  useEffect(() => {
+    if (academicYearFrom && academicYearTo) {
+      setValue('academicYear', `${academicYearFrom}-${academicYearTo}`);
+    } else {
+      setValue('academicYear', '');
+    }
+  }, [academicYearFrom, academicYearTo, setValue]);
 
   useEffect(() => {
     if (initialValues) reset(initialValues);
@@ -139,24 +194,44 @@ const StudentForm = ({
           <View style={styles.col}>
             <Controller
               control={control}
-              name="academicYear"
-              rules={{
-                required: 'Academic year is required',
-                pattern: { value: /^\d{4}-\d{4}$/, message: 'Format: YYYY-YYYY (e.g. 2026-2027)' },
-              }}
+              name="academicYearFrom"
+              rules={{ required: 'Academic year (from) is required' }}
               render={({ field }) => (
-                <CustomInput
-                  label="Academic Year"
-                  placeholder="e.g. 2026-2027"
+                <CustomDropdown
+                  label="Academic Year From"
                   value={field.value}
-                  onChangeText={(text) => field.onChange(text.replace(/[^0-9-]/g, ''))}
-                  onBlur={field.onBlur}
-                  maxLength={9}
-                  error={errors.academicYear?.message}
+                  options={generateYearOptions()}
+                  onSelect={field.onChange}
+                  error={errors.academicYearFrom?.message}
                 />
               )}
             />
           </View>
+          <View style={styles.col}>
+            <Controller
+              control={control}
+              name="academicYearTo"
+              rules={{ 
+                required: 'Academic year (to) is required',
+                validate: (value) => {
+                  if (!academicYearFrom || !value) return true;
+                  return Number(value) > Number(academicYearFrom) || '"To" year must be after "From" year';
+                },
+              }}
+              render={({ field }) => (
+                <CustomDropdown
+                  label="Academic Year To"
+                  value={field.value}
+                  options={generateYearOptions().filter(y => !academicYearFrom || Number(y.id) > Number(academicYearFrom))}
+                  onSelect={field.onChange}
+                  error={errors.academicYearTo?.message}
+                />
+              )}
+            />
+          </View>
+        </View>
+
+        <View style={styles.row}>
           <View style={styles.col}>
             <Controller
               control={control}
@@ -170,6 +245,49 @@ const StudentForm = ({
                   loading={loadingPrograms}
                   onSelect={field.onChange}
                   error={errors.programId?.message}
+                />
+              )}
+            />
+          </View>
+          <View style={styles.col} />
+        </View>
+
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Controller
+              control={control}
+              name="admissionCategory"
+              rules={{ required: 'Admission category is required' }}
+              render={({ field }) => (
+                <CustomDropdown
+                  label="Admission Category"
+                  value={field.value}
+                  options={ADMISSION_CATEGORIES}
+                  onSelect={field.onChange}
+                  error={errors.admissionCategory?.message}
+                />
+              )}
+            />
+          </View>
+          <View style={styles.col}>
+            <Controller
+              control={control}
+              name="rank"
+              rules={{
+                validate: (val) => {
+                  if (!val) return true;
+                  const num = Number(val);
+                  return !isNaN(num) && num > 0 || 'Enter a valid rank';
+                },
+              }}
+              render={({ field }) => (
+                <CustomInput
+                  label="Rank (if applicable)"
+                  value={field.value}
+                  onChangeText={(text) => field.onChange(text.replace(/[^0-9]/g, ''))}
+                  onBlur={field.onBlur}
+                  keyboardType="numeric"
+                  error={errors.rank?.message}
                 />
               )}
             />

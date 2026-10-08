@@ -171,13 +171,30 @@ const updateHackathonRules = [
 ];
 
 // ── Industry Project ──────────────────────────────────────────────────────────
-// Frontend fields: student_id, projectName, status, academicYear, domain
+// Frontend fields: projectName, status, academicYear, domain
+// (student_id is no longer required on create — the HOD creates a project
+//  header first, then adds students via POST /:id/students)
 
 const createIndustryProjectRules = [
-  studentIdRule,
   body('projectName')
     .trim().notEmpty().withMessage('Project name is required')
     .isLength({ max: 200 }),
+  body('status').optional().isIn(VALID_PROJECT_STATUSES)
+    .withMessage(`Status must be one of: ${VALID_PROJECT_STATUSES.join(', ')}`),
+  body('domain').optional({ checkFalsy: true }).isLength({ max: 150 }),
+  semesterOptional,
+  sectionOptional,
+  academicYearOptional,
+];
+
+// FIXED: the PUT (update) route was mistakenly using createIndustryProjectRules,
+// which requires student_id. The edit form intentionally does not send student_id
+// (it's read-only while editing), so every update request failed with
+// "Validation failed - student_id: Student USN is required" before it
+// ever reached the service layer. The update rules omit student_id and make
+// all other fields optional (same pattern as every other activity type).
+const updateIndustryProjectRules = [
+  body('projectName').optional().trim().notEmpty().isLength({ max: 200 }),
   body('status').optional().isIn(VALID_PROJECT_STATUSES)
     .withMessage(`Status must be one of: ${VALID_PROJECT_STATUSES.join(', ')}`),
   body('domain').optional({ checkFalsy: true }).isLength({ max: 150 }),
@@ -231,7 +248,7 @@ module.exports = {
   // Hackathon
   createHackathonRules, updateHackathonRules,
   // Industry Projects
-  createIndustryProjectRules, industryStudentRules,
+  createIndustryProjectRules, updateIndustryProjectRules, industryStudentRules,
   // Other Curricular
   createOtherCurricularRules, updateOtherCurricularRules,
   // Shared

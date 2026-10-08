@@ -50,7 +50,21 @@ export const AuthProvider = ({ children }) => {
         ]);
         if (storedToken && storedUser) {
           setAxiosToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          // Validate the stored token before trusting it
+          try {
+            const res: any = await axiosInstance.get('/auth/me');
+            const validatedUser = res.data ?? res;
+            // Token is valid, use the validated user data
+            setUser(validatedUser);
+            // Update stored user in case server returned fresher data
+            await AsyncStorage.setItem(USER_KEY, JSON.stringify(validatedUser));
+          } catch (validationError) {
+            // Token is stale/invalid — clear it and force re-login
+            console.warn('Stored token validation failed, clearing session:', validationError);
+            await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+            setAxiosToken(null);
+            setUser(null);
+          }
         }
       } finally {
         setIsReady(true);

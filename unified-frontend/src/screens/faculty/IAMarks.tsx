@@ -352,8 +352,8 @@ export default function IAMarks() {
   ), []);
 
   return (
-    <ScreenWrapper route={ROUTES.IA_MARKS} scrollable={false}>
-      <View style={s.pageHeader}>
+    <ScreenWrapper route={ROUTES.IA_MARKS} scrollable={false} style={{ gap: 0, padding: 0, paddingTop: 0, paddingBottom: 0 }}>
+      <View style={[s.pageHeader, { marginBottom: 0, paddingBottom: 0 }]}>
         <View>
           <Text style={s.pageTitle}>IA Marks</Text>
           <Text style={s.pageSubtitle}>{marks.length} record{marks.length !== 1 ? 's' : ''}</Text>
@@ -365,7 +365,12 @@ export default function IAMarks() {
       </View>
 
       {/* Class filter chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipRow}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={s.chipRow}
+        style={[s.chipScrollView, { marginTop: 0, marginBottom: 0, paddingVertical: 0 }]}
+      >
         <TouchableOpacity onPress={() => setClassFilter(null)} style={[s.chip, classFilter === null && s.chipActive]} activeOpacity={0.75}>
           <Text style={[s.chipText, classFilter === null && s.chipTextActive]}>All</Text>
         </TouchableOpacity>
@@ -390,7 +395,7 @@ export default function IAMarks() {
       {isLoading ? (
         <View style={s.center}><ActivityIndicator size="large" color={theme.primary} /></View>
       ) : (
-        <View style={s.listContainer}>
+        <View style={[s.listContainer, { marginTop: 0, paddingTop: 0 }]}>
           <View style={s.sectionCard}>
             <View style={s.cardHeader}>
               <View style={s.cardHeaderLeft}>
@@ -447,12 +452,13 @@ export default function IAMarks() {
 }
 
 const getStyles = (theme: ThemeColors) => StyleSheet.create({
-  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 0 },
   pageTitle: { fontSize: 20, fontWeight: '700', color: theme.textPrimary },
   pageSubtitle: { fontSize: 12, color: theme.textSecondary, marginTop: 2 },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: primaryScale[600], paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, ...shadows.card },
   addBtnText: { fontSize: 13, fontWeight: '600', color: colors.white },
-  chipRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  chipScrollView: { marginVertical: 0, paddingVertical: 0, marginBottom: -50, maxHeight: 44 },
+  chipRow: { paddingHorizontal: 16, paddingVertical: 0, gap: 8, flexDirection: 'row', alignItems: 'center', minHeight: 44 },
   chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.surface },
   chipActive: { backgroundColor: primaryScale[600], borderColor: primaryScale[600] },
   chipText: { fontSize: 12, fontWeight: '500', color: theme.textSecondary },
@@ -460,10 +466,10 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   refreshBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.surface },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
   // Outer wrapper takes remaining space
-  listContainer: { flex: 1, marginHorizontal: 16, marginBottom: 8 },
+  listContainer: { flex: 1, marginHorizontal: 16, marginTop: -50, marginBottom: 8 },
   // Header card — no flex, just shows the title row
   sectionCard: { backgroundColor: theme.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.border, overflow: 'hidden', ...shadows.card, marginBottom: 0 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border, backgroundColor: theme.background },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.border, backgroundColor: theme.background },
   cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardTitle: { fontSize: 14, fontWeight: '600', color: theme.textPrimary },
   cardCount: { fontSize: 12, color: theme.textSecondary },

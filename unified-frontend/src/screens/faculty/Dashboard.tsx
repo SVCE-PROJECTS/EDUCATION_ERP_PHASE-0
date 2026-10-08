@@ -9,13 +9,15 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ClipboardList, CheckSquare, Award, User, ChevronRight, LayoutDashboard } from '../../components/faculty/icons';
+import { ClipboardList, Award, User, ChevronRight, LayoutDashboard } from '../../components/faculty/icons';
 import { dashboardService } from '../../services/faculty/faculty.service';
 import { useAuth } from '../../context/faculty/AuthContext';
 import { useTheme } from '../../context/faculty/ThemeContext';
 import ScreenWrapper from '../../layouts/faculty/ScreenWrapper';
 import SimpleBarChart from '../../components/faculty/ui/SimpleBarChart';
+import ClassAttendanceChart from '../../components/faculty/ui/ClassAttendanceChart';
 import RoleNotifications from '../../components/faculty/ui/RoleNotifications';
+import api from '../../services/faculty/api';
 import { colors, shadows, primaryScale, ThemeColors } from '../../theme/faculty/colors';
 import { ROUTES } from '../../navigation/faculty/routes';
 
@@ -104,8 +106,28 @@ export default function Dashboard() {
   const { data: weeklyData } = useQuery({
     queryKey: ['weekly-attendance'],
     queryFn: async () => {
-      const res = await require('../../services/faculty/api').default.get('/dashboard/weekly-attendance');
+      const res = await api.get('/dashboard/weekly-attendance');
       return res.data;
+    },
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  // Fetch class attendance statistics for the new chart
+  const { data: classAttendanceData, isLoading: loadingClassAttendance, isError: classAttendanceError } = useQuery({
+    queryKey: ['class-attendance-statistics'],
+    queryFn: async () => {
+      console.log('[CLASS-ATTENDANCE] Fetching /attendance/class-statistics...');
+      try {
+        const res = await api.get('/attendance/class-statistics');
+        console.log('[CLASS-ATTENDANCE] Response:', res.data);
+        return res.data;
+      } catch (err: any) {
+        console.error('[CLASS-ATTENDANCE] Error:', err);
+        console.error('[CLASS-ATTENDANCE] Error response:', err.response?.data);
+        console.error('[CLASS-ATTENDANCE] Error status:', err.response?.status);
+        throw err;
+      }
     },
     staleTime: 60_000,
     retry: 1,
@@ -123,13 +145,6 @@ export default function Dashboard() {
       statLabel: `${stats.openAssignments ?? 0} open`,
     },
     {
-      title: 'Attendance',
-      description: 'Mark and review student attendance records',
-      icon: CheckSquare, color: 'blue', route: ROUTES.ATTENDANCE,
-      stat: stats.attendancePercent !== undefined ? `${stats.attendancePercent}%` : '—',
-      statLabel: 'overall rate',
-    },
-    {
       title: 'IA Marks',
       description: 'Enter and update internal assessment marks',
       icon: Award, color: 'purple', route: ROUTES.IA_MARKS,
@@ -145,10 +160,28 @@ export default function Dashboard() {
 
   const quickActions: { key: string; label: string; icon: React.ComponentType<{ size?: number; color?: string }>; color: TileColor; route: string }[] = [
     { key: 'assignments', label: 'Assignments', icon: ClipboardList, color: 'indigo', route: ROUTES.ASSIGNMENTS },
-    { key: 'attendance', label: 'Attendance', icon: CheckSquare, color: 'blue', route: ROUTES.ATTENDANCE },
     { key: 'ia-marks', label: 'IA Marks', icon: Award, color: 'purple', route: ROUTES.IA_MARKS },
     { key: 'profile', label: 'My Profile', icon: User, color: 'amber', route: ROUTES.MY_PROFILE },
   ];
+
+  // Transform class attendance data for chart
+  const classesWithAttendance = React.useMemo(() => {
+    console.log('[CLASS-ATTENDANCE] Raw data:', classAttendanceData);
+    console.log('[CLASS-ATTENDANCE] Is array:', Array.isArray(classAttendanceData));
+    if (!classAttendanceData || !Array.isArray(classAttendanceData)) return [];
+    const transformed = classAttendanceData.map((cls: any) => ({
+      class_id: cls.class_id,
+      subject_code: cls.subject_code,
+      subject_name: cls.subject_name,
+      semester: cls.semester,
+      section: cls.section,
+      label: `${cls.subject_name} (${cls.subject_code}) · Sec ${cls.section} · Sem ${cls.semester}`,
+      attendancePercent: cls.attendancePercent,
+      studentCount: cls.studentCount,
+    }));
+    console.log('[CLASS-ATTENDANCE] Transformed:', transformed);
+    return transformed;
+  }, [classAttendanceData]);
 
   return (
     <ScreenWrapper route={ROUTES.FACULTY_DASHBOARD}>
@@ -199,6 +232,12 @@ export default function Dashboard() {
               showValues={true}
             />
           )}
+
+          {/* Class Attendance Chart - ALWAYS RENDER */}
+          <ClassAttendanceChart
+            classes={classesWithAttendance}
+            height={240}
+          />
         </View>
       )}
 

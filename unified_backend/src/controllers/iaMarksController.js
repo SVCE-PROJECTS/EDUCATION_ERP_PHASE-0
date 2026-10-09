@@ -14,6 +14,7 @@
 
 const pool = require('../config/db').pool;
 const { isOwnClass } = require('../utils/classOwnership');
+const { logActivity } = require('../services/activityAudit.helper');
 
 // GET /ia-marks?student_id=X&class_id=Y
 // class_id is optional: when omitted, the result is scoped to the
@@ -84,6 +85,14 @@ const addIAMarks = async (req, res) => {
        RETURNING *`,
       [student_id, class_id, ia1 ?? null, ia2 ?? null, ia3 ?? null],
     );
+    logActivity({
+      performedBy: req.user.id,
+      departmentCode: req.user.departmentCode,
+      action: 'SAVE_IA_MARKS',
+      module: 'ia_marks',
+      recordId: result.rows[0].ia_id,
+      details: { student_id, class_id, ia1, ia2, ia3 },
+    }).catch(() => {});
     res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -108,6 +117,14 @@ const updateIAMarks = async (req, res) => {
        RETURNING *`,
       [ia1 ?? null, ia2 ?? null, ia3 ?? null, id],
     );
+    logActivity({
+      performedBy: req.user.id,
+      departmentCode: req.user.departmentCode,
+      action: 'UPDATE_IA_MARKS',
+      module: 'ia_marks',
+      recordId: id,
+      details: { ia1, ia2, ia3, class_id: existing.rows[0].class_id },
+    }).catch(() => {});
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -129,6 +146,14 @@ const deleteIAMarks = async (req, res) => {
       'DELETE FROM ia_marks WHERE ia_id = $1 RETURNING ia_id',
       [id],
     );
+    logActivity({
+      performedBy: req.user.id,
+      departmentCode: req.user.departmentCode,
+      action: 'DELETE_IA_MARKS',
+      module: 'ia_marks',
+      recordId: id,
+      details: { class_id: existing.rows[0].class_id },
+    }).catch(() => {});
     res.json({ message: 'IA marks deleted.', id });
   } catch (err) {
     res.status(500).json({ message: err.message });

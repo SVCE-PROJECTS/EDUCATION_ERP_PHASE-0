@@ -14,6 +14,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  Calendar,
 } from '../../components/hod/icons';
 import Avatar from '../../components/hod/ui/Avatar';
 import { useAuth } from '../../context/hod/AuthContext';
@@ -43,6 +44,7 @@ const HOD_NAV: NavItem[] = [
   { label: 'Coordinator Management', route: ROUTES.HOD_COORDINATORS, icon: Award },
   { label: 'Faculty Allocation', route: ROUTES.HOD_FACULTY_ALLOCATION, icon: CalendarClock },
   { label: 'Activities', route: ROUTES.HOD_ACTIVITIES, icon: Flame },
+  { label: 'My Schedules', route: ROUTES.HOD_MY_SCHEDULES, icon: Calendar },
   { label: 'Activity Log', route: ROUTES.HOD_ACTIVITY_LOG, icon: History },
 ];
 

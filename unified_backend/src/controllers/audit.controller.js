@@ -76,4 +76,36 @@ const listDepartmentAuditLogs = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { listAuditLogs, listDepartmentAuditLogs };
+module.exports = { listAuditLogs, listDepartmentAuditLogs, getMyLogs };
+
+/**
+ * GET /api/audit-logs/me
+ * Any authenticated user — returns ONLY entries where the actor is the
+ * caller themselves. The actor id is read exclusively from req.user.id
+ * (the verified JWT claim), never from any query parameter.
+ */
+async function getMyLogs(req, res) {
+  const {
+    page, pageSize, module: moduleFilter, action, dateFrom, dateTo,
+  } = req.query;
+
+  const pageNum = page ? parseInt(page, 10) : 1;
+  const size    = pageSize ? parseInt(pageSize, 10) : 25;
+
+  const { rows, total } = await auditRepository.findByActor({
+    actorId: req.user.id,
+    page: pageNum,
+    pageSize: size,
+    module: moduleFilter,
+    action,
+    dateFrom,
+    dateTo,
+  });
+
+  success(res, rows, {
+    page: pageNum,
+    pageSize: size,
+    total,
+    totalPages: Math.ceil(total / size) || 1,
+  });
+}

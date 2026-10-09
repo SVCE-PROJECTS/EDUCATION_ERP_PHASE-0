@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -127,6 +127,24 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Refs to avoid stale closures in keydown listener
+  const formRef = useRef(form);
+  const loadingRef = useRef(loading);
+  const activeRoleRef = useRef(activeRole);
+
+  // Keep refs updated
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  useEffect(() => {
+    activeRoleRef.current = activeRole;
+  }, [activeRole]);
+
   const role = ROLES[activeRole];
 
   const set = (key) => (val) => {
@@ -168,6 +186,49 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
+  // Add Enter key handler for web
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ignore if composing (IME input)
+      if (event.isComposing) return;
+
+      // Only handle Enter key
+      if (event.key !== 'Enter') return;
+
+      // Ignore if event came from tab button or password toggle
+      const target = event.target as HTMLElement;
+      if (target?.getAttribute('role') === 'button') return;
+
+      // Get fresh values from refs to avoid stale closures
+      const currentForm = formRef.current;
+      const currentLoading = loadingRef.current;
+      const currentActiveRole = activeRoleRef.current;
+      const currentRole = ROLES[currentActiveRole];
+
+      // Don't submit if already loading
+      if (currentLoading) return;
+
+      // Don't submit if required fields are empty
+      if (currentRole.hasDeptCode && !currentForm.departmentCode.trim()) return;
+      if (!currentForm.username.trim()) return;
+      if (!currentForm.password) return;
+
+      // Prevent default and submit
+      event.preventDefault();
+      handleSubmit();
+    };
+
+    // Add listener
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [ROLES]); // Only recreate when ROLES changes (role list, not activeRole)
 
   const s = getStyles(C, isDark);
 
@@ -332,6 +393,8 @@ export default function LoginScreen() {
                       placeholderTextColor={C.slate400}
                       autoCapitalize="characters"
                       autoCorrect={false}
+                      returnKeyType="next"
+                      onSubmitEditing={handleSubmit}
                     />
                   </View>
                 </View>
@@ -350,6 +413,8 @@ export default function LoginScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="username"
+                    returnKeyType="next"
+                    onSubmitEditing={handleSubmit}
                   />
                 </View>
               </View>
@@ -368,6 +433,8 @@ export default function LoginScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="current-password"
+                    returnKeyType="go"
+                    onSubmitEditing={handleSubmit}
                   />
                   <TouchableOpacity
                     onPress={() => setShowPassword((v) => !v)}

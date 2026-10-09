@@ -33,11 +33,13 @@ import NonTeachingStaffListScreen    from '../../screens/admin/NonTeachingStaffR
 import AddNonTeachingStaffScreen     from '../../screens/admin/NonTeachingStaffRegistry/AddNonTeachingStaffScreen';
 import EditNonTeachingStaffScreen    from '../../screens/admin/NonTeachingStaffRegistry/EditNonTeachingStaffScreen';
 import NonTeachingStaffDetailsScreen from '../../screens/admin/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
+import MySchedulesScreen             from '../../screens/admin/Schedules/MySchedulesScreen';
 
 // ── Admin-specific providers ──────────────────────────────────────────────────
 import { AuthProvider as AdminAuthProvider, useAuth as useAdminAuth } from '../../context/admin/AuthContext';
 import { ThemeProvider as AdminThemeProvider, useTheme as useAdminTheme } from '../../context/admin/ThemeContext';
 import { paperTheme, paperDarkTheme } from '../../theme/adminTheme';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 // ── Inject unified token into admin AuthContext on mount ──────────────────────
 import { useEffect, useRef } from 'react';
@@ -142,6 +144,7 @@ function AdminNavigator() {
       <Stack.Screen name="AdminUsers"            component={AdminUsersScreen} />
       <Stack.Screen name="Settings"              component={SettingsScreen} />
       <Stack.Screen name="TransferredStudents"   component={TransferredStudentsScreen} />
+      <Stack.Screen name="MySchedules"           component={MySchedulesScreen} />
     </Stack.Navigator>
   );
 }
@@ -165,11 +168,13 @@ function AdminShell() {
 
 export default function AdminPortal() {
   return (
-    <AdminAuthProvider>
-      <AdminThemeProvider>
-        <AdminShell />
-      </AdminThemeProvider>
-    </AdminAuthProvider>
+    <ErrorBoundary>
+      <AdminAuthProvider>
+        <AdminThemeProvider>
+          <AdminShell />
+        </AdminThemeProvider>
+      </AdminAuthProvider>
+    </ErrorBoundary>
   );
 }
 

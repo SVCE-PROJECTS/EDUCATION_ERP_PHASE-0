@@ -16,6 +16,7 @@
 
 const pool = require('../config/db').pool;
 const { isOwnClass } = require('../utils/classOwnership');
+const { logActivity } = require('../services/activityAudit.helper');
 
 // GET /assignments?class_id=X&status=Open
 const getAssignments = async (req, res) => {
@@ -82,6 +83,15 @@ const addAssignment = async (req, res) => {
        RETURNING *`,
       [class_id, title, description || null, due_date || null, marks || 0, attachment_url || null, status || 'Open'],
     );
+    // Best-effort audit — never blocks the response
+    logActivity({
+      performedBy: req.user.id,
+      departmentCode: req.user.departmentCode,
+      action: 'CREATE_ASSIGNMENT',
+      module: 'assignment',
+      recordId: result.rows[0].assignment_id,
+      details: { title, class_id },
+    }).catch(() => {});
     res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -108,6 +118,14 @@ const updateAssignment = async (req, res) => {
        RETURNING *`,
       [title, description || null, due_date || null, marks ?? 0, attachment_url || null, status || 'Open', id],
     );
+    logActivity({
+      performedBy: req.user.id,
+      departmentCode: req.user.departmentCode,
+      action: 'UPDATE_ASSIGNMENT',
+      module: 'assignment',
+      recordId: id,
+      details: { title, class_id: existing.rows[0].class_id },
+    }).catch(() => {});
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -129,6 +147,14 @@ const deleteAssignment = async (req, res) => {
       'DELETE FROM assignments WHERE assignment_id = $1 RETURNING assignment_id',
       [id],
     );
+    logActivity({
+      performedBy: req.user.id,
+      departmentCode: req.user.departmentCode,
+      action: 'DELETE_ASSIGNMENT',
+      module: 'assignment',
+      recordId: id,
+      details: { class_id: existing.rows[0].class_id },
+    }).catch(() => {});
     res.json({ message: 'Assignment deleted.', id });
   } catch (err) {
     res.status(500).json({ message: err.message });

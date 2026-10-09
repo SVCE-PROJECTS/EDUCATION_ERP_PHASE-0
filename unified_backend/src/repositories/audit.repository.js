@@ -16,28 +16,38 @@ const isNumericId = (value) => {
   return Number.isInteger(Number(value));
 };
 
+// ── SELECT fragment shared by findAll and findByActor ──────────────────────
+const SELECT_COLS = `
+  SELECT
+    a.audit_id      AS "id",
+    a.action,
+    a.module,
+    a.record_id     AS "recordId",
+    a.old_value     AS "oldValue",
+    a.new_value     AS "newValue",
+    a.created_at    AS "createdAt",
+    a.department_id AS "departmentId",
+    COALESCE(u.username, pf.name) AS "performedBy"
+  FROM audit_logs a
+  LEFT JOIN users   u  ON u.user_id      = a.user_id
+  LEFT JOIN faculty pf ON pf.employee_id = a.performed_by_employee_id
+`;
+
 /**
- * @param {object} params
- * @param {string|number} [params.userId] - Actor id (numeric users.user_id
- *   or a faculty employee_id string) — whichever the caller has.
- * @param {string} params.action
- * @param {string} params.module
- * @param {string} [params.recordId]
- * @param {object} [params.oldValue]
- * @param {object} [params.newValue]
- * @param {number} [params.departmentId] - Scopes the entry to a department
- *   so a HOD's Activity Log can query it directly.
+ * Insert a single audit log entry.
+ * Best-effort — swallows errors so a logging failure never blocks the caller.
  */
 const create = async ({
   userId, action, module, recordId, oldValue, newValue, departmentId,
 }) => {
   try {
-    const numericUserId = isNumericId(userId) ? Number(userId) : null;
+    const numericUserId  = isNumericId(userId) ? Number(userId) : null;
     const facultyActorId = !isNumericId(userId) && userId ? String(userId) : null;
 
     const result = await query(
       `INSERT INTO audit_logs
-         (user_id, performed_by_employee_id, department_id, action, module, record_id, old_value, new_value)
+         (user_id, performed_by_employee_id, department_id,
+          action, module, record_id, old_value, new_value)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING audit_id`,
       [
@@ -53,7 +63,6 @@ const create = async ({
     );
     return result.rows[0];
   } catch (error) {
-    // Best-effort logging only — never let this fail the caller's request.
     logger.error('Audit log insert failed (ignored):', error);
     return null;
   }
@@ -62,69 +71,97 @@ const create = async ({
 const log = async ({
   performedBy, action, facultyId, details, departmentId,
 }) => create({
-  userId: performedBy || null,
+  userId:       performedBy || null,
   action,
-  module: 'faculty',
-  recordId: facultyId || null,
-  oldValue: null,
-  newValue: details || null,
+  module:       'faculty',
+  recordId:     facultyId || null,
+  oldValue:     null,
+  newValue:     details || null,
   departmentId,
 });
 
 /**
- * Paginated, filterable read of audit_logs.
- * Joins both possible actor tables so every row resolves to a display name
- * regardless of whether it was an admin or a faculty/HOD action.
+ * Paginated, filterable read of ALL audit_logs.
+ * Used by admin (full view) and HOD (department-scoped via departmentId).
  */
 const findAll = async ({
-  page = 1, pageSize = 25, module: moduleFilter, action, dateFrom, dateTo, departmentId,
+  page = 1, pageSize = 25,
+  module: moduleFilter, action, dateFrom, dateTo, departmentId,
 } = {}) => {
   const conditions = [];
   const params = [];
   let idx = 1;
 
-  if (moduleFilter)  { conditions.push(`a.module = $${idx}`); params.push(moduleFilter); idx += 1; }
-  if (action)        { conditions.push(`a.action = $${idx}`); params.push(action); idx += 1; }
-  if (dateFrom)      { conditions.push(`a.created_at >= $${idx}`); params.push(dateFrom); idx += 1; }
-  if (dateTo)        { conditions.push(`a.created_at <= $${idx}`); params.push(dateTo); idx += 1; }
-  if (departmentId)  { conditions.push(`a.department_id = $${idx}`); params.push(departmentId); idx += 1; }
+  if (moduleFilter) { conditions.push(`a.module = $${idx++}`);        params.push(moduleFilter); }
+  if (action)       { conditions.push(`a.action = $${idx++}`);        params.push(action); }
+  if (dateFrom)     { conditions.push(`a.created_at >= $${idx++}`);   params.push(dateFrom); }
+  if (dateTo)       { conditions.push(`a.created_at <= $${idx++}`);   params.push(dateTo); }
+  if (departmentId) { conditions.push(`a.department_id = $${idx++}`); params.push(departmentId); }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit  = Math.min(Math.max(Number(pageSize) || 25, 1), 100);
+  const offset = (Math.max(Number(page) || 1, 1) - 1) * limit;
 
-  const limit = Math.min(Math.max(pageSize, 1), 100);
-  const offset = (Math.max(page, 1) - 1) * limit;
-  const dataParams = [...params, limit, offset];
-
-  const [countResult, result] = await Promise.all([
+  const [countResult, dataResult] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS total FROM audit_logs a ${whereClause}`, params),
     query(
-      `SELECT COUNT(*)::int AS total FROM audit_logs a ${whereClause}`,
-      params,
-    ),
-    query(
-      `SELECT
-         a.audit_id     AS "id",
-         a.action,
-         a.module,
-         a.record_id    AS "recordId",
-         a.old_value    AS "oldValue",
-         a.new_value    AS "newValue",
-         a.created_at   AS "createdAt",
-         a.department_id AS "departmentId",
-         COALESCE(u.username, pf.name) AS "performedBy"
-       FROM audit_logs a
-       LEFT JOIN users   u  ON u.user_id       = a.user_id
-       LEFT JOIN faculty pf ON pf.employee_id  = a.performed_by_employee_id
-       ${whereClause}
-       ORDER BY a.created_at DESC
-       LIMIT $${idx} OFFSET $${idx + 1}`,
-      dataParams,
+      `${SELECT_COLS} ${whereClause} ORDER BY a.created_at DESC LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...params, limit, offset],
     ),
   ]);
-  const total = countResult.rows[0]?.total || 0;
 
-  return { rows: result.rows, total };
+  return {
+    rows:  dataResult.rows,
+    total: countResult.rows[0]?.total || 0,
+  };
 };
 
-module.exports = {
-  create, log, findAll,
+/**
+ * Get all audit log entries performed by a specific actor.
+ * Used by GET /api/audit-logs/me — actorId always comes from req.user (JWT).
+ */
+const findByActor = async ({
+  actorId,
+  page = 1, pageSize = 25,
+  module: moduleFilter, action, dateFrom, dateTo,
+} = {}) => {
+  const conditions = [];
+  const params = [];
+  let idx = 1;
+
+  // Faculty actors are stored as VARCHAR employee_id; admins as BIGINT user_id.
+  // Handle both so the query works regardless of which column was populated.
+  const numId = Number(actorId);
+  if (!Number.isNaN(numId) && Number.isInteger(numId) && numId > 0) {
+    conditions.push(`(a.user_id = $${idx} OR a.performed_by_employee_id = $${idx + 1})`);
+    params.push(numId, String(actorId));
+    idx += 2;
+  } else {
+    conditions.push(`a.performed_by_employee_id = $${idx++}`);
+    params.push(String(actorId));
+  }
+
+  if (moduleFilter) { conditions.push(`a.module = $${idx++}`);      params.push(moduleFilter); }
+  if (action)       { conditions.push(`a.action = $${idx++}`);      params.push(action); }
+  if (dateFrom)     { conditions.push(`a.created_at >= $${idx++}`); params.push(dateFrom); }
+  if (dateTo)       { conditions.push(`a.created_at <= $${idx++}`); params.push(dateTo); }
+
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+  const limit  = Math.min(Math.max(Number(pageSize) || 25, 1), 100);
+  const offset = (Math.max(Number(page) || 1, 1) - 1) * limit;
+
+  const [countResult, dataResult] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS total FROM audit_logs a ${whereClause}`, params),
+    query(
+      `${SELECT_COLS} ${whereClause} ORDER BY a.created_at DESC LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...params, limit, offset],
+    ),
+  ]);
+
+  return {
+    rows:  dataResult.rows,
+    total: countResult.rows[0]?.total || 0,
+  };
 };
+
+module.exports = { create, log, findAll, findByActor };

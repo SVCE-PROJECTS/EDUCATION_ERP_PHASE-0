@@ -14,6 +14,7 @@
 
 const pool = require('../config/db').pool;
 const { isOwnClass, ownsAllClasses } = require('../utils/classOwnership');
+const { logActivity } = require('../services/activityAudit.helper');
 
 // GET /attendance?class_id=X&date=YYYY-MM-DD
 // class_id is optional: when omitted, the result is scoped to the
@@ -124,6 +125,19 @@ const saveAttendanceBulk = async (req, res) => {
     }
     await client.query('COMMIT');
     res.json({ message: `${records.length} attendance records saved.` });
+    // Best-effort audit — one log entry per bulk save (not per student row)
+    logActivity({
+      performedBy: req.user.id,
+      departmentCode: req.user.departmentCode,
+      action: 'MARK_ATTENDANCE',
+      module: 'attendance',
+      recordId: null,
+      details: {
+        class_id: records[0]?.class_id,
+        date: records[0]?.attendance_date,
+        count: records.length,
+      },
+    }).catch(() => {});
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ message: err.message });

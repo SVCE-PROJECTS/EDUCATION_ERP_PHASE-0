@@ -14,6 +14,7 @@ export const ROUTES = {
   HOD_ACTIVITIES: 'Activities',
   HOD_FACULTY_ALLOCATION: 'FacultyAllocation',
   HOD_ACTIVITY_LOG: 'ActivityLog',
+  HOD_MY_SCHEDULES: 'MySchedules',
 
   // ── HOD Stack screens (pushed on top of drawer) ──────────────────────────
   FACULTY_PROFILE: 'FacultyProfile',
@@ -37,6 +38,7 @@ export const SCREEN_TITLES: Record<string, string> = {
   [ROUTES.HOD_ACTIVITIES]: 'Student Activities',
   [ROUTES.HOD_FACULTY_ALLOCATION]: 'Faculty Allocation',
   [ROUTES.HOD_ACTIVITY_LOG]: 'Activity Log',
+  [ROUTES.HOD_MY_SCHEDULES]: 'My Schedules',
   [ROUTES.FACULTY_PROFILE]: 'Faculty Profile',
   [ROUTES.FACULTY_ADD]: 'Add Faculty',
   [ROUTES.FACULTY_EDIT]: 'Edit Faculty',

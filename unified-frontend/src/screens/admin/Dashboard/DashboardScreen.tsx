@@ -1,11 +1,14 @@
 // @ts-nocheck
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View, ScrollView, StyleSheet, Platform, TouchableOpacity, Linking,
+  View, ScrollView, StyleSheet, Platform, TouchableOpacity, Linking, Modal, Pressable,
 } from 'react-native';
 import { Text, Icon } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
+import { MiniCalendar, SchedulePopup, ScheduleFormModal } from '../../../components/calendar';
+import { useMonthSchedules } from '../../../hooks/useSchedules';
+import { Schedule } from '../../../services/schedule.service';
 import { useDashboard } from '../../../hooks/admin/useDashboard';
 import { useAuditLogs } from '../../../hooks/admin/useAuditLogs';
 import { useAdminUsers } from '../../../hooks/admin/useAdminUsers';
@@ -15,6 +18,7 @@ import { getModuleMeta, actionLabel, formatTimestamp } from '../../../utils/admi
 import {
   spacing, typography, radius, shadows,
 } from '../../../theme';
+import { getTodayString } from '../../../utils/dateHelpers';
 
 const CHART_COLORS = {
   primary: '#3B82F6',
@@ -218,6 +222,38 @@ const DashboardScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const { user } = useAuth();
+
+  // Calendar popover state
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [formVisible, setFormVisible] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [formDate, setFormDate] = useState<string | undefined>(undefined);
+
+  // Fetch schedules for current month
+  const currentDate = new Date();
+  const { schedules: monthSchedules } = useMonthSchedules(currentDate.getFullYear(), currentDate.getMonth() + 1);
+
+  const handleDatePress = (dateString: string) => {
+    setSelectedDate(dateString);
+    setCalendarVisible(false);
+    setPopupVisible(true);
+  };
+
+  const handleAddNew = (date?: string) => {
+    setFormDate(date || selectedDate || undefined);
+    setEditingSchedule(null);
+    setPopupVisible(false);
+    setFormVisible(true);
+  };
+
+  const handleEdit = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+    setPopupVisible(false);
+    setFormVisible(true);
+  };
+
   const { data, isLoading, isError, error } = useDashboard();
   const { data: recentActivity, isLoading: loadingActivity } = useAuditLogs({ page: 1, pageSize: 5 });
   const { data: adminUsers } = useAdminUsers();
@@ -261,10 +297,38 @@ const DashboardScreen = ({ navigation }) => {
             </Text>
             <Text style={styles.subtitle}>{today}</Text>
           </View>
-          <View style={styles.headerIconWrap}>
-            <Icon source="view-dashboard-outline" size={26} color={colors.white} />
+          <View style={styles.headerIcons}>
+            <TouchableOpacity
+              style={styles.headerIconWrap}
+              onPress={() => setCalendarVisible(!calendarVisible)}
+              activeOpacity={0.75}
+            >
+              <Icon source="calendar-month" size={26} color={colors.white} />
+            </TouchableOpacity>
+            <View style={styles.headerIconWrap}>
+              <Icon source="view-dashboard-outline" size={26} color={colors.white} />
+            </View>
           </View>
         </LinearGradient>
+
+        {/* Calendar popover — transparent Modal so tapping outside closes it */}
+        <Modal
+          visible={calendarVisible}
+          transparent
+          animationType="none"
+          onRequestClose={() => setCalendarVisible(false)}
+        >
+          <Pressable style={adminCalPopoverStyles.backdrop} onPress={() => setCalendarVisible(false)}>
+            <Pressable style={adminCalPopoverStyles.popover} onPress={(e) => e.stopPropagation()}>
+              <MiniCalendar
+                schedules={monthSchedules}
+                onDatePress={handleDatePress}
+                calWidth={300}
+                theme={colors}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <View style={styles.statsGrid}>
           <StatCard accent="blue" icon="account-group-outline" label="Registered Students" value={isLoading ? '—' : totalStudents} hint="Current registry" />
@@ -359,6 +423,30 @@ const DashboardScreen = ({ navigation }) => {
           )}
         </View>
       </ScrollView>
+
+      {/* Schedule Popup */}
+      <SchedulePopup
+        visible={popupVisible}
+        date={selectedDate || getTodayString()}
+        schedules={monthSchedules || []}
+        onClose={() => setPopupVisible(false)}
+        onAddNew={handleAddNew}
+        onEdit={handleEdit}
+        theme={colors}
+      />
+
+      {/* Schedule Form Modal */}
+      <ScheduleFormModal
+        visible={formVisible}
+        schedule={editingSchedule || undefined}
+        initialDate={formDate}
+        onClose={() => {
+          setFormVisible(false);
+          setEditingSchedule(null);
+          setFormDate(undefined);
+        }}
+        theme={colors}
+      />
     </ScreenLayout>
   );
 };
@@ -374,12 +462,25 @@ const getStyles = (colors) => StyleSheet.create({
     padding: spacing.xl,
     marginBottom: spacing.xl,
     ...shadows.raised,
+    overflow: 'visible' as any,
   },
   title: { ...typography.h1, color: colors.white },
   subtitle: { ...typography.body, color: 'rgba(255,255,255,0.85)', marginTop: spacing.xs },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center',
+  },
   headerIconWrap: {
     width: 52, height: 52, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
+  },
+  calendarPopover: {
+    position: 'absolute' as any,
+    top: 140,
+    right: spacing.xl,
+    zIndex: 999,
+    ...shadows.raised,
   },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.lg },
   statCard: {
@@ -473,6 +574,23 @@ const getStyles = (colors) => StyleSheet.create({
   activityContent: { flex: 1, minWidth: 0 },
   activityAction: { ...typography.bodyBold, color: colors.textPrimary, fontSize: 13 },
   activityMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
+});
+
+// Popover styles — module-level (no theme dependency for positioning)
+const adminCalPopoverStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+  },
+  popover: {
+    position: 'absolute' as any,
+    top: 72,
+    right: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
+  },
 });
 
 export default DashboardScreen;

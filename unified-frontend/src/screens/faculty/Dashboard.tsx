@@ -3,13 +3,17 @@
  * GET /api/dashboard/stats returns flat JSON:
  * { totalStudents, attendancePercent, totalAssignments, openAssignments, iaAverage, recentActivities }
  */
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Modal, Pressable } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ClipboardList, Award, User, ChevronRight, LayoutDashboard } from '../../components/faculty/icons';
+import { ClipboardList, Award, User, ChevronRight, LayoutDashboard, CalendarClock } from '../../components/faculty/icons';
+import { MiniCalendar, SchedulePopup, ScheduleFormModal } from '../../components/calendar';
+import { useMonthSchedules } from '../../hooks/useSchedules';
+import { Schedule } from '../../services/schedule.service';
+import { getTodayString } from '../../utils/dateHelpers';
 import { dashboardService } from '../../services/faculty/faculty.service';
 import { useAuth } from '../../context/faculty/AuthContext';
 import { useTheme } from '../../context/faculty/ThemeContext';
@@ -90,10 +94,41 @@ export default function Dashboard() {
   const s = getStyles(theme);
   const navigation = useNavigation<any>();
 
+  // Calendar popover state
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [formVisible, setFormVisible] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [formDate, setFormDate] = useState<string | undefined>(undefined);
+
   const today = React.useMemo(
     () => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
     []
   );
+
+  // Fetch schedules for current month
+  const currentDate = new Date();
+  const { schedules } = useMonthSchedules(currentDate.getFullYear(), currentDate.getMonth() + 1);
+
+  const handleDatePress = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    setCalendarVisible(false);
+    setPopupVisible(true);
+  };
+
+  const handleAddNew = (date?: string) => {
+    setFormDate(date);
+    setEditingSchedule(null);
+    setPopupVisible(false);
+    setFormVisible(true);
+  };
+
+  const handleEdit = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+    setPopupVisible(false);
+    setFormVisible(true);
+  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['faculty-dashboard'],
@@ -117,17 +152,8 @@ export default function Dashboard() {
   const { data: classAttendanceData, isLoading: loadingClassAttendance, isError: classAttendanceError } = useQuery({
     queryKey: ['class-attendance-statistics'],
     queryFn: async () => {
-      console.log('[CLASS-ATTENDANCE] Fetching /attendance/class-statistics...');
-      try {
-        const res = await api.get('/attendance/class-statistics');
-        console.log('[CLASS-ATTENDANCE] Response:', res.data);
-        return res.data;
-      } catch (err: any) {
-        console.error('[CLASS-ATTENDANCE] Error:', err);
-        console.error('[CLASS-ATTENDANCE] Error response:', err.response?.data);
-        console.error('[CLASS-ATTENDANCE] Error status:', err.response?.status);
-        throw err;
-      }
+      const res = await api.get('/attendance/class-statistics');
+      return res.data;
     },
     staleTime: 60_000,
     retry: 1,
@@ -166,10 +192,8 @@ export default function Dashboard() {
 
   // Transform class attendance data for chart
   const classesWithAttendance = React.useMemo(() => {
-    console.log('[CLASS-ATTENDANCE] Raw data:', classAttendanceData);
-    console.log('[CLASS-ATTENDANCE] Is array:', Array.isArray(classAttendanceData));
     if (!classAttendanceData || !Array.isArray(classAttendanceData)) return [];
-    const transformed = classAttendanceData.map((cls: any) => ({
+    return classAttendanceData.map((cls: any) => ({
       class_id: cls.class_id,
       subject_code: cls.subject_code,
       subject_name: cls.subject_name,
@@ -179,8 +203,6 @@ export default function Dashboard() {
       attendancePercent: cls.attendancePercent,
       studentCount: cls.studentCount,
     }));
-    console.log('[CLASS-ATTENDANCE] Transformed:', transformed);
-    return transformed;
   }, [classAttendanceData]);
 
   return (
@@ -198,13 +220,41 @@ export default function Dashboard() {
             {getGreeting()}, {user?.name || 'Faculty'}
           </Text>
           <Text style={s.headerSub}>
-            {user?.departmentCode ? `${user.departmentCode} Department` : 'Faculty Portal'} · {today}
+            {user?.departmentCode ? `${user?.departmentCode} Department` : 'Faculty Portal'} · {today}
           </Text>
         </View>
-        <View style={s.headerIconWrap}>
-          <LayoutDashboard size={26} color={colors.white} />
+        <View style={s.headerIcons}>
+          <TouchableOpacity
+            style={s.headerIconWrap}
+            onPress={() => setCalendarVisible(!calendarVisible)}
+            activeOpacity={0.75}
+          >
+            <CalendarClock size={26} color={colors.white} />
+          </TouchableOpacity>
+          <View style={s.headerIconWrap}>
+            <LayoutDashboard size={26} color={colors.white} />
+          </View>
         </View>
       </LinearGradient>
+
+      {/* Calendar popover — transparent Modal so tapping outside closes it */}
+      <Modal
+        visible={calendarVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setCalendarVisible(false)}
+      >
+        <Pressable style={calPopoverStyles.backdrop} onPress={() => setCalendarVisible(false)}>
+          <Pressable style={calPopoverStyles.popover} onPress={(e) => e.stopPropagation()}>
+            <MiniCalendar
+              schedules={schedules}
+              onDatePress={handleDatePress}
+              calWidth={300}
+              theme={theme}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Error state */}
       {isError && (
@@ -290,6 +340,29 @@ export default function Dashboard() {
         </View>
       )}
 
+      {/* Schedule Popup */}
+      <SchedulePopup
+        visible={popupVisible}
+        date={selectedDate || getTodayString()}
+        schedules={schedules || []}
+        onClose={() => setPopupVisible(false)}
+        onAddNew={handleAddNew}
+        onEdit={handleEdit}
+        theme={theme}
+      />
+
+      {/* Schedule Form Modal */}
+      <ScheduleFormModal
+        visible={formVisible}
+        initialDate={formDate}
+        schedule={editingSchedule || undefined}
+        onClose={() => {
+          setFormVisible(false);
+          setEditingSchedule(null);
+          setFormDate(undefined);
+        }}
+        theme={theme}
+      />
     </ScreenWrapper>
   );
 }
@@ -297,10 +370,13 @@ export default function Dashboard() {
 const getStyles = (theme: ThemeColors) => StyleSheet.create({
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderRadius: 20, padding: 20, marginBottom: 4, ...shadows.card,
+    borderRadius: 20, padding: 20, marginBottom: 4, ...shadows.card, overflow: 'visible' as any,
   },
   headerHeading: { fontSize: 20, fontWeight: '700', color: colors.white },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 },
+  headerIcons: {
+    flexDirection: 'row', gap: 14, alignItems: 'center',
+  },
   headerIconWrap: {
     width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
@@ -347,4 +423,23 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   activityDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: primaryScale[400], marginTop: 6 },
   activityText: { flex: 1, fontSize: 12, color: theme.textSecondary, lineHeight: 18 },
+});
+
+// Popover styles — module-level so they don't depend on theme
+const calPopoverStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    // fully transparent — just catches outside taps
+  },
+  popover: {
+    position: 'absolute',
+    top: 72,
+    right: 16,
+    // shadow handled by MiniCalendar's container border
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
+  },
 });

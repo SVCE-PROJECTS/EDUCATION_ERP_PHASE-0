@@ -38,6 +38,7 @@ import NonTeachingStaffListScreen from '../../screens/admin/NonTeachingStaffRegi
 import AddNonTeachingStaffScreen from '../../screens/admin/NonTeachingStaffRegistry/AddNonTeachingStaffScreen';
 import EditNonTeachingStaffScreen from '../../screens/admin/NonTeachingStaffRegistry/EditNonTeachingStaffScreen';
 import NonTeachingStaffDetailsScreen from '../../screens/admin/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
+import MySchedulesScreen from '../../screens/admin/Schedules/MySchedulesScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/admin/ThemeContext';
 import { useTokenFromUrl } from '../../hooks/admin/useTokenFromUrl';
@@ -214,6 +215,12 @@ const AppNavigator = () => {
       <Stack.Screen
         name="TransferredStudents"
         component={TransferredStudentsScreen}
+      />
+
+      {/* My Schedules */}
+      <Stack.Screen
+        name="MySchedules"
+        component={MySchedulesScreen}
       />
     </Stack.Navigator>
   );

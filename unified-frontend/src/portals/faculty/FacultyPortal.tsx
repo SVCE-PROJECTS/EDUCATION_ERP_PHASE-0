@@ -15,6 +15,8 @@ import MyProfile            from '../../screens/faculty/MyProfile';
 import Assignments          from '../../screens/faculty/Assignments';
 import Attendance           from '../../screens/faculty/Attendance';
 import IAMarks              from '../../screens/faculty/IAMarks';
+import MySchedules          from '../../screens/faculty/MySchedules';
+import ActivityLog          from '../../screens/faculty/ActivityLog';
 import FacultyDrawerContent from '../../layouts/faculty/FacultyDrawerContent';
 import SnackbarHost         from '../../components/faculty/ui/SnackbarHost';
 
@@ -24,6 +26,7 @@ import { ThemeProvider as FacultyThemeProvider, useTheme as useFacultyTheme } fr
 import { lightTheme, darkTheme } from '../../theme/facultyTheme';
 import { useAuth as useUnifiedAuth } from '../../context/AuthContext';
 import { ROUTES } from '../../navigation/faculty/routes';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 const Stack  = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -97,7 +100,9 @@ function FacultyDrawerNav() {
       <Drawer.Screen name={ROUTES.ASSIGNMENTS}       component={Assignments} />
       <Drawer.Screen name={ROUTES.ATTENDANCE}        component={Attendance} />
       <Drawer.Screen name={ROUTES.IA_MARKS}          component={IAMarks} />
+      <Drawer.Screen name={ROUTES.MY_SCHEDULES}      component={MySchedules} />
       <Drawer.Screen name={ROUTES.MY_PROFILE}        component={MyProfile} />
+      <Drawer.Screen name={ROUTES.ACTIVITY_LOG}      component={ActivityLog} />
     </Drawer.Navigator>
   );
 }
@@ -142,11 +147,13 @@ function FacultyShell() {
 
 export default function FacultyPortal() {
   return (
-    <FacultyAuthProvider>
-      <FacultyThemeProvider>
-        <FacultyShell />
-      </FacultyThemeProvider>
-    </FacultyAuthProvider>
+    <ErrorBoundary>
+      <FacultyAuthProvider>
+        <FacultyThemeProvider>
+          <FacultyShell />
+        </FacultyThemeProvider>
+      </FacultyAuthProvider>
+    </ErrorBoundary>
   );
 }
 

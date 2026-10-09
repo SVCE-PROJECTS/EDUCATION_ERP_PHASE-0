@@ -33,13 +33,14 @@ function normalizeRow(row) {
   };
 }
 
-const findAll = async ({ page = 1, pageSize = 20, search, departmentId, status } = {}) => {
+const findAll = async ({ page = 1, pageSize = 20, search, departmentId, designation, status } = {}) => {
   const offset = (page - 1) * pageSize;
   const conditions = [];
   const params = [];
   let idx = 1;
 
   if (search) {
+    // Use a single param index since the same value is reused four times via OR
     conditions.push(
       `(f.name ILIKE $${idx} OR f.employee_id ILIKE $${idx} OR f.email ILIKE $${idx} OR f.designation ILIKE $${idx})`,
     );
@@ -51,6 +52,11 @@ const findAll = async ({ page = 1, pageSize = 20, search, departmentId, status }
     params.push(departmentId);
     idx++;
   }
+  if (designation) {
+    conditions.push(`f.designation = $${idx}`);
+    params.push(designation);
+    idx++;
+  }
   if (status) {
     conditions.push(`f.status = $${idx}`);
     params.push(status);
@@ -59,16 +65,17 @@ const findAll = async ({ page = 1, pageSize = 20, search, departmentId, status }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const [data, count] = await Promise.all([
-    query(
-      `SELECT f.*, d.department_name
+  // LIMIT and OFFSET must also use $N placeholders — idx currently points at pageSize slot
+  const dataQuery = `SELECT f.*, d.department_name
        FROM faculty f
        LEFT JOIN departments d ON d.department_id = f.department_id
        ${where}
        ORDER BY f.name ASC
-       LIMIT $${idx} OFFSET $${idx + 1}`,
-      [...params, pageSize, offset],
-    ),
+       LIMIT $${idx} OFFSET $${idx + 1}`;
+  const dataParams = [...params, pageSize, offset];
+
+  const [data, count] = await Promise.all([
+    query(dataQuery, dataParams),
     query(
       `SELECT COUNT(*)::int AS total
        FROM faculty f

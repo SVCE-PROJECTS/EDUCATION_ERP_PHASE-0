@@ -22,14 +22,15 @@ const FacultyListScreen = ({ navigation }) => {
   const [filterDesig, setFilterDesig]     = useState('');
   const [filterStatus, setFilterStatus]   = useState('');
 
-  const { data, isLoading, isFetching } = useFaculty({
+  const facultyParams = {
     search: search || undefined,
     page,
     pageSize: PAGE_SIZE,
     departmentId: filterDeptId || undefined,
     designation: filterDesig || undefined,
     status: filterStatus || undefined,
-  });
+  };
+  const { data, isLoading, isFetching } = useFaculty(facultyParams);
 
   const members = data?.data || [];
   const meta    = data?.meta;
@@ -67,14 +68,8 @@ const FacultyListScreen = ({ navigation }) => {
           />
         </View>
 
-        {isLoading ? (
+        {isLoading && !data ? (
           <LoadingIndicator label="Loading faculty..." />
-        ) : members.length === 0 ? (
-          <EmptyState
-            icon="account-tie-outline"
-            title="No faculty found"
-            description="Try adjusting your search, or add a new faculty member."
-          />
         ) : (
           <>
             <FacultyTable
@@ -97,26 +92,24 @@ const FacultyListScreen = ({ navigation }) => {
                 setPage(1);
               }}
             />
-            {meta && (
-              <View style={styles.paginationRow}>
-                <Text
-                  style={[styles.pageLink, page <= 1 && styles.pageLinkDisabled]}
-                  onPress={() => page > 1 && setPage(page - 1)}
-                >
-                  Previous
-                </Text>
-                <Text style={styles.pageInfo}>
-                  Page {meta.page} of {meta.totalPages || 1} · {meta.total} members
-                  {isFetching ? ' · refreshing...' : ''}
-                </Text>
-                <Text
-                  style={[styles.pageLink, page >= (meta.totalPages || 1) && styles.pageLinkDisabled]}
-                  onPress={() => page < (meta.totalPages || 1) && setPage(page + 1)}
-                >
-                  Next
-                </Text>
-              </View>
-            )}
+            <View style={styles.paginationRow}>
+              <Text
+                style={[styles.pageLink, page <= 1 && styles.pageLinkDisabled]}
+                onPress={() => page > 1 && setPage(page - 1)}
+              >
+                Previous
+              </Text>
+              <Text style={styles.pageInfo}>
+                Page {meta?.page || 1} of {meta?.totalPages || 1} · {meta?.total || 0} members
+                {isFetching ? ' · refreshing...' : ''}
+              </Text>
+              <Text
+                style={[styles.pageLink, page >= (meta?.totalPages || 1) && styles.pageLinkDisabled]}
+                onPress={() => page < (meta?.totalPages || 1) && setPage(page + 1)}
+              >
+                Next
+              </Text>
+            </View>
           </>
         )}
 

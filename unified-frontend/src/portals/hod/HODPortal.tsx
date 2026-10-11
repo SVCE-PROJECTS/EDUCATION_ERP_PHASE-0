@@ -20,6 +20,7 @@ import CoordinatorManagement from '../../screens/hod/CoordinatorManagement';
 import ActivitiesPage        from '../../screens/hod/activities/ActivitiesPage';
 import FacultyAllocation     from '../../screens/hod/FacultyAllocation';
 import ActivityLog           from '../../screens/hod/ActivityLog';
+import MySchedules           from '../../screens/hod/MySchedules';
 import HODDrawerContent      from '../../layouts/hod/HODDrawerContent';
 import SnackbarHost          from '../../components/hod/ui/SnackbarHost';
 
@@ -29,6 +30,7 @@ import { ThemeProvider as HODThemeProvider, useTheme as useHODTheme } from '../.
 import { lightTheme, darkTheme } from '../../theme/hodTheme';
 import { useAuth as useUnifiedAuth } from '../../context/AuthContext';
 import { ROUTES } from '../../navigation/hod/routes';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 const Stack  = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -105,6 +107,7 @@ function HODDrawerNav() {
       <Drawer.Screen name={ROUTES.HOD_ACTIVITIES}       component={ActivitiesPage} />
       <Drawer.Screen name={ROUTES.HOD_FACULTY_ALLOCATION} component={FacultyAllocation} />
       <Drawer.Screen name={ROUTES.HOD_ACTIVITY_LOG}     component={ActivityLog} />
+      <Drawer.Screen name={ROUTES.HOD_MY_SCHEDULES}     component={MySchedules} />
     </Drawer.Navigator>
   );
 }
@@ -152,11 +155,13 @@ function HODShell() {
 
 export default function HODPortal() {
   return (
-    <HODAuthProvider>
-      <HODThemeProvider>
-        <HODShell />
-      </HODThemeProvider>
-    </HODAuthProvider>
+    <ErrorBoundary>
+      <HODAuthProvider>
+        <HODThemeProvider>
+          <HODShell />
+        </HODThemeProvider>
+      </HODAuthProvider>
+    </ErrorBoundary>
   );
 }
 

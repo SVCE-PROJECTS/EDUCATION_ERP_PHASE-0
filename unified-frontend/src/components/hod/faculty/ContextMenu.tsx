@@ -72,6 +72,7 @@ export default function ContextMenu({
       if (results.removed.length) Toast.show({ type: 'success', text1: 'Role removed' });
       queryClient.invalidateQueries({ queryKey: ['faculty'] });
       queryClient.invalidateQueries({ queryKey: ['faculty', facultyId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-combined'] });
     },
     onError: (err: any) => {
       Toast.show({ type: 'error', text1: err.response?.data?.message || 'Failed to update role' });

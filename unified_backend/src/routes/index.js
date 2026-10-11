@@ -25,6 +25,7 @@ const assignmentRoutes = require('./assignmentRoutes');
 const attendanceRoutes = require('./attendanceRoutes');
 const iaMarksRoutes = require('./iaMarksRoutes');
 const aiCheckerRoutes = require('./aiCheckerRoutes');
+const scheduleRoutes = require('./schedule.routes');
 
 // ── Admin-scoped Faculty & Non-Teaching Staff ─────────────────────────────────
 const adminFacultyRoutes       = require('./adminFaculty.routes');
@@ -74,6 +75,7 @@ router.use('/assignments', assignmentRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/ia-marks', iaMarksRoutes);
 router.use('/ai-checker', aiCheckerRoutes);
+router.use('/schedules', scheduleRoutes);
 
 // Faculty & Management
 router.use('/faculty', facultyRoutes);

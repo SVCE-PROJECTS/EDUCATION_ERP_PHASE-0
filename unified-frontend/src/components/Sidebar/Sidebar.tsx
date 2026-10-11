@@ -3,8 +3,10 @@
 import React from 'react';
 import {
   View,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { Text, Icon } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -70,6 +72,12 @@ const NAV_ITEMS = [
     icon: 'cog-outline',
     screen: 'Settings',
   },
+  {
+    key: 'MySchedules',
+    label: 'My Schedules',
+    icon: 'calendar-month',
+    screen: 'MySchedules',
+  },
 ];
 
 const Sidebar = ({ navigation, activeScreen }) => {
@@ -114,7 +122,12 @@ const Sidebar = ({ navigation, activeScreen }) => {
       </TouchableOpacity>
 
       {/* Navigation */}
-      <View style={styles.nav}>
+      <ScrollView
+        style={styles.nav}
+        contentContainerStyle={styles.navContent}
+        showsVerticalScrollIndicator={Platform.OS === 'web'}
+        keyboardShouldPersistTaps="handled"
+      >
         {NAV_ITEMS.map((item) => {
           const active = item.screen === activeScreen;
 
@@ -154,7 +167,7 @@ const Sidebar = ({ navigation, activeScreen }) => {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
 
       {/* Profile */}
       <View style={styles.profile}>
@@ -252,7 +265,11 @@ const getStyles = (colors) => StyleSheet.create({
   nav: {
     flex: 1,
     paddingHorizontal: spacing.md,
+  },
+
+  navContent: {
     paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
     gap: spacing.xs,
   },
 

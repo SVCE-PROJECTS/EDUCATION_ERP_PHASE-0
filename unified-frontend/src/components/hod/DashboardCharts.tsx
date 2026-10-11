@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import BarChart from './ui/BarChart';
 import PieChart from './ui/PieChart';
 import { colors, shadows, ThemeColors } from '../../theme/hod/colors';
 import { useTheme } from '../../context/hod/ThemeContext';
+import { ROUTES } from '../../navigation/hod/routes';
 
 const SCREEN_W = Dimensions.get('window').width;
 const IS_WIDE = SCREEN_W > 700;
@@ -25,6 +27,11 @@ export interface DashboardChartsProps {
  * Performance" donut, both using the red / yellow / green palette already
  * defined in the shared theme (colors.danger / colors.warning /
  * colors.success), so it always matches the rest of the app.
+ *
+ * FIXED: the Activities bar in the overview chart previously had no tap
+ * handler — tapping it did nothing. Now it navigates to the Student
+ * Activities screen (ROUTES.HOD_ACTIVITIES). The other bars navigate to
+ * their respective management screens too, so every bar is actionable.
  */
 export default function DashboardCharts({
   studentCount,
@@ -35,6 +42,7 @@ export default function DashboardCharts({
 }: DashboardChartsProps) {
   const { colors: theme } = useTheme();
   const s = getStyles(theme);
+  const navigation = useNavigation<any>();
   const { excellent, average, needsImprovement } = performanceBuckets;
   const totalRated = excellent + average + needsImprovement;
 
@@ -43,13 +51,13 @@ export default function DashboardCharts({
       {/* Overview bar chart */}
       <View style={[s.card, IS_WIDE && s.cardHalf]}>
         <Text style={s.cardTitle}>Department Overview</Text>
-        <Text style={s.cardSub}>Students, faculty, coordinators & activities</Text>
+        <Text style={s.cardSub}>Tap a bar to navigate • Students, faculty, coordinators & activities</Text>
         <BarChart
           data={[
-            { label: 'Students', value: studentCount, color: colors.success },
-            { label: 'Faculty', value: facultyCount, color: colors.warning },
-            { label: 'Coordinators', value: coordinatorCount, color: colors.danger },
-            { label: 'Activities', value: activityCount, color: colors.success },
+            { label: 'Students', value: studentCount, color: colors.success, onPress: () => navigation.navigate(ROUTES.HOD_STUDENTS) },
+            { label: 'Faculty', value: facultyCount, color: colors.warning, onPress: () => navigation.navigate(ROUTES.HOD_FACULTY) },
+            { label: 'Coordinators', value: coordinatorCount, color: colors.danger, onPress: () => navigation.navigate(ROUTES.HOD_COORDINATORS) },
+            { label: 'Activities', value: activityCount, color: colors.success, onPress: () => navigation.navigate(ROUTES.HOD_ACTIVITIES) },
           ]}
           height={170}
         />

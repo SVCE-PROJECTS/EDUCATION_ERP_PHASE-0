@@ -32,7 +32,7 @@ const CustomDropdown = ({
         <Picker
           selectedValue={value === undefined || value === null ? '' : value}
           onValueChange={(itemValue) => {
-            if (itemValue !== '') onSelect(itemValue);
+            onSelect(itemValue);
           }}
           enabled={!loading}
           style={styles.picker}

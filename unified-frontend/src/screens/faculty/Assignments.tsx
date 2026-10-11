@@ -8,11 +8,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   ActivityIndicator, RefreshControl, TextInput,
-  Modal as RNModal, KeyboardAvoidingView, Platform, ScrollView,
+  Modal as RNModal, KeyboardAvoidingView, Platform, ScrollView, Pressable,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, RefreshCw, ClipboardList, X, Check, ChevronDown } from '../../components/faculty/icons';
+import { Plus, Pencil, Trash2, RefreshCw, ClipboardList, X, Check, ChevronDown, Calendar } from '../../components/faculty/icons';
 import { useCreateAssignment, useUpdateAssignment, useDeleteAssignment } from '../../hooks/faculty/useAssignments';
 import { assignmentService, AssignmentPayload } from '../../services/faculty/academic.service';
 import { useMyClasses } from '../../hooks/faculty/useClasses';
@@ -20,6 +20,7 @@ import ConfirmDialog from '../../components/faculty/ui/ConfirmDialog';
 import SearchBar from '../../components/faculty/ui/SearchBar';
 import Button from '../../components/faculty/ui/Button';
 import ScreenWrapper from '../../layouts/faculty/ScreenWrapper';
+import MiniCalendar from '../../components/calendar/MiniCalendar';
 import { formatDate } from '../../utils/faculty/formatters';
 import { colors, shadows, primaryScale, ThemeColors } from '../../theme/faculty/colors';
 import { useTheme } from '../../context/faculty/ThemeContext';
@@ -50,6 +51,154 @@ interface ClassOption {
 }
 
 const STATUS_OPTIONS = ['Open', 'Closed', 'Draft'];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Today as YYYY-MM-DD using local date parts (never toISOString). */
+function todayLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** "YYYY-MM-DD" → "DD MMM YYYY" for display. Returns '' if empty. */
+function formatDueDisplay(iso: string): string {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${String(d).padStart(2,'0')} ${months[m - 1]} ${y}`;
+}
+
+// ── Date picker modal (MiniCalendar inside a centred Modal) ───────────────────
+
+interface DatePickerModalProps {
+  visible: boolean;
+  current: string;     // YYYY-MM-DD or ''
+  onSelect: (date: string) => void;
+  onClose: () => void;
+  theme: ThemeColors;
+}
+
+function DatePickerModal({ visible, current, onSelect, onClose, theme }: DatePickerModalProps) {
+  const [picked, setPicked] = useState(current || todayLocal());
+  const today = todayLocal();
+
+  useEffect(() => {
+    if (visible) setPicked(current || todayLocal());
+  }, [visible, current]);
+
+  return (
+    <RNModal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      {/* Backdrop — tap outside to close */}
+      <Pressable
+        style={dpS.overlay}
+        onPress={onClose}
+      >
+        {/* Inner box — stop propagation so tapping the calendar doesn't close */}
+        <Pressable style={[dpS.box, { backgroundColor: theme.surface, borderColor: theme.border }]} onPress={() => {}}>
+          <View style={[dpS.boxHeader, { borderBottomColor: theme.border }]}>
+            <Text style={[dpS.boxTitle, { color: theme.textPrimary }]}>Select Due Date</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={18} color={theme.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          <MiniCalendar
+            selectedDate={picked}
+            onDatePress={(dateStr) => {
+              // Disallow past dates
+              if (dateStr < today) return;
+              setPicked(dateStr);
+            }}
+            calWidth={300}
+            theme={theme}
+          />
+
+          <View style={[dpS.boxFooter, { borderTopColor: theme.border }]}>
+            <TouchableOpacity
+              style={[dpS.cancelBtn, { borderColor: theme.border }]}
+              onPress={onClose}
+            >
+              <Text style={[dpS.cancelBtnText, { color: theme.textSecondary }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[dpS.selectBtn, { backgroundColor: primaryScale[600] }]}
+              onPress={() => { onSelect(picked); onClose(); }}
+            >
+              <Text style={dpS.selectBtnText}>Select</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </RNModal>
+  );
+}
+
+const dpS = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  box: {
+    borderRadius: 20,
+    borderWidth: 1,
+    width: 340,
+    overflow: 'hidden',
+  },
+  boxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  boxTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  boxFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  selectBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  selectBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+});
 
 // ── Assignment card ───────────────────────────────────────────────────────────
 function AssignmentCard({ item, onEdit, onDelete }: { item: AssignmentRow; onEdit: () => void; onDelete: () => void }) {
@@ -128,8 +277,9 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, classes }: Fo
   const { colors: theme } = useTheme();
   const s = getStyles(theme);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [classSheet, setClassSheet]   = useState(false);
-  const [statusSheet, setStatusSheet] = useState(false);
+  const [classSheet, setClassSheet]       = useState(false);
+  const [statusSheet, setStatusSheet]     = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -150,69 +300,99 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, classes }: Fo
   };
 
   return (
-    <RNModal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
-      <View style={s.modalOverlay}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalKav}>
-          <View style={s.modalSheet}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>{initial ? 'Edit Assignment' : 'New Assignment'}</Text>
-              <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}><X size={18} color={theme.textMuted} /></TouchableOpacity>
+    <>
+      <RNModal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+        <View style={s.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalKav}>
+            <View style={s.modalSheet}>
+              <View style={s.modalHeader}>
+                <Text style={s.modalTitle}>{initial ? 'Edit Assignment' : 'New Assignment'}</Text>
+                <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}><X size={18} color={theme.textMuted} /></TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={s.formBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                {/* Class selector */}
+                <View style={s.fieldGroup}>
+                  <Text style={s.fieldLabel}>Class (Subject · Section) <Text style={s.required}>*</Text></Text>
+                  <TouchableOpacity style={[s.input, s.selectTrigger]} onPress={() => setClassSheet(true)} activeOpacity={0.8}>
+                    <Text style={form.classLabel ? s.selectValue : s.selectPlaceholder} numberOfLines={1}>{form.classLabel || 'Select class…'}</Text>
+                    <ChevronDown size={16} color={theme.textMuted} />
+                  </TouchableOpacity>
+                </View>
+                {/* Title */}
+                <View style={s.fieldGroup}>
+                  <Text style={s.fieldLabel}>Title <Text style={s.required}>*</Text></Text>
+                  <TextInput style={s.input} value={form.title} onChangeText={set('title')} placeholder="Assignment title" placeholderTextColor={theme.placeholder} />
+                </View>
+                {/* Description */}
+                <View style={s.fieldGroup}>
+                  <Text style={s.fieldLabel}>Description</Text>
+                  <TextInput style={[s.input, s.inputMulti]} value={form.description} onChangeText={set('description')} placeholder="Optional details…" placeholderTextColor={theme.placeholder} multiline numberOfLines={3} textAlignVertical="top" />
+                </View>
+                {/* Due date — calendar picker */}
+                <View style={s.fieldGroup}>
+                  <Text style={s.fieldLabel}>Due Date</Text>
+                  <TouchableOpacity
+                    style={[s.input, s.selectTrigger]}
+                    onPress={() => setDatePickerVisible(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={form.dueDate ? s.selectValue : s.selectPlaceholder}>
+                      {form.dueDate ? formatDueDisplay(form.dueDate) : 'Select due date…'}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {form.dueDate ? (
+                        <TouchableOpacity
+                          onPress={(e) => { e.stopPropagation(); set('dueDate')(''); }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <X size={14} color={theme.textMuted} />
+                        </TouchableOpacity>
+                      ) : null}
+                      <Calendar size={16} color={theme.textMuted} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                {/* Marks */}
+                <View style={s.fieldGroup}>
+                  <Text style={s.fieldLabel}>Marks</Text>
+                  <TextInput style={s.input} value={form.marks} onChangeText={set('marks')} placeholder="0" placeholderTextColor={theme.placeholder} keyboardType="numeric" />
+                </View>
+                {/* Status */}
+                <View style={s.fieldGroup}>
+                  <Text style={s.fieldLabel}>Status</Text>
+                  <TouchableOpacity style={[s.input, s.selectTrigger]} onPress={() => setStatusSheet(true)} activeOpacity={0.8}>
+                    <Text style={s.selectValue}>{form.status}</Text>
+                    <ChevronDown size={16} color={theme.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+              <View style={s.modalFooter}>
+                <Button variant="outline" onPress={onClose} style={s.footerBtn}>Cancel</Button>
+                <Button onPress={handleSubmit} loading={loading} style={s.footerBtn}>{initial ? 'Save' : 'Create'}</Button>
+              </View>
             </View>
-            <ScrollView contentContainerStyle={s.formBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              {/* Class selector */}
-              <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Class (Subject · Section) <Text style={s.required}>*</Text></Text>
-                <TouchableOpacity style={[s.input, s.selectTrigger]} onPress={() => setClassSheet(true)} activeOpacity={0.8}>
-                  <Text style={form.classLabel ? s.selectValue : s.selectPlaceholder} numberOfLines={1}>{form.classLabel || 'Select class…'}</Text>
-                  <ChevronDown size={16} color={theme.textMuted} />
-                </TouchableOpacity>
-              </View>
-              {/* Title */}
-              <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Title <Text style={s.required}>*</Text></Text>
-                <TextInput style={s.input} value={form.title} onChangeText={set('title')} placeholder="Assignment title" placeholderTextColor={theme.placeholder} />
-              </View>
-              {/* Description */}
-              <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Description</Text>
-                <TextInput style={[s.input, s.inputMulti]} value={form.description} onChangeText={set('description')} placeholder="Optional details…" placeholderTextColor={theme.placeholder} multiline numberOfLines={3} textAlignVertical="top" />
-              </View>
-              {/* Due date */}
-              <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Due Date</Text>
-                <TextInput style={s.input} value={form.dueDate} onChangeText={set('dueDate')} placeholder="YYYY-MM-DD" placeholderTextColor={theme.placeholder} />
-              </View>
-              {/* Marks */}
-              <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Marks</Text>
-                <TextInput style={s.input} value={form.marks} onChangeText={set('marks')} placeholder="0" placeholderTextColor={theme.placeholder} keyboardType="numeric" />
-              </View>
-              {/* Status */}
-              <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Status</Text>
-                <TouchableOpacity style={[s.input, s.selectTrigger]} onPress={() => setStatusSheet(true)} activeOpacity={0.8}>
-                  <Text style={s.selectValue}>{form.status}</Text>
-                  <ChevronDown size={16} color={theme.textMuted} />
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-            <View style={s.modalFooter}>
-              <Button variant="outline" onPress={onClose} style={s.footerBtn}>Cancel</Button>
-              <Button onPress={handleSubmit} loading={loading} style={s.footerBtn}>{initial ? 'Save' : 'Create'}</Button>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+          </KeyboardAvoidingView>
+        </View>
 
-      <SelectSheet
-        visible={classSheet} onClose={() => setClassSheet(false)} label="Select Class"
-        options={classes} value={form.classLabel}
-        onChange={(c: any) => { set('classId')(c.class_id); set('classLabel')(c.label); }} />
-      <SelectSheet
-        visible={statusSheet} onClose={() => setStatusSheet(false)} label="Status"
-        options={STATUS_OPTIONS.map(s => ({ label: s }))} value={form.status}
-        onChange={(o: { label: string }) => set('status')(o.label)} />
-    </RNModal>
+        <SelectSheet
+          visible={classSheet} onClose={() => setClassSheet(false)} label="Select Class"
+          options={classes} value={form.classLabel}
+          onChange={(c: any) => { set('classId')(c.class_id); set('classLabel')(c.label); }} />
+        <SelectSheet
+          visible={statusSheet} onClose={() => setStatusSheet(false)} label="Status"
+          options={STATUS_OPTIONS.map(s => ({ label: s }))} value={form.status}
+          onChange={(o: { label: string }) => set('status')(o.label)} />
+      </RNModal>
+
+      {/* Date picker — rendered outside the form Modal so it stacks above it */}
+      <DatePickerModal
+        visible={datePickerVisible}
+        current={form.dueDate}
+        onSelect={(dateStr) => set('dueDate')(dateStr)}
+        onClose={() => setDatePickerVisible(false)}
+        theme={theme}
+      />
+    </>
   );
 }
 

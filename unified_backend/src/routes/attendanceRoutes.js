@@ -5,10 +5,12 @@ const {
   getAttendance,
   saveAttendance,
   saveAttendanceBulk,
+  getClassStatistics,
 } = require("../controllers/attendanceController");
 
 router.use(authenticate);
 
+router.get("/class-statistics", getClassStatistics); // GET /attendance/class-statistics
 router.get("/", getAttendance);          // GET /attendance?subject=X&date=Y
 router.post("/", saveAttendance);        // POST /attendance  (single)
 router.post("/bulk", saveAttendanceBulk); // POST /attendance/bulk (array)

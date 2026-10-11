@@ -32,6 +32,19 @@ export interface ActivityListScreenProps<T extends ActivityItem = ActivityItem> 
   fields: FieldDescriptor[];
   getGroupKey?: (item: T) => string;
   getStudents?: (item: T) => ActivityStudent[];
+  /**
+   * Optional transform applied to the raw API item before it is passed as
+   * `initialValues` to the edit form. Use this whenever the DB field names
+   * or value shapes differ from the form field names — e.g. when the API
+   * returns `title` but the form field is named `projectName`, or when the
+   * DB stores a display label (`'Ongoing'`) but the select expects an enum
+   * value (`'ONGOING'`).
+   *
+   * FIXED: without this, editing an IndustryProject row left the Project
+   * Title, Status, and Domain fields blank because the raw DB row uses
+   * different keys/values than the form descriptors.
+   */
+  getEditValues?: (item: T) => Record<string, unknown>;
   renderCard?: (args: {
     item: T;
     // FIXED: previously only the first raw row in a group was ever exposed to
@@ -59,7 +72,7 @@ function uniqueStudents(students: ActivityStudent[]) {
 
 export default function ActivityListScreen<T extends ActivityItem = ActivityItem>({
   title, accentColor, icon: Icon, useListHook, useCreateHook,
-  useUpdateHook, useDeleteHook, fields, getGroupKey, getStudents, renderCard,
+  useUpdateHook, useDeleteHook, fields, getGroupKey, getStudents, getEditValues, renderCard,
 }: ActivityListScreenProps<T>) {
   const { colors: theme } = useTheme();
   const s = getStyles(theme);
@@ -174,7 +187,9 @@ export default function ActivityListScreen<T extends ActivityItem = ActivityItem
         onSubmit={handleSubmit}
         title={editItem ? `Edit ${title}` : `Add ${title}`}
         fields={fields}
-        initialValues={editItem as Record<string, unknown> | null}
+        initialValues={editItem
+          ? (getEditValues ? getEditValues(editItem) : editItem as Record<string, unknown>)
+          : null}
         loading={createMutation.isPending || updateMutation.isPending}
         accentColor={accent}
       />

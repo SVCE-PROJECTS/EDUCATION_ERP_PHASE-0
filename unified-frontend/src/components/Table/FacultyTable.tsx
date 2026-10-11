@@ -3,6 +3,7 @@ import React from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Text, Chip } from 'react-native-paper';
 import { colors, spacing, typography } from '../../theme';
+import ColumnFilter from './ColumnFilter';
 
 const STATUS_STYLE = {
   ACTIVE:   { bg: colors.successBg, text: colors.success },
@@ -11,20 +12,33 @@ const STATUS_STYLE = {
 };
 
 const COLUMNS = [
-  { key: 'employeeId',    label: 'Employee ID', flex: 1.2 },
-  { key: 'name',          label: 'Name',        flex: 1.6 },
-  { key: 'designation',   label: 'Designation', flex: 1.4 },
-  { key: 'departmentName',label: 'Department',  flex: 1.2 },
-  { key: 'status',        label: 'Status',      flex: 0.9 },
+  { key: 'employeeId',    label: 'Employee ID', flex: 1.2, filterable: false },
+  { key: 'name',          label: 'Name',        flex: 1.6, filterable: false },
+  { key: 'designation',   label: 'Designation', flex: 1.4, filterable: true, filterKey: 'designation' },
+  { key: 'departmentName',label: 'Department',  flex: 1.2, filterable: true, filterKey: 'department' },
+  { key: 'status',        label: 'Status',      flex: 0.9, filterable: true, filterKey: 'status' },
 ];
 
-const FacultyTable = ({ faculty, onRowPress }) => {
+const FacultyTable = ({ 
+  faculty, 
+  onRowPress,
+  filterOptions = {},
+  filterValues = {},
+  onFilterChange = () => {},
+}) => {
   const Header = () => (
     <View style={[styles.row, styles.headerRow]}>
       {COLUMNS.map((col) => (
-        <Text key={col.key} style={[styles.headerCell, { flex: col.flex }]}>
-          {col.label}
-        </Text>
+        <View key={col.key} style={[styles.headerCellContainer, { flex: col.flex }]}>
+          <Text style={styles.headerCell}>{col.label}</Text>
+          {col.filterable && filterOptions[col.filterKey] && (
+            <ColumnFilter
+              options={filterOptions[col.filterKey]}
+              selectedValue={filterValues[col.filterKey]}
+              onSelect={(value) => onFilterChange(col.filterKey, value)}
+            />
+          )}
+        </View>
       ))}
     </View>
   );
@@ -74,6 +88,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderBottomWidth: 2,
     borderBottomColor: colors.border,
+  },
+  headerCellContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   headerCell: {
     ...typography.caption,

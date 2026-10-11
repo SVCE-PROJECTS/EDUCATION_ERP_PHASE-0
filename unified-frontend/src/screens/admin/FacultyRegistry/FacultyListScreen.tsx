@@ -6,8 +6,10 @@ import SearchBar from '../../../components/SearchBar/SearchBar';
 import FacultyTable from '../../../components/Table/FacultyTable';
 import LoadingIndicator from '../../../components/Loading/LoadingIndicator';
 import EmptyState from '../../../components/EmptyState/EmptyState';
+import CustomDropdown from '../../../components/Dropdown/CustomDropdown';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
 import { useFaculty } from '../../../hooks/admin/useFaculty';
+import { useDropdown } from '../../../hooks/admin/useDropdowns';
 import { PAGE_SIZE } from '../../../constants';
 import { colors, spacing, typography } from '../../../theme';
 
@@ -15,12 +17,39 @@ const FacultyListScreen = ({ navigation }) => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isFetching } = useFaculty({
-    search: search || undefined, page, pageSize: PAGE_SIZE,
-  });
+  // Column filter state
+  const [filterDeptId, setFilterDeptId]   = useState(undefined);
+  const [filterDesig, setFilterDesig]     = useState('');
+  const [filterStatus, setFilterStatus]   = useState('');
+
+  const facultyParams = {
+    search: search || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+    departmentId: filterDeptId || undefined,
+    designation: filterDesig || undefined,
+    status: filterStatus || undefined,
+  };
+  const { data, isLoading, isFetching } = useFaculty(facultyParams);
 
   const members = data?.data || [];
   const meta    = data?.meta;
+
+  // Dropdown data
+  const { data: departments = [] } = useDropdown('department');
+
+  // For designation and status, we'll create options from all fetched data
+  // (ideally the API would provide these, but we'll work with what we have)
+  const desigOptions = React.useMemo(() => {
+    const designations = ['Professor', 'Associate Professor', 'Assistant Professor', 'Lecturer', 'Lab Assistant'];
+    return designations.map(d => ({ id: d, name: d }));
+  }, []);
+
+  const statusOptions = React.useMemo(() => [
+    { id: 'ACTIVE', name: 'Active' },
+    { id: 'ON_LEAVE', name: 'On Leave' },
+    { id: 'INACTIVE', name: 'Inactive' },
+  ], []);
 
   return (
     <ScreenLayout navigation={navigation} activeScreen="FacultyList">
@@ -39,40 +68,48 @@ const FacultyListScreen = ({ navigation }) => {
           />
         </View>
 
-        {isLoading ? (
+        {isLoading && !data ? (
           <LoadingIndicator label="Loading faculty..." />
-        ) : members.length === 0 ? (
-          <EmptyState
-            icon="account-tie-outline"
-            title="No faculty found"
-            description="Try adjusting your search, or add a new faculty member."
-          />
         ) : (
           <>
             <FacultyTable
               faculty={members}
               onRowPress={(item) => navigation.navigate('FacultyDetails', { facultyId: item.id ?? item.facultyId })}
+              filterOptions={{
+                designation: desigOptions,
+                department: departments,
+                status: statusOptions,
+              }}
+              filterValues={{
+                designation: filterDesig || undefined,
+                department: filterDeptId,
+                status: filterStatus || undefined,
+              }}
+              onFilterChange={(key, value) => {
+                if (key === 'designation') setFilterDesig(value || '');
+                else if (key === 'department') setFilterDeptId(value);
+                else if (key === 'status') setFilterStatus(value || '');
+                setPage(1);
+              }}
             />
-            {meta && (
-              <View style={styles.paginationRow}>
-                <Text
-                  style={[styles.pageLink, page <= 1 && styles.pageLinkDisabled]}
-                  onPress={() => page > 1 && setPage(page - 1)}
-                >
-                  Previous
-                </Text>
-                <Text style={styles.pageInfo}>
-                  Page {meta.page} of {meta.totalPages || 1} · {meta.total} members
-                  {isFetching ? ' · refreshing...' : ''}
-                </Text>
-                <Text
-                  style={[styles.pageLink, page >= (meta.totalPages || 1) && styles.pageLinkDisabled]}
-                  onPress={() => page < (meta.totalPages || 1) && setPage(page + 1)}
-                >
-                  Next
-                </Text>
-              </View>
-            )}
+            <View style={styles.paginationRow}>
+              <Text
+                style={[styles.pageLink, page <= 1 && styles.pageLinkDisabled]}
+                onPress={() => page > 1 && setPage(page - 1)}
+              >
+                Previous
+              </Text>
+              <Text style={styles.pageInfo}>
+                Page {meta?.page || 1} of {meta?.totalPages || 1} · {meta?.total || 0} members
+                {isFetching ? ' · refreshing...' : ''}
+              </Text>
+              <Text
+                style={[styles.pageLink, page >= (meta?.totalPages || 1) && styles.pageLinkDisabled]}
+                onPress={() => page < (meta?.totalPages || 1) && setPage(page + 1)}
+              >
+                Next
+              </Text>
+            </View>
           </>
         )}
 

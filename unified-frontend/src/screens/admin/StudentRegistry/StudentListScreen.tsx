@@ -38,12 +38,24 @@ const StudentListScreen = ({ navigation }) => {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [snackbar, setSnackbar] = useState('');
 
+  // Column filter state
+  const [filterDeptId, setFilterDeptId] = useState(undefined);
+  const [filterSemId, setFilterSemId]   = useState(undefined);
+  const [filterSecId, setFilterSecId]   = useState(undefined);
+
   const { data, isLoading, isFetching } = useStudents({
-    search: search || undefined, page, pageSize: PAGE_SIZE,
+    search: search || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+    departmentId: filterDeptId || undefined,
+    semester: filterSemId || undefined,
+    sectionId: filterSecId || undefined,
   });
   const updateMutation = useUpdateStudent();
 
   const { data: semesters = [] } = useDropdown('semester');
+  const { data: departments = [] } = useDropdown('department');
+  const { data: sections = [] } = useDropdown('section');
   const { data: reassignSections = [] } = useSectionsBySemester(reassignSemester);
 
   const students = data?.data || [];
@@ -176,6 +188,22 @@ const StudentListScreen = ({ navigation }) => {
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
               onToggleSelectAll={toggleSelectAll}
+              filterOptions={{
+                department: departments,
+                semester: semesters,
+                section: sections,
+              }}
+              filterValues={{
+                department: filterDeptId,
+                semester: filterSemId,
+                section: filterSecId,
+              }}
+              onFilterChange={(key, value) => {
+                if (key === 'department') setFilterDeptId(value);
+                else if (key === 'semester') setFilterSemId(value);
+                else if (key === 'section') setFilterSecId(value);
+                setPage(1);
+              }}
             />
             {meta && (
               <View style={styles.paginationRow}>
@@ -232,14 +260,14 @@ const StudentListScreen = ({ navigation }) => {
           label="Semester"
           value={reassignSemester}
           options={semesters}
-          onSelect={(v) => { setReassignSemester(v); setReassignSectionId(undefined); }}
+          onSelect={(v) => { setReassignSemester(v || undefined); setReassignSectionId(undefined); }}
           floatingLabel={false}
         />
         <CustomDropdown
           label="Section"
           value={reassignSectionId}
           options={reassignSections}
-          onSelect={setReassignSectionId}
+          onSelect={(v) => setReassignSectionId(v || undefined)}
           floatingLabel={false}
         />
         <CustomButton
@@ -306,7 +334,7 @@ const getStyles = (colors) => StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: spacing.lg,
+    bottom: 80,
     backgroundColor: colors.primary,
   },
   modalHint: {

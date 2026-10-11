@@ -2,6 +2,9 @@ const { query } = require('../config/db');
 
 const ACTIVITY_TYPE = 'IndustryProject';
 
+// Uses LEFT JOINs so that project-header rows (student_id IS NULL) are
+// included in the list. Department scoping falls back to the faculty's
+// department when no student is linked.
 const findAll = async (departmentCode, {
   page = 1, limit = 20, search, sortBy = 'created_at', sortOrder = 'desc',
 } = {}) => {
@@ -11,12 +14,16 @@ const findAll = async (departmentCode, {
   let idx = 2;
 
   if (departmentCode) {
-    conditions.push(`d.department_code = $${idx}`);
+    conditions.push(
+      `(d.department_code = $${idx} OR (a.student_id IS NULL AND fd.department_code = $${idx}))`
+    );
     params.push(departmentCode);
     idx++;
   }
   if (search) {
-    conditions.push(`(a.title ILIKE $${idx} OR s.name ILIKE $${idx} OR s.usn ILIKE $${idx})`);
+    conditions.push(
+      `(a.title ILIKE $${idx} OR s.name ILIKE $${idx} OR s.usn ILIKE $${idx})`
+    );
     params.push(`%${search}%`);
     idx++;
   }
@@ -31,12 +38,19 @@ const findAll = async (departmentCode, {
   const sortCol = validSort[sortBy] || 'a.created_at';
   const dir = sortOrder === 'asc' ? 'ASC' : 'DESC';
 
+  const joins = `
+    LEFT JOIN students s ON s.library_id = a.student_id
+    LEFT JOIN departments d ON d.department_id = s.department_id
+    LEFT JOIN faculty f ON f.faculty_id = a.faculty_id
+    LEFT JOIN departments fd ON fd.department_id = f.department_id
+  `;
+
   const [data, count] = await Promise.all([
     query(
-      `SELECT a.*, a.activity_id AS id, s.name AS student_name, s.usn, d.department_code
+      `SELECT a.*, a.activity_id AS id, s.name AS student_name, s.usn,
+              COALESCE(d.department_code, fd.department_code) AS department_code
        FROM activities a
-       JOIN students s ON s.library_id = a.student_id
-       JOIN departments d ON d.department_id = s.department_id
+       ${joins}
        ${where}
        ORDER BY ${sortCol} ${dir}
        LIMIT $${idx} OFFSET $${idx + 1}`,
@@ -45,8 +59,7 @@ const findAll = async (departmentCode, {
     query(
       `SELECT COUNT(*)::int AS total
        FROM activities a
-       JOIN students s ON s.library_id = a.student_id
-       JOIN departments d ON d.department_id = s.department_id
+       ${joins}
        ${where}`,
       params,
     ),
@@ -57,16 +70,20 @@ const findAll = async (departmentCode, {
 
 const findById = async (id) => {
   const result = await query(
-    `SELECT a.*, a.activity_id AS id, s.name AS student_name, s.usn, d.department_code
+    `SELECT a.*, a.activity_id AS id, s.name AS student_name, s.usn,
+            COALESCE(d.department_code, fd.department_code) AS department_code
      FROM activities a
-     JOIN students s ON s.library_id = a.student_id
-     JOIN departments d ON d.department_id = s.department_id
+     LEFT JOIN students s ON s.library_id = a.student_id
+     LEFT JOIN departments d ON d.department_id = s.department_id
+     LEFT JOIN faculty f ON f.faculty_id = a.faculty_id
+     LEFT JOIN departments fd ON fd.department_id = f.department_id
      WHERE a.activity_id = $1 AND a.activity_type = $2`,
     [id, ACTIVITY_TYPE],
   );
   return result.rows[0] || null;
 };
 
+// student_id may be NULL for project-header rows (no students yet).
 const create = async (data) => {
   const result = await query(
     `INSERT INTO activities
@@ -74,7 +91,7 @@ const create = async (data) => {
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *, activity_id AS id`,
     [
-      data.studentId,
+      data.studentId || null,
       data.facultyId || null,
       ACTIVITY_TYPE,
       data.title,
@@ -128,8 +145,22 @@ const remove = async (id) => {
 };
 
 /**
- * Add a student to an IndustryProject by inserting a new activities row linked
- * to the same project title and faculty.
+ * Delete ALL activities rows that share the same title + academic_year
+ * (i.e. delete the whole project including all student rows and the header).
+ */
+const removeProject = async (title, academicYear) => {
+  const result = await query(
+    `DELETE FROM activities
+     WHERE activity_type = $1 AND title = $2 AND academic_year IS NOT DISTINCT FROM $3
+     RETURNING activity_id`,
+    [ACTIVITY_TYPE, title, academicYear || null],
+  );
+  return result.rowCount;
+};
+
+/**
+ * Add a student to a project by inserting a new activities row that shares
+ * the same title, academic_year, status and faculty as the parent row.
  */
 const addStudent = async (projectActivityId, studentData) => {
   const parent = await findById(projectActivityId);
@@ -167,9 +198,9 @@ const removeStudent = async (activityId) => {
 };
 
 /**
- * Find the per-student activity row for a given "project" (rows sharing the
- * same title + academic_year, since each student is its own activities row)
- * — used to look up/dedupe a specific student's row by their student_id.
+ * Find the per-student activity row for a given project (rows sharing the same
+ * title + academic_year). Used to dedupe / look up a student by their
+ * library_id (not USN).
  */
 const findByStudentInProject = async (title, academicYear, studentId) => {
   const result = await query(
@@ -182,6 +213,32 @@ const findByStudentInProject = async (title, academicYear, studentId) => {
   return result.rows[0] || null;
 };
 
+/**
+ * Find the header row for a project (student_id IS NULL) by title + academic_year.
+ * Returns null if no header exists (legacy rows without a header are fine —
+ * the first student row is used as the representative).
+ */
+const findProjectHeader = async (title, academicYear) => {
+  const result = await query(
+    `SELECT *, activity_id AS id FROM activities
+     WHERE activity_type = $1 AND title = $2
+       AND academic_year IS NOT DISTINCT FROM $3
+       AND student_id IS NULL
+     LIMIT 1`,
+    [ACTIVITY_TYPE, title, academicYear || null],
+  );
+  return result.rows[0] || null;
+};
+
 module.exports = {
-  findAll, findById, create, update, remove, addStudent, removeStudent, findByStudentInProject,
+  findAll,
+  findById,
+  create,
+  update,
+  remove,
+  removeProject,
+  addStudent,
+  removeStudent,
+  findByStudentInProject,
+  findProjectHeader,
 };

@@ -12,6 +12,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { setToken as setAxiosToken, setLogoutHandler } from '../api/tokenStore';
+import { clearScheduleCache } from '../hooks/useSchedules';
 
 export type UserRole = 'admin' | 'hod' | 'faculty';
 
@@ -80,6 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           _ref.token = t;
           setTok(t);
           setUser(JSON.parse(u));
+          // Sync with tokenStore for axiosInstance
+          setAxiosToken(t);
         }
       } finally {
         setReady(true);
@@ -93,9 +97,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     _ref.token = authToken;
     setTok(authToken);
     setUser(authUser);
+    // Sync with tokenStore for axiosInstance
+    setAxiosToken(authToken);
   }, []);
 
   const logout = useCallback(async () => {
+    // Clear schedule cache first — before the token is wiped — so no
+    // in-flight request from the old session can repopulate the cache.
+    clearScheduleCache();
     try {
       await AsyncStorage.multiRemove(ALL_SESSION_KEYS);
     } finally {
@@ -103,11 +112,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       _ref.token = null;
       setTok(null);
       setUser(null);
+      // Clear tokenStore as well
+      setAxiosToken(null);
     }
   }, []);
 
   // Register so anything outside React can call it
   unifiedLogoutRef.current = logout;
+
+  // Register logout handler with tokenStore for 401 errors
+  useEffect(() => {
+    setLogoutHandler(logout);
+  }, [logout]);
 
   const value = useMemo(() => ({
     user, token, isAuthenticated: !!user, isReady, login, logout,

@@ -4,13 +4,14 @@ const { successResponse, errorResponse } = require('../utils/response');
 
 const list = async (req, res, next) => {
   try {
-    const page       = Math.max(1, parseInt(req.query.page)     || 1);
-    const pageSize   = Math.min(100, parseInt(req.query.pageSize) || 20);
-    const search     = req.query.search     || undefined;
+    const page         = Math.max(1, parseInt(req.query.page)     || 1);
+    const pageSize     = Math.min(100, parseInt(req.query.pageSize) || 20);
+    const search       = req.query.search       || undefined;
     const departmentId = req.query.departmentId ? parseInt(req.query.departmentId) : undefined;
-    const status     = req.query.status     || undefined;
+    const designation  = req.query.designation  || undefined;
+    const status       = req.query.status       || undefined;
 
-    const result = await svc.list({ page, pageSize, search, departmentId, status });
+    const result = await svc.list({ page, pageSize, search, departmentId, designation, status });
     return res.json({ success: true, ...result });
   } catch (err) {
     if (err.statusCode) return errorResponse(res, err.message, err.statusCode);

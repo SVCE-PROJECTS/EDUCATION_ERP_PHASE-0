@@ -1,10 +1,14 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Modal, Pressable } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Users, BookOpen, Award, CalendarClock, ChevronRight, LayoutDashboard, GraduationCap, Flame } from '../../components/hod/icons';
+import { MiniCalendar, SchedulePopup, ScheduleFormModal } from '../../components/calendar';
+import { useMonthSchedules } from '../../hooks/useSchedules';
+import { Schedule } from '../../services/schedule.service';
+import { getTodayString } from '../../utils/dateHelpers';
 import { dashboardService, facultyService } from '../../services/hod/faculty.service';
 import studentListService from '../../services/hod/studentList.service';
 import {
@@ -20,6 +24,8 @@ import { useTheme } from '../../context/hod/ThemeContext';
 import { formatRelativeTime, formatActionLabel } from '../../utils/hod/formatters';
 import Avatar from '../../components/hod/ui/Avatar';
 import DashboardCharts from '../../components/hod/DashboardCharts';
+import GroupedBarChart from '../../components/hod/ui/GroupedBarChart';
+import type { GroupedBarChartGroup } from '../../components/hod/ui/GroupedBarChart';
 import RoleNotifications from '../../components/hod/ui/RoleNotifications';
 import ScreenWrapper from '../../layouts/hod/ScreenWrapper';
 import { colors, ThemeColors, shadows, primaryScale } from '../../theme/hod/colors';
@@ -29,7 +35,7 @@ import { AuditLog } from '../../types';
 const SCREEN_W = Dimensions.get('window').width;
 const CARD_W =
   SCREEN_W > 600
-    ? (SCREEN_W - 32 - 48) / 4
+    ? Math.floor((SCREEN_W - 32 - 48) / 4) // Distribute evenly across 4 cards with gaps
     : SCREEN_W - 32;
 
 const getGreeting = () => {
@@ -67,9 +73,11 @@ interface ManagementCardProps {
   statLabel?: string;
   theme: ThemeColors;
   styles: ReturnType<typeof getStyles>;
+  cardWidth?: number;
+  cardHeight?: number;
 }
 
-function ManagementCard({ title, description, icon: Icon, color, route, stat, statLabel, theme, styles }: ManagementCardProps) {
+function ManagementCard({ title, description, icon: Icon, color, route, stat, statLabel, theme, styles, cardWidth, cardHeight }: ManagementCardProps) {
   const navigation = useNavigation<any>();
   const c = COLOR_MAP[color] ?? COLOR_MAP.indigo;
 
@@ -77,7 +85,7 @@ function ManagementCard({ title, description, icon: Icon, color, route, stat, st
     <TouchableOpacity
       onPress={() => navigation.navigate(route)}
       activeOpacity={0.85}
-      style={[styles.mgmtCard, { width: CARD_W }]}
+      style={[styles.mgmtCard, { width: cardWidth ?? CARD_W }, cardHeight !== undefined && { height: cardHeight }]}
     >
       <View>
         <View style={styles.mgmtCardTop}>
@@ -130,6 +138,37 @@ export default function HODDashboard() {
   const { colors: theme } = useTheme();
   const styles = getStyles(theme);
   const navigation = useNavigation<any>();
+
+  // Calendar popover state
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [formVisible, setFormVisible] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [formDate, setFormDate] = useState<string | undefined>(undefined);
+
+  // Fetch schedules for current month
+  const currentDate = new Date();
+  const { schedules: monthSchedules } = useMonthSchedules(currentDate.getFullYear(), currentDate.getMonth() + 1);
+
+  const handleDatePress = (dateString: string) => {
+    setSelectedDate(dateString);
+    setCalendarVisible(false);
+    setPopupVisible(true);
+  };
+
+  const handleAddNew = (date?: string) => {
+    setFormDate(date);
+    setEditingSchedule(null);
+    setPopupVisible(false);
+    setFormVisible(true);
+  };
+
+  const handleEdit = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+    setPopupVisible(false);
+    setFormVisible(true);
+  };
 
   const today = React.useMemo(
     () =>
@@ -221,11 +260,94 @@ export default function HODDashboard() {
         return results.reduce((sum, r) => sum + (r.status === 'fulfilled' ? countFrom(r.value) : 0), 0);
       };
 
+      // Step 3: Fetch attendance data for odd semesters (1, 3, 5, 7) grouped by section
+      // ALWAYS BUILD FULL SKELETON, then fill in real values
+      const fetchAttendanceData = async (): Promise<GroupedBarChartGroup[]> => {
+        const SKELETON_SEMESTERS = [1, 3, 5, 7];
+        const SKELETON_SECTIONS = ['A', 'B', 'C'];
+        const sectionColors: Record<string, string> = {
+          'A': colors.blue[600],
+          'B': colors.purple[600],
+          'C': colors.green[600],
+        };
+
+        // Always build the full 4x3 skeleton first
+        const skeleton: GroupedBarChartGroup[] = SKELETON_SEMESTERS.map(sem => ({
+          groupLabel: `Sem ${sem}`,
+          bars: SKELETON_SECTIONS.map(sec => ({
+            label: sec,
+            value: null as any,
+            color: sectionColors[sec],
+            semester: sem,
+            section: sec,
+          })),
+        }));
+
+        try {
+          const semRes = await studentListService.getSemesters();
+          const allSemesters: number[] = semRes?.semesters || semRes?.data?.semesters || [];
+          const oddSemesters = allSemesters.filter((sem) => sem % 2 === 1).sort((a, b) => a - b);
+          if (!oddSemesters.length) return skeleton;
+
+          const limitedSemesters = oddSemesters.slice(0, 4);
+
+          for (const sem of limitedSemesters) {
+            try {
+              const secRes = await studentListService.getSections(sem);
+              const sections: any[] = Array.isArray(secRes) ? secRes : secRes?.data || [];
+
+              for (const sec of sections) {
+                try {
+                  const secName = typeof sec === 'string' ? sec : sec?.name || sec?.id;
+                  await new Promise(resolve => setTimeout(resolve, 100));
+
+                  const dashData = await studentListService.getSectionDashboard(sem, secName, 1, 100);
+                  const studentList = dashData?.students?.data ?? dashData?.data?.students?.data ?? dashData?.students ?? [];
+
+                  // Extract attendance values - attendance is returned as a NUMBER from the service
+                  const validAttendance = studentList
+                    .map((st: any) => st?.attendance)
+                    .filter((att: any) => typeof att === 'number' && !isNaN(att));
+
+                  let avgAttendance: number | null = null;
+                  if (validAttendance.length > 0) {
+                    avgAttendance = Math.round(validAttendance.reduce((sum: number, att: number) => sum + att, 0) / validAttendance.length);
+                  }
+
+                  const groupIdx = SKELETON_SEMESTERS.indexOf(sem);
+                  const barIdx = SKELETON_SECTIONS.indexOf(secName);
+
+                  if (groupIdx >= 0 && barIdx >= 0 && skeleton[groupIdx]) {
+                    skeleton[groupIdx].bars[barIdx] = {
+                      label: secName,
+                      value: avgAttendance,
+                      color: sectionColors[secName] || colors.indigo[600],
+                      semester: sem,
+                      section: secName,
+                    };
+                  }
+                } catch (err) {
+                  console.error(`Failed for Sem ${sem} Section ${sec}:`, err);
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to get sections for Sem ${sem}:`, err);
+            }
+          }
+
+          return skeleton;
+        } catch (err) {
+          console.error('Failed to fetch attendance data:', err);
+          return skeleton;
+        }
+      };
+
       const results = await Promise.allSettled([
         dashboardService.get().catch(() => null),
         facultyService.getAll().catch(() => []),
         fetchStudentStats(),
         fetchActivityCount(),
+        fetchAttendanceData(),
       ]);
 
       const dashRes = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -235,6 +357,7 @@ export default function HODDashboard() {
           ? results[2].value
           : { totalCount: 0, buckets: { excellent: 0, average: 0, needsImprovement: 0 } };
       const activityCount = results[3].status === 'fulfilled' ? results[3].value : 0;
+      const attendanceData = results[4].status === 'fulfilled' ? results[4].value : [];
 
       return {
         dashRes,
@@ -242,6 +365,7 @@ export default function HODDashboard() {
         calculatedStudentCount: studentStats.totalCount,
         performanceBuckets: studentStats.buckets,
         activityCount,
+        attendanceData,
       };
     },
   });
@@ -266,9 +390,29 @@ export default function HODDashboard() {
     ).length;
   const activityCount = dashStats.activityCount || data?.activityCount || 0;
   const performanceBuckets = data?.performanceBuckets || { excellent: 0, average: 0, needsImprovement: 0 };
+  const attendanceChartData = data?.attendanceData || [];
 
   const dept = rawDash?.department || {};
   const recentActivity = rawDash?.recentActivity || [];
+
+  // Prepare attendance chart data with navigation handlers
+  const attendanceGroups: GroupedBarChartGroup[] = attendanceChartData.map((group: any) => ({
+    groupLabel: group.groupLabel,
+    bars: group.bars.map((bar: any) => ({
+      label: bar.label,
+      value: bar.value, // Can be null for "no data"
+      color: bar.color,
+      semester: bar.semester,
+      section: bar.section,
+      onPress: () => {
+        // Navigate to Student Management with the semester and section pre-selected
+        navigation.navigate(ROUTES.HOD_STUDENTS, {
+          semester: bar.semester,
+          section: bar.section,
+        });
+      },
+    })),
+  }));
 
   return (
     <ScreenWrapper route={ROUTES.HOD_DASHBOARD}>
@@ -285,10 +429,38 @@ export default function HODDashboard() {
           </Text>
           <Text style={styles.headerSub}>{dept.name || 'Department'} · {today}</Text>
         </View>
-        <View style={styles.headerIconWrap}>
-          <LayoutDashboard size={26} color={colors.white} />
+        <View style={styles.headerIcons}>
+          <TouchableOpacity
+            style={styles.headerIconWrap}
+            onPress={() => setCalendarVisible(!calendarVisible)}
+            activeOpacity={0.75}
+          >
+            <CalendarClock size={26} color={colors.white} />
+          </TouchableOpacity>
+          <View style={styles.headerIconWrap}>
+            <LayoutDashboard size={26} color={colors.white} />
+          </View>
         </View>
       </LinearGradient>
+
+      {/* Calendar popover — transparent Modal so tapping outside closes it */}
+      <Modal
+        visible={calendarVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setCalendarVisible(false)}
+      >
+        <Pressable style={hodCalPopoverStyles.backdrop} onPress={() => setCalendarVisible(false)}>
+          <Pressable style={hodCalPopoverStyles.popover} onPress={(e) => e.stopPropagation()}>
+            <MiniCalendar
+              schedules={monthSchedules || []}
+              onDatePress={handleDatePress}
+              calWidth={300}
+              theme={theme}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Management cards */}
       {isLoading ? (
@@ -329,7 +501,7 @@ export default function HODDashboard() {
               color: 'purple' as const,
               route: ROUTES.HOD_COORDINATORS,
               stat: coordinatorCount,
-              statLabel: 'coordinators assigned',
+              statLabel: coordinatorCount === 1 ? 'faculty with coordinator roles' : 'faculty with coordinator roles',
             },
             {
               title: 'Faculty Allocation',
@@ -339,6 +511,8 @@ export default function HODDashboard() {
               route: ROUTES.HOD_FACULTY_ALLOCATION,
               stat: undefined,
               statLabel: undefined,
+              cardWidth: 327,
+              cardHeight: 210.73,
             },
           ].map((card, i) => (
             <Animated.View key={card.route} entering={FadeInUp.delay(i * 80).duration(400).springify()}>
@@ -352,6 +526,8 @@ export default function HODDashboard() {
                 statLabel={card.statLabel}
                 theme={theme}
                 styles={styles}
+                cardWidth={(card as any).cardWidth}
+                cardHeight={(card as any).cardHeight}
               />
             </Animated.View>
           ))}
@@ -386,6 +562,22 @@ export default function HODDashboard() {
         />
       )}
 
+      {/* Department Attendance Chart - Always show skeleton even if data is empty */}
+      {!isLoading && (
+        <View style={styles.attendanceChartCard}>
+          <Text style={styles.sectionLabel}>DEPARTMENT ATTENDANCE</Text>
+          <GroupedBarChart
+            data={attendanceGroups}
+            height={240}
+            showValues={true}
+            unit="%"
+            title="Average Attendance by Semester & Section"
+            showLegend={true}
+          />
+          <Text style={styles.chartHelp}>Tap any section to view student details</Text>
+        </View>
+      )}
+
       {/* Role notifications */}
       <RoleNotifications roles={user?.roles} />
 
@@ -416,6 +608,30 @@ export default function HODDashboard() {
           ))}
         </View>
       )}
+      
+      {/* Schedule Popup */}
+      <SchedulePopup
+        visible={popupVisible}
+        date={selectedDate || getTodayString()}
+        schedules={monthSchedules || []}
+        onClose={() => setPopupVisible(false)}
+        onAddNew={handleAddNew}
+        onEdit={handleEdit}
+        theme={theme}
+      />
+
+      {/* Schedule Form Modal */}
+      <ScheduleFormModal
+        visible={formVisible}
+        initialDate={formDate}
+        schedule={editingSchedule || undefined}
+        onClose={() => {
+          setFormVisible(false);
+          setEditingSchedule(null);
+          setFormDate(undefined);
+        }}
+        theme={theme}
+      />
     </ScreenWrapper>
   );
 }
@@ -432,6 +648,7 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     padding: 20,
     marginBottom: 4,
     ...shadows.card,
+    overflow: 'visible' as any,
   },
   headerHeading: {
     fontSize: 20,
@@ -443,6 +660,11 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
     marginTop: 4,
   },
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center',
+  },
   headerIconWrap: {
     width: 48,
     height: 48,
@@ -453,7 +675,7 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   },
 
   // Card layout
-  cardRowH: { flexDirection: 'row', gap: 16 },
+  cardRowH: { flexDirection: 'row', gap: 16, paddingRight: 16 },
   cardRowV: { gap: 12 },
   skeletonRow: { gap: 12 },
 
@@ -531,6 +753,8 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     fontWeight: '700',
     color: theme.textSecondary,
     letterSpacing: 0.6,
+    marginBottom: 0,
+    paddingBottom: 0,
   },
   quickActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   quickAction: {
@@ -593,5 +817,40 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 11,
     color: theme.textMuted,
     marginTop: 2,
+  },
+
+  // Attendance chart card
+  attendanceChartCard: {
+    backgroundColor: theme.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: 22,
+    gap: 0,
+    ...shadows.card,
+    overflow: 'visible' as any,
+  },
+  chartHelp: {
+    fontSize: 11,
+    color: theme.textMuted,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+});
+
+// Popover styles — module-level (no theme dependency for positioning)
+const hodCalPopoverStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+  },
+  popover: {
+    position: 'absolute',
+    top: 72,
+    right: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
   },
 });

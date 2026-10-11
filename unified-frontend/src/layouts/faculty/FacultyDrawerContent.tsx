@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   LayoutDashboard, Users, ClipboardList, CheckSquare,
-  Award, GraduationCap, LogOut, Sun, Moon,
+  Award, GraduationCap, LogOut, Sun, Moon, Calendar, CalendarMonth,
 } from '../../components/faculty/icons';
 import Avatar from '../../components/faculty/ui/Avatar';
 import { useAuth } from '../../context/faculty/AuthContext';
@@ -34,11 +34,13 @@ type IconComponent = React.ComponentType<{ size?: number; color?: string; style?
 interface NavItem { label: string; route: string; icon: IconComponent; }
 
 const FACULTY_NAV: NavItem[] = [
-  { label: 'Dashboard',   route: ROUTES.FACULTY_DASHBOARD, icon: LayoutDashboard },
-  { label: 'Assignments', route: ROUTES.ASSIGNMENTS,       icon: ClipboardList },
-  { label: 'Attendance',  route: ROUTES.ATTENDANCE,        icon: CheckSquare },
-  { label: 'IA Marks',    route: ROUTES.IA_MARKS,          icon: Award },
-  { label: 'My Profile',  route: ROUTES.MY_PROFILE,        icon: Users },
+  { label: 'Dashboard',    route: ROUTES.FACULTY_DASHBOARD, icon: LayoutDashboard },
+  { label: 'Assignments',  route: ROUTES.ASSIGNMENTS,       icon: ClipboardList },
+  { label: 'Attendance',   route: ROUTES.ATTENDANCE,        icon: CheckSquare },
+  { label: 'IA Marks',     route: ROUTES.IA_MARKS,          icon: Award },
+  { label: 'My Schedules', route: ROUTES.MY_SCHEDULES,      icon: Calendar },
+  { label: 'My Profile',   route: ROUTES.MY_PROFILE,        icon: Users },
+  { label: 'Activity Log', route: ROUTES.ACTIVITY_LOG,      icon: CalendarMonth },
 ];
 
 interface SidebarItemProps {

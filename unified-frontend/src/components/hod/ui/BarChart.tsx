@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { View, Text, StyleSheet, LayoutChangeEvent, TouchableOpacity } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { colors, ThemeColors } from '../../../theme/hod/colors';
 import { useTheme } from '../../../context/hod/ThemeContext';
@@ -17,6 +17,8 @@ export interface BarChartDatum {
   value: number;
   /** Optional per-bar color override; defaults to theme primary. */
   color?: string;
+  /** Optional tap handler — wraps the bar column in a TouchableOpacity. */
+  onPress?: () => void;
 }
 
 export interface BarChartProps {
@@ -42,8 +44,8 @@ export default function BarChart({ data, height = 160, showValues = true, unit =
       <View style={[styles.track, { height }]}>
         {data.map((d, i) => {
           const barHeight = Math.max(4, (d.value / maxValue) * (height - 28));
-          return (
-            <View key={`${d.label}-${i}`} style={styles.col}>
+          const colContent = (
+            <>
               {showValues && (
                 <Text style={styles.value} numberOfLines={1}>
                   {d.value}
@@ -64,6 +66,21 @@ export default function BarChart({ data, height = 160, showValues = true, unit =
               <Text style={styles.label} numberOfLines={1}>
                 {d.label}
               </Text>
+            </>
+          );
+
+          return d.onPress ? (
+            <TouchableOpacity
+              key={`${d.label}-${i}`}
+              style={styles.col}
+              onPress={d.onPress}
+              activeOpacity={0.7}
+            >
+              {colContent}
+            </TouchableOpacity>
+          ) : (
+            <View key={`${d.label}-${i}`} style={styles.col}>
+              {colContent}
             </View>
           );
         })}

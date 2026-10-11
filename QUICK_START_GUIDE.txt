@@ -1,0 +1,138 @@
+================================================================================
+QUICK START GUIDE - Calendar Feature
+================================================================================
+
+🎯 TO START USING THE FEATURE RIGHT NOW:
+
+1. APPLY DATABASE MIGRATION (Required - One Time Only)
+   
+   Open PowerShell or Command Prompt:
+   
+   cd C:\Users\anush\OneDrive\Desktop\erp_svce\EDUCATION_ERP_PHASE-0
+   "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d education_erp
+   
+   When prompted for password, enter: postgres@123
+   
+   Then run:
+   \i database/migrations/add_schedules_table.sql
+   \q
+   
+   ✅ Done! The schedules table is now created.
+
+2. START BACKEND (If not already running)
+   
+   cd C:\Users\anush\OneDrive\Desktop\erp_svce\EDUCATION_ERP_PHASE-0\unified_backend
+   npm start
+   
+   Should show: Server running on port 5000
+
+3. START FRONTEND (If not already running)
+   
+   cd C:\Users\anush\OneDrive\Desktop\erp_svce\EDUCATION_ERP_PHASE-0\unified-frontend
+   npm start
+   
+   Or if changes aren't showing:
+   npx expo start --clear --web
+
+4. TEST THE FEATURE
+   
+   Open browser: http://localhost:8081
+   
+   Login as:
+   - Admin (username: admin, password: admin123)
+   - HOD (username: CS_HOD, password: hod123)
+   - Faculty (username: FAC001, password: faculty123)
+   
+   Navigate to: Sidebar → My Schedules
+   
+   Try:
+   ✓ Click "Add New" → Create a schedule
+   ✓ Tap a date on calendar → See schedules for that date
+   ✓ Click Edit icon → Modify a schedule
+   ✓ Click checkmark → Mark complete
+   ✓ Click trash → Delete a schedule
+
+================================================================================
+WHERE IS EVERYTHING?
+================================================================================
+
+Admin Portal:
+  Sidebar → My Schedules (bottom of sidebar)
+
+HOD Portal:
+  Sidebar → My Schedules (between Activities and Activity Log)
+
+Faculty Portal:
+  Sidebar → My Schedules (between IA Marks and My Profile)
+
+Backend API:
+  GET    http://localhost:5000/api/schedules?from=2024-01-01&to=2024-01-31
+  POST   http://localhost:5000/api/schedules
+  PUT    http://localhost:5000/api/schedules/:id
+  PATCH  http://localhost:5000/api/schedules/:id/complete
+  DELETE http://localhost:5000/api/schedules/:id
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "relation schedules does not exist"
+→ You haven't applied the database migration yet (see step 1 above)
+
+Problem: My Schedules menu item doesn't appear
+→ Clear cache: npx expo start --clear --web
+
+Problem: "Not handled by any navigator" error
+→ Already fixed - if you see this, ensure frontend restarted
+
+Problem: Can't connect to database
+→ Check PostgreSQL is running
+→ Check password: postgres@123
+→ Check database name: education_erp
+
+Problem: Backend not responding
+→ Check unified_backend is running on port 5000
+→ Check .env file has correct DATABASE_URL
+
+Problem: Red dots not showing
+→ Make sure schedules have status='pending'
+→ Completed schedules don't show red dots
+
+================================================================================
+WHAT'S ALREADY DONE?
+================================================================================
+
+✅ Backend API with 5 endpoints
+✅ Database migration file created
+✅ Frontend service and hooks
+✅ Shared calendar components (3 components)
+✅ Admin My Schedules screen
+✅ HOD My Schedules screen
+✅ Faculty My Schedules screen
+✅ All navigation registered
+✅ All sidebar menu items added
+✅ Privacy enforcement (user-scoped queries)
+✅ Dark mode support
+✅ Responsive design
+✅ Keyboard shortcuts
+✅ Form validation
+✅ Debug logs removed
+
+ONLY REMAINING: Apply database migration (step 1 above)
+
+================================================================================
+TEST IN 2 MINUTES
+================================================================================
+
+1. Apply migration (30 seconds)
+2. Login to any portal (10 seconds)
+3. Go to My Schedules (5 seconds)
+4. Click "Add New" (5 seconds)
+5. Fill form and save (30 seconds)
+6. See red dot on calendar (5 seconds)
+7. Tap the date (5 seconds)
+8. See your schedule in popup (5 seconds)
+
+Total: 2 minutes to full test! 🎉
+
+================================================================================

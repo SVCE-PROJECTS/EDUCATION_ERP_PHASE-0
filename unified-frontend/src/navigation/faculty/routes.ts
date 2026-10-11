@@ -13,6 +13,8 @@ export const ROUTES = {
   ASSIGNMENTS:       'Assignments',
   ATTENDANCE:        'Attendance',
   IA_MARKS:          'IAMarks',
+  MY_SCHEDULES:      'MySchedules',
+  ACTIVITY_LOG:      'ActivityLog',
 
   // Stack-push screens
   ASSIGNMENT_DETAIL: 'AssignmentDetail',
@@ -34,6 +36,8 @@ export const SCREEN_TITLES: Record<string, string> = {
   [ROUTES.ASSIGNMENTS]:       'Assignments',
   [ROUTES.ATTENDANCE]:        'Attendance',
   [ROUTES.IA_MARKS]:          'IA Marks',
+  [ROUTES.MY_SCHEDULES]:      'My Schedules',
+  [ROUTES.ACTIVITY_LOG]:      'Activity Log',
   [ROUTES.ASSIGNMENT_DETAIL]: 'Assignment Details',
   [ROUTES.ADD_ASSIGNMENT]:    'New Assignment',
   [ROUTES.EDIT_ASSIGNMENT]:   'Edit Assignment',

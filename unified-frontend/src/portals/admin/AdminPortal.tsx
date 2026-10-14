@@ -35,6 +35,12 @@ import EditNonTeachingStaffScreen    from '../../screens/admin/NonTeachingStaffR
 import NonTeachingStaffDetailsScreen from '../../screens/admin/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
 import MySchedulesScreen             from '../../screens/admin/Schedules/MySchedulesScreen';
 
+// Meeting Management Screens
+import MeetingManagementScreen       from '../../screens/admin/MeetingManagement/MeetingManagementScreen';
+import CreateMeetingScreen           from '../../screens/admin/MeetingManagement/CreateMeetingScreen';
+import MeetingDetailsScreen          from '../../screens/admin/MeetingManagement/MeetingDetailsScreen';
+import EditMeetingScreen             from '../../screens/admin/MeetingManagement/EditMeetingScreen';
+
 // ── Admin-specific providers ──────────────────────────────────────────────────
 import { AuthProvider as AdminAuthProvider, useAuth as useAdminAuth } from '../../context/admin/AuthContext';
 import { ThemeProvider as AdminThemeProvider, useTheme as useAdminTheme } from '../../context/admin/ThemeContext';
@@ -145,6 +151,10 @@ function AdminNavigator() {
       <Stack.Screen name="Settings"              component={SettingsScreen} />
       <Stack.Screen name="TransferredStudents"   component={TransferredStudentsScreen} />
       <Stack.Screen name="MySchedules"           component={MySchedulesScreen} />
+      <Stack.Screen name="MeetingManagement"     component={MeetingManagementScreen} />
+      <Stack.Screen name="CreateMeeting"         component={CreateMeetingScreen} />
+      <Stack.Screen name="MeetingDetails"        component={MeetingDetailsScreen} />
+      <Stack.Screen name="EditMeeting"           component={EditMeetingScreen} />
     </Stack.Navigator>
   );
 }

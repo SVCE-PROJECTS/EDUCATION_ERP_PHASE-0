@@ -16,6 +16,9 @@ import Assignments          from '../../screens/faculty/Assignments';
 import Attendance           from '../../screens/faculty/Attendance';
 import IAMarks              from '../../screens/faculty/IAMarks';
 import MySchedules          from '../../screens/faculty/MySchedules';
+import Meetings             from '../../screens/faculty/Meetings';
+import FacultyMeetingDetails from '../../screens/faculty/meeting/MeetingDetailsScreen';
+import FacultyCreateMeeting  from '../../screens/faculty/meeting/CreateMeetingScreen';
 import ActivityLog          from '../../screens/faculty/ActivityLog';
 import FacultyDrawerContent from '../../layouts/faculty/FacultyDrawerContent';
 import SnackbarHost         from '../../components/faculty/ui/SnackbarHost';
@@ -101,6 +104,7 @@ function FacultyDrawerNav() {
       <Drawer.Screen name={ROUTES.ATTENDANCE}        component={Attendance} />
       <Drawer.Screen name={ROUTES.IA_MARKS}          component={IAMarks} />
       <Drawer.Screen name={ROUTES.MY_SCHEDULES}      component={MySchedules} />
+      <Drawer.Screen name={ROUTES.MEETINGS}          component={Meetings} />
       <Drawer.Screen name={ROUTES.MY_PROFILE}        component={MyProfile} />
       <Drawer.Screen name={ROUTES.ACTIVITY_LOG}      component={ActivityLog} />
     </Drawer.Navigator>
@@ -122,6 +126,8 @@ function FacultyNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="FacultyRoot" component={FacultyDrawerNav} />
+      <Stack.Screen name={ROUTES.MEETING_DETAILS} component={FacultyMeetingDetails} />
+      <Stack.Screen name={ROUTES.CREATE_MEETING} component={FacultyCreateMeeting} />
     </Stack.Navigator>
   );
 }

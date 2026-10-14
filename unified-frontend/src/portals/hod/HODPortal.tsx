@@ -21,6 +21,12 @@ import ActivitiesPage        from '../../screens/hod/activities/ActivitiesPage';
 import FacultyAllocation     from '../../screens/hod/FacultyAllocation';
 import ActivityLog           from '../../screens/hod/ActivityLog';
 import MySchedules           from '../../screens/hod/MySchedules';
+import MeetingManagement     from '../../screens/hod/MeetingManagement';
+
+// Meeting Management Screens
+import CreateMeetingScreen   from '../../screens/hod/meeting/CreateMeetingScreen';
+import MeetingDetailsScreen  from '../../screens/hod/meeting/MeetingDetailsScreen';
+import EditMeetingScreen     from '../../screens/hod/meeting/EditMeetingScreen';
 import HODDrawerContent      from '../../layouts/hod/HODDrawerContent';
 import SnackbarHost          from '../../components/hod/ui/SnackbarHost';
 
@@ -108,6 +114,7 @@ function HODDrawerNav() {
       <Drawer.Screen name={ROUTES.HOD_FACULTY_ALLOCATION} component={FacultyAllocation} />
       <Drawer.Screen name={ROUTES.HOD_ACTIVITY_LOG}     component={ActivityLog} />
       <Drawer.Screen name={ROUTES.HOD_MY_SCHEDULES}     component={MySchedules} />
+      <Drawer.Screen name={ROUTES.HOD_MEETINGS}         component={MeetingManagement} />
     </Drawer.Navigator>
   );
 }
@@ -127,10 +134,15 @@ function HODNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="HODRoot"              component={HODDrawerNav} />
+      <Stack.Screen name="HODRoot"                 component={HODDrawerNav} />
       <Stack.Screen name={ROUTES.FACULTY_PROFILE} component={FacultyProfile} />
       <Stack.Screen name={ROUTES.FACULTY_ADD}     component={AddEditFaculty} />
       <Stack.Screen name={ROUTES.FACULTY_EDIT}    component={AddEditFaculty} />
+
+      {/* Meeting Management Screens */}
+      <Stack.Screen name="CreateMeeting"           component={CreateMeetingScreen} />
+      <Stack.Screen name="MeetingDetails"          component={MeetingDetailsScreen} />
+      <Stack.Screen name="EditMeeting"             component={EditMeetingScreen} />
     </Stack.Navigator>
   );
 }

@@ -37,6 +37,12 @@ const NAV_ITEMS = [
     key: 'NonTeachingStaffList', label: 'Non-Teaching Staff', icon: 'account-hard-hat-outline', screen: 'NonTeachingStaffList',
   },
   {
+    key: 'MeetingManagement',
+    label: 'Meeting Management',
+    icon: 'calendar-account',
+    screen: 'MeetingManagement',
+  },
+  {
     key: 'TransferStudent',
     label: 'Transfer Student',
     icon: 'swap-horizontal',

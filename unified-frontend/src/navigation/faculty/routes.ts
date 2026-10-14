@@ -14,6 +14,9 @@ export const ROUTES = {
   ATTENDANCE:        'Attendance',
   IA_MARKS:          'IAMarks',
   MY_SCHEDULES:      'MySchedules',
+  MEETINGS:          'Meetings',
+  MEETING_DETAILS:   'FacultyMeetingDetails',
+  CREATE_MEETING:    'FacultyCreateMeeting',
   ACTIVITY_LOG:      'ActivityLog',
 
   // Stack-push screens
@@ -37,6 +40,9 @@ export const SCREEN_TITLES: Record<string, string> = {
   [ROUTES.ATTENDANCE]:        'Attendance',
   [ROUTES.IA_MARKS]:          'IA Marks',
   [ROUTES.MY_SCHEDULES]:      'My Schedules',
+  [ROUTES.MEETINGS]:          'Meetings',
+  [ROUTES.MEETING_DETAILS]:   'Meeting Details',
+  [ROUTES.CREATE_MEETING]:    'Create Meeting',
   [ROUTES.ACTIVITY_LOG]:      'Activity Log',
   [ROUTES.ASSIGNMENT_DETAIL]: 'Assignment Details',
   [ROUTES.ADD_ASSIGNMENT]:    'New Assignment',

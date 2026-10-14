@@ -27,6 +27,7 @@ import DashboardCharts from '../../components/hod/DashboardCharts';
 import GroupedBarChart from '../../components/hod/ui/GroupedBarChart';
 import type { GroupedBarChartGroup } from '../../components/hod/ui/GroupedBarChart';
 import RoleNotifications from '../../components/hod/ui/RoleNotifications';
+import MeetingReminders from '../../components/meeting/MeetingReminders';
 import ScreenWrapper from '../../layouts/hod/ScreenWrapper';
 import { colors, ThemeColors, shadows, primaryScale } from '../../theme/hod/colors';
 import { ROUTES } from '../../navigation/hod/routes';
@@ -321,7 +322,7 @@ export default function HODDashboard() {
                     skeleton[groupIdx].bars[barIdx] = {
                       label: secName,
                       value: avgAttendance,
-                      color: sectionColors[secName] || colors.indigo[600],
+                      color: sectionColors[secName] || colors.blue[600],
                       semester: sem,
                       section: secName,
                     };
@@ -442,6 +443,11 @@ export default function HODDashboard() {
           </View>
         </View>
       </LinearGradient>
+
+      <MeetingReminders
+        colors={theme}
+        onOpenMeeting={(meetingId) => navigation.navigate('MeetingDetails', { meetingId })}
+      />
 
       {/* Calendar popover — transparent Modal so tapping outside closes it */}
       <Modal
@@ -608,7 +614,7 @@ export default function HODDashboard() {
           ))}
         </View>
       )}
-      
+
       {/* Schedule Popup */}
       <SchedulePopup
         visible={popupVisible}

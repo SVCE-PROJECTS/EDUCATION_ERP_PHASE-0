@@ -19,6 +19,7 @@ import {
   spacing, typography, radius, shadows,
 } from '../../../theme';
 import { getTodayString } from '../../../utils/dateHelpers';
+import MeetingReminders from '../../../components/meeting/MeetingReminders';
 
 const CHART_COLORS = {
   primary: '#3B82F6',
@@ -54,13 +55,13 @@ const QUICK_ACTIONS = [
     key: 'AddStudent', label: 'Add Student', icon: 'account-plus-outline', accent: 'blue', screen: 'AddStudent',
   },
   {
-    key: 'TransferStudent', label: 'Transfer Student', icon: 'swap-horizontal', accent: 'violet', screen: 'TransferStudent',
+    key: 'Meetings', label: 'Meetings', icon: 'calendar-account', accent: 'violet', screen: 'Meetings',
   },
   {
-    key: 'ExportStudentData', label: 'Download Data', icon: 'tray-arrow-down', accent: 'teal', screen: 'ExportStudentData',
+    key: 'TransferStudent', label: 'Transfer Student', icon: 'swap-horizontal', accent: 'teal', screen: 'TransferStudent',
   },
   {
-    key: 'Settings', label: 'Settings', icon: 'cog-outline', accent: 'amber', screen: 'Settings',
+    key: 'ExportStudentData', label: 'Download Data', icon: 'tray-arrow-down', accent: 'amber', screen: 'ExportStudentData',
   },
 ];
 
@@ -311,6 +312,11 @@ const DashboardScreen = ({ navigation }) => {
           </View>
         </LinearGradient>
 
+        <MeetingReminders
+          colors={colors}
+          onOpenMeeting={(meetingId) => navigation.navigate('MeetingDetails', { meetingId })}
+        />
+
         {/* Calendar popover — transparent Modal so tapping outside closes it */}
         <Modal
           visible={calendarVisible}
@@ -361,6 +367,19 @@ const DashboardScreen = ({ navigation }) => {
                 onPress={() => navigation.navigate(action.screen)}
               />
             ))}
+          </View>
+        </View>
+
+        <View style={styles.quickActionsCard}>
+          <Text style={styles.sectionLabel}>Administrative</Text>
+          <View style={styles.quickActionsRow}>
+            <QuickAction
+              key="Settings"
+              icon="cog-outline"
+              label="Settings"
+              accent="amber"
+              onPress={() => navigation.navigate('Settings')}
+            />
           </View>
         </View>
 

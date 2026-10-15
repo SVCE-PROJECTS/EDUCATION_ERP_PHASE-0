@@ -29,6 +29,7 @@ export interface ScreenWrapperProps {
   children?: React.ReactNode;
   route?: RouteName | string;
   title?: string;
+  showTopbar?: boolean;
   /** true (default) wraps children in ScrollView; false uses a flat View */
   scrollable?: boolean;
   refreshing?: boolean;
@@ -46,6 +47,7 @@ export default function ScreenWrapper({
   children,
   route,
   title,
+  showTopbar = true,
   scrollable = true,
   refreshing = false,
   onRefresh,
@@ -69,8 +71,8 @@ export default function ScreenWrapper({
       style={[styles.root, { backgroundColor: bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: bg }]} edges={['top']}>
-        <Topbar title={resolvedTitle} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: bg }]}>
+        {showTopbar ? <Topbar title={resolvedTitle} /> : null}
 
         {scrollable ? (
           <ScrollView

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { View, Text, Image, StyleSheet, StyleProp, ViewStyle, ImageStyle } from 'react-native';
 import { getInitials } from '../../../utils/faculty/formatters';
 import { avatarColors } from '../../../theme/hod/colors';
 
@@ -46,17 +46,28 @@ export default function Avatar({ src, name = '', size = 'md', style }: AvatarPro
   const dim = SIZES[size] ?? SIZES.md;
   const fontSize = FONT_SIZES[size] ?? FONT_SIZES.md;
 
-  const containerStyle = [
+  const containerStyle: StyleProp<ViewStyle> = [
     styles.base,
     { width: dim, height: dim, borderRadius: dim / 2 },
     style,
   ];
 
   if (src) {
+    // Create image-specific style without ViewStyle-only properties
+    const imageStyle: StyleProp<ImageStyle> = [
+      {
+        width: dim,
+        height: dim,
+        borderRadius: dim / 2,
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      },
+      styles.image
+    ];
     return (
       <Image
         source={{ uri: src }}
-        style={[containerStyle, styles.image]}
+        style={imageStyle}
         accessibilityLabel={name}
       />
     );
@@ -77,10 +88,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ffffff',
     overflow: 'hidden',
-  },
+  } as ViewStyle,
   image: {
     resizeMode: 'cover',
-  },
+  } as ImageStyle,
   initials: {
     color: '#ffffff',
     fontWeight: '600',

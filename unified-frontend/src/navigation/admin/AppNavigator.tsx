@@ -39,6 +39,12 @@ import AddNonTeachingStaffScreen from '../../screens/admin/NonTeachingStaffRegis
 import EditNonTeachingStaffScreen from '../../screens/admin/NonTeachingStaffRegistry/EditNonTeachingStaffScreen';
 import NonTeachingStaffDetailsScreen from '../../screens/admin/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
 import MySchedulesScreen from '../../screens/admin/Schedules/MySchedulesScreen';
+
+// Meeting Management Screens
+import MeetingManagementScreen from '../../screens/admin/MeetingManagement/MeetingManagementScreen';
+import CreateMeetingScreen from '../../screens/admin/MeetingManagement/CreateMeetingScreen';
+import MeetingDetailsScreen from '../../screens/admin/MeetingManagement/MeetingDetailsScreen';
+import EditMeetingScreen from '../../screens/admin/MeetingManagement/EditMeetingScreen';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/admin/ThemeContext';
 import { useTokenFromUrl } from '../../hooks/admin/useTokenFromUrl';
@@ -221,6 +227,27 @@ const AppNavigator = () => {
       <Stack.Screen
         name="MySchedules"
         component={MySchedulesScreen}
+      />
+
+      {/* Meeting Management */}
+      <Stack.Screen
+        name="MeetingManagement"
+        component={MeetingManagementScreen}
+      />
+
+      <Stack.Screen
+        name="CreateMeeting"
+        component={CreateMeetingScreen}
+      />
+
+      <Stack.Screen
+        name="MeetingDetails"
+        component={MeetingDetailsScreen}
+      />
+
+      <Stack.Screen
+        name="EditMeeting"
+        component={EditMeetingScreen}
       />
     </Stack.Navigator>
   );

@@ -106,7 +106,8 @@ function splitSqlStatements(sql) {
 async function initializeDatabase() {
   const schemaPath = path.join(__dirname, '..', '..', '..', 'database', 'unified_schema.sql');
   const seedPath = path.join(__dirname, '..', '..', '..', 'database', 'unified_seed_empty.sql');
-  const migrationsDir = path.join(__dirname, '..', '..', 'database', 'migrations');
+  const backendMigrationsDir = path.join(__dirname, '..', '..', 'database', 'migrations');
+  const rootMigrationsDir = path.join(__dirname, '..', '..', '..', 'database', 'migrations');
 
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
   const seedSql = fs.readFileSync(seedPath, 'utf8');
@@ -125,15 +126,38 @@ async function initializeDatabase() {
     // INDEX ... IF NOT EXISTS) — running them here means a fresh clone ends
     // up with the same schema as a longer-lived dev database without any
     // manual `psql -f ...` step.
-    if (fs.existsSync(migrationsDir)) {
-      const migrationFiles = fs.readdirSync(migrationsDir)
-        .filter((f) => f.endsWith('.sql'))
-        .sort();
-      for (const file of migrationFiles) {
-        const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-        for (const statement of splitSqlStatements(migrationSql)) {
-          await client.query(statement);
+    //
+    // Load migrations from both backend-specific and repository root locations.
+    // Merge and deduplicate by filename to prevent running the same migration twice.
+    const allMigrationFiles = new Map(); // filename -> full path
+
+    // Load backend-specific migrations first (existing behavior)
+    if (fs.existsSync(backendMigrationsDir)) {
+      const backendFiles = fs.readdirSync(backendMigrationsDir)
+        .filter((f) => f.endsWith('.sql'));
+      for (const file of backendFiles) {
+        allMigrationFiles.set(file, path.join(backendMigrationsDir, file));
+      }
+    }
+
+    // Load repository root migrations, avoiding duplicates
+    if (fs.existsSync(rootMigrationsDir)) {
+      const rootFiles = fs.readdirSync(rootMigrationsDir)
+        .filter((f) => f.endsWith('.sql'));
+      for (const file of rootFiles) {
+        if (!allMigrationFiles.has(file)) {
+          allMigrationFiles.set(file, path.join(rootMigrationsDir, file));
         }
+      }
+    }
+
+    // Execute all migrations in sorted filename order
+    const sortedMigrations = Array.from(allMigrationFiles.entries()).sort();
+    for (const [filename, fullPath] of sortedMigrations) {
+      logger.info(`Executing migration: ${filename}`);
+      const migrationSql = fs.readFileSync(fullPath, 'utf8');
+      for (const statement of splitSqlStatements(migrationSql)) {
+        await client.query(statement);
       }
     }
 

@@ -21,13 +21,14 @@ export interface ScreenWrapperProps {
   route?: RouteName | string;
   title?: string;
   scrollable?: boolean;
+  showTopbar?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
 export default function ScreenWrapper({
-  children, route, title, scrollable = true,
+  children, route, title, scrollable = true, showTopbar = true,
   refreshing = false, onRefresh, style,
 }: ScreenWrapperProps) {
   const insets = useSafeAreaInsets();
@@ -44,8 +45,8 @@ export default function ScreenWrapper({
   return (
     <KeyboardAvoidingView style={[styles.root, { backgroundColor: bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: bg }]} edges={['top']}>
-        <Topbar title={resolvedTitle} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: bg }]}>
+        {showTopbar ? <Topbar title={resolvedTitle} /> : null}
         {scrollable ? (
           <ScrollView style={styles.scroll} contentContainerStyle={contentStyle}
             keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}

@@ -40,16 +40,24 @@ app.use(cors({
 // ── Rate Limiting ─────────────────────────────────────────────────────────────
 const globalLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max:      parseInt(process.env.RATE_LIMIT_MAX)        || 200,
+  max:      parseInt(process.env.RATE_LIMIT_MAX)        || 1000, // Increased for development
   standardHeaders: true,
   legacyHeaders:   false,
   message: { success: false, message: 'Too many requests. Please try again later.' },
+  handler: (req, res) => {
+    logger.warn(`Global rate limit reached for IP: ${req.ip}, User-Agent: ${req.get('User-Agent')}`);
+    res.status(429).json({ success: false, message: 'Too many requests. Please try again later.' });
+  },
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 50, // Increased for development
   message: { success: false, message: 'Too many login attempts. Try again after 15 minutes.' },
+  handler: (req, res) => {
+    logger.warn(`Auth rate limit reached for IP: ${req.ip}, Path: ${req.path}`);
+    res.status(429).json({ success: false, message: 'Too many login attempts. Try again after 15 minutes.' });
+  },
 });
 
 app.use('/api/', globalLimiter);

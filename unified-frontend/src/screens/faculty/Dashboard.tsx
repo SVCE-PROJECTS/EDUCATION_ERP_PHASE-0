@@ -21,6 +21,7 @@ import ScreenWrapper from '../../layouts/faculty/ScreenWrapper';
 import SimpleBarChart from '../../components/faculty/ui/SimpleBarChart';
 import ClassAttendanceChart from '../../components/faculty/ui/ClassAttendanceChart';
 import RoleNotifications from '../../components/faculty/ui/RoleNotifications';
+import MeetingReminders from '../../components/meeting/MeetingReminders';
 import api from '../../services/faculty/api';
 import { colors, shadows, primaryScale, ThemeColors } from '../../theme/faculty/colors';
 import { ROUTES } from '../../navigation/faculty/routes';
@@ -236,6 +237,11 @@ export default function Dashboard() {
           </View>
         </View>
       </LinearGradient>
+
+      <MeetingReminders
+        colors={theme}
+        onOpenMeeting={(meetingId) => navigation.navigate(ROUTES.MEETING_DETAILS, { meetingId })}
+      />
 
       {/* Calendar popover — transparent Modal so tapping outside closes it */}
       <Modal

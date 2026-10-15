@@ -15,6 +15,7 @@ import {
   Sun,
   Moon,
   Calendar,
+  VideoIcon,
 } from '../../components/hod/icons';
 import Avatar from '../../components/hod/ui/Avatar';
 import { useAuth } from '../../context/hod/AuthContext';
@@ -44,6 +45,7 @@ const HOD_NAV: NavItem[] = [
   { label: 'Coordinator Management', route: ROUTES.HOD_COORDINATORS, icon: Award },
   { label: 'Faculty Allocation', route: ROUTES.HOD_FACULTY_ALLOCATION, icon: CalendarClock },
   { label: 'Activities', route: ROUTES.HOD_ACTIVITIES, icon: Flame },
+  { label: 'Meetings', route: ROUTES.HOD_MEETINGS, icon: VideoIcon },
   { label: 'My Schedules', route: ROUTES.HOD_MY_SCHEDULES, icon: Calendar },
   { label: 'Activity Log', route: ROUTES.HOD_ACTIVITY_LOG, icon: History },
 ];
@@ -87,6 +89,9 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
   const styles = getStyles(theme);
 
   const activeRoute = state.routes[state.index]?.name;
+
+  // Get parent navigation to access stack screens
+  const stackNavigation = drawerNav.getParent();
 
   const handleLogout = async () => {
     await unifiedLogoutRef.current?.();
@@ -143,7 +148,7 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
         {/* Avatar + name — tap to view profile */}
         <TouchableOpacity
           style={styles.profileInfo}
-          onPress={() => drawerNav.navigate(ROUTES.FACULTY_PROFILE as never, { id: user?.id } as never)}
+          onPress={() => stackNavigation?.navigate(ROUTES.FACULTY_PROFILE, { id: user?.id })}
           activeOpacity={0.75}
         >
           <Avatar src={resolveFileUrl(user?.photoUrl)} name={user?.name} size="sm" />

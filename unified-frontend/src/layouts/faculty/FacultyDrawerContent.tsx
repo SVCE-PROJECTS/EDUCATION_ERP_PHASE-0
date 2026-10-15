@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   LayoutDashboard, Users, ClipboardList, CheckSquare,
-  Award, GraduationCap, LogOut, Sun, Moon, Calendar, CalendarMonth,
+  Award, GraduationCap, LogOut, Sun, Moon, Calendar, CalendarMonth, Video,
 } from '../../components/faculty/icons';
 import Avatar from '../../components/faculty/ui/Avatar';
 import { useAuth } from '../../context/faculty/AuthContext';
@@ -39,6 +39,7 @@ const FACULTY_NAV: NavItem[] = [
   { label: 'Attendance',   route: ROUTES.ATTENDANCE,        icon: CheckSquare },
   { label: 'IA Marks',     route: ROUTES.IA_MARKS,          icon: Award },
   { label: 'My Schedules', route: ROUTES.MY_SCHEDULES,      icon: Calendar },
+  { label: 'Meetings',     route: ROUTES.MEETINGS,          icon: Video },
   { label: 'My Profile',   route: ROUTES.MY_PROFILE,        icon: Users },
   { label: 'Activity Log', route: ROUTES.ACTIVITY_LOG,      icon: CalendarMonth },
 ];

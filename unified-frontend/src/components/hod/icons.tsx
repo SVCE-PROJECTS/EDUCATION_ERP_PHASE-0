@@ -81,6 +81,7 @@ export const Trophy          = makeIcon('trophy');
 export const User            = makeIcon('account');
 export const UserPlus        = makeIcon('account-plus-outline');
 export const Users           = makeIcon('account-group');
+export const VideoIcon       = makeIcon('video');
 export const X               = makeIcon('close');
 export const Zap             = makeIcon('lightning-bolt');
 

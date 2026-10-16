@@ -4,7 +4,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Users, BookOpen, Award, CalendarClock, ChevronRight, LayoutDashboard, GraduationCap, Flame } from '../../components/hod/icons';
+import { Users, BookOpen, Award, CalendarClock, ChevronRight } from '../../components/hod/icons';
 import { MiniCalendar, SchedulePopup, ScheduleFormModal } from '../../components/calendar';
 import { useMonthSchedules } from '../../hooks/useSchedules';
 import { Schedule } from '../../services/schedule.service';
@@ -21,17 +21,14 @@ import {
 } from '../../services/hod/activities.service';
 import { useAuth } from '../../context/hod/AuthContext';
 import { useTheme } from '../../context/hod/ThemeContext';
-import { formatRelativeTime, formatActionLabel } from '../../utils/hod/formatters';
-import Avatar from '../../components/hod/ui/Avatar';
 import DashboardCharts from '../../components/hod/DashboardCharts';
 import GroupedBarChart from '../../components/hod/ui/GroupedBarChart';
 import type { GroupedBarChartGroup } from '../../components/hod/ui/GroupedBarChart';
-import RoleNotifications from '../../components/hod/ui/RoleNotifications';
-import MeetingReminders from '../../components/meeting/MeetingReminders';
+import NotificationBell from '../../components/meeting/NotificationBell';
 import ScreenWrapper from '../../layouts/hod/ScreenWrapper';
+import { useAuditLogs } from '../../hooks/hod/useAuditLogs';
 import { colors, ThemeColors, shadows, primaryScale } from '../../theme/hod/colors';
 import { ROUTES } from '../../navigation/hod/routes';
-import { AuditLog } from '../../types';
 
 const SCREEN_W = Dimensions.get('window').width;
 const CARD_W =
@@ -45,13 +42,6 @@ const getGreeting = () => {
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
 };
-
-const QUICK_ACTIONS = [
-  { key: 'faculty', label: 'Faculty List', icon: Users, color: 'indigo' as const, route: ROUTES.HOD_FACULTY },
-  { key: 'students', label: 'Student List', icon: BookOpen, color: 'blue' as const, route: ROUTES.HOD_STUDENTS },
-  { key: 'coordinators', label: 'Coordinators', icon: Award, color: 'purple' as const, route: ROUTES.HOD_COORDINATORS },
-  { key: 'activities', label: 'Activities', icon: Flame, color: 'blue' as const, route: ROUTES.HOD_ACTIVITIES },
-];
 
 // ── Management card ───────────────────────────────────────────────────────────
 
@@ -110,28 +100,6 @@ function ManagementCard({ title, description, icon: Icon, color, route, stat, st
   );
 }
 
-// ── Quick action chip ─────────────────────────────────────────────────────────
-
-interface QuickActionProps {
-  icon: React.ComponentType<{ size?: number; color?: string }>;
-  label: string;
-  color: MgmtColor;
-  onPress: () => void;
-  styles: ReturnType<typeof getStyles>;
-}
-
-function QuickAction({ icon: Icon, label, color, onPress, styles }: QuickActionProps) {
-  const c = COLOR_MAP[color] ?? COLOR_MAP.indigo;
-  return (
-    <TouchableOpacity style={styles.quickAction} onPress={onPress} activeOpacity={0.75}>
-      <View style={[styles.quickActionIcon, { backgroundColor: c.light, borderColor: c.border }]}>
-        <Icon size={18} color={c.icon} />
-      </View>
-      <Text style={styles.quickActionLabel} numberOfLines={1}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function HODDashboard() {
@@ -139,6 +107,7 @@ export default function HODDashboard() {
   const { colors: theme } = useTheme();
   const styles = getStyles(theme);
   const navigation = useNavigation<any>();
+  const { data: recentActivityLogs, isLoading: loadingActivityLogs } = useAuditLogs({ page: 1, pageSize: 5 });
 
   // Calendar popover state
   const [calendarVisible, setCalendarVisible] = useState(false);
@@ -394,7 +363,6 @@ export default function HODDashboard() {
   const attendanceChartData = data?.attendanceData || [];
 
   const dept = rawDash?.department || {};
-  const recentActivity = rawDash?.recentActivity || [];
 
   // Prepare attendance chart data with navigation handlers
   const attendanceGroups: GroupedBarChartGroup[] = attendanceChartData.map((group: any) => ({
@@ -415,8 +383,11 @@ export default function HODDashboard() {
     })),
   }));
 
+  // title="" suppresses the generic Topbar title — the greeting banner
+  // below already carries the page's identity, and showing "Dashboard"
+  // above it would duplicate/outrank the greeting.
   return (
-    <ScreenWrapper route={ROUTES.HOD_DASHBOARD}>
+    <ScreenWrapper route={ROUTES.HOD_DASHBOARD} title="">
       {/* Gradient greeting header */}
       <LinearGradient
         colors={theme.gradientPrimary}
@@ -439,15 +410,16 @@ export default function HODDashboard() {
             <CalendarClock size={26} color={colors.white} />
           </TouchableOpacity>
           <View style={styles.headerIconWrap}>
-            <LayoutDashboard size={26} color={colors.white} />
+            <NotificationBell
+              colors={theme}
+              onViewMeeting={(meetingId) => navigation.navigate('MeetingDetails', { meetingId })}
+              activities={recentActivityLogs?.data || []}
+              activitiesLoading={loadingActivityLogs}
+              iconColor={colors.white}
+            />
           </View>
         </View>
       </LinearGradient>
-
-      <MeetingReminders
-        colors={theme}
-        onOpenMeeting={(meetingId) => navigation.navigate('MeetingDetails', { meetingId })}
-      />
 
       {/* Calendar popover — transparent Modal so tapping outside closes it */}
       <Modal
@@ -540,23 +512,6 @@ export default function HODDashboard() {
         </ScrollView>
       )}
 
-      {/* Quick Actions */}
-      <View style={styles.quickActionsCard}>
-        <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
-        <View style={styles.quickActionsRow}>
-          {QUICK_ACTIONS.map((action) => (
-            <QuickAction
-              key={action.key}
-              icon={action.icon}
-              label={action.label}
-              color={action.color}
-              onPress={() => navigation.navigate(action.route)}
-              styles={styles}
-            />
-          ))}
-        </View>
-      </View>
-
       {/* Charts: department overview + performance breakdown */}
       {!isLoading && (
         <DashboardCharts
@@ -584,36 +539,6 @@ export default function HODDashboard() {
         </View>
       )}
 
-      {/* Role notifications */}
-      <RoleNotifications roles={user?.roles} />
-
-      {/* Recent Activity */}
-      {recentActivity.length > 0 && (
-        <View style={styles.activityCard}>
-          <Text style={styles.activityTitle}>Recent Activity</Text>
-          {recentActivity.map((log: AuditLog & { performer?: { name?: string }; target?: { name?: string } }) => (
-            <View key={log.id} style={styles.activityRow}>
-              <Avatar name={log.performer?.name} size="xs" style={styles.activityAvatar} />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>
-                  <Text style={styles.activityBold}>{log.performer?.name?.split(' ').slice(-1)[0]}</Text>{' '}
-                  {formatActionLabel(log.action).toLowerCase()}
-                  {log.target && (
-                    <Text>
-                      {' for '}
-                      <Text style={styles.activityBold}>{log.target.name?.split(' ').slice(-1)[0]}</Text>
-                    </Text>
-                  )}
-                  {(log.details as any)?.roleName && (
-                    <Text style={styles.activityRole}> — {(log.details as any).roleName}</Text>
-                  )}
-                </Text>
-                <Text style={styles.activityTime}>{formatRelativeTime(log.timestamp)}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
 
       {/* Schedule Popup */}
       <SchedulePopup
@@ -744,16 +669,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     borderRadius: 20,
   },
 
-  // Quick actions
-  quickActionsCard: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 20,
-    padding: 20,
-    gap: 12,
-    ...shadows.card,
-  },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
@@ -761,68 +676,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     letterSpacing: 0.6,
     marginBottom: 0,
     paddingBottom: 0,
-  },
-  quickActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  quickAction: {
-    flexGrow: 1,
-    minWidth: 140,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.border,
-    backgroundColor: theme.primarySoft,
-  },
-  quickActionIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.textPrimary,
-    flexShrink: 1,
-  },
-
-  // Recent activity
-  activityCard: {
-    backgroundColor: theme.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.border,
-    padding: 20,
-    gap: 12,
-    ...shadows.card,
-  },
-  activityTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.textPrimary,
-  },
-  activityRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  activityAvatar: { marginTop: 2 },
-  activityContent: { flex: 1 },
-  activityText: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    lineHeight: 17,
-  },
-  activityBold: { fontWeight: '600', color: theme.textPrimary },
-  activityRole: { color: theme.primary },
-  activityTime: {
-    fontSize: 11,
-    color: theme.textMuted,
-    marginTop: 2,
   },
 
   // Attendance chart card

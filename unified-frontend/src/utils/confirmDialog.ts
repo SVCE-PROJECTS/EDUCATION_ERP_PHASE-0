@@ -48,6 +48,21 @@ export function showError(title: string, message: string): void {
 }
 
 /**
+ * Show a success alert. Same web/native split as showError — a plain
+ * Alert.alert(title, message) call is a no-op on react-native-web, so a
+ * "success" message that only ever calls Alert.alert never actually
+ * appears to a web user even though the underlying action succeeded.
+ */
+export function showSuccess(title: string, message: string): void {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+
+  Alert.alert(title, message);
+}
+
+/**
  * Generic confirm with custom button label (for non-destructive confirmations).
  */
 export function confirmAction(

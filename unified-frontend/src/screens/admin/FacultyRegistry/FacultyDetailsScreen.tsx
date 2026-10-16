@@ -9,15 +9,16 @@ import LoadingIndicator from '../../../components/Loading/LoadingIndicator';
 import EmptyState from '../../../components/EmptyState/EmptyState';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
 import { useFacultyMember, useDeleteFaculty } from '../../../hooks/admin/useFaculty';
-import { colors, spacing, typography } from '../../../theme';
+import { useTheme } from '../../../context/admin/ThemeContext';
+import { spacing, typography } from '../../../theme';
 
-const STATUS_STYLE = {
+const getStatusStyle = (colors) => ({
   ACTIVE:   { bg: colors.successBg, text: colors.success },
   ON_LEAVE: { bg: colors.warningBg, text: colors.warning },
   INACTIVE: { bg: colors.dangerBg,  text: colors.danger  },
-};
+});
 
-const Field = ({ label, value }) => (
+const Field = ({ label, value, styles }) => (
   <View style={styles.fieldRow}>
     <Text style={styles.fieldLabel}>{label}</Text>
     <Text style={styles.fieldValue}>{value || '—'}</Text>
@@ -25,6 +26,8 @@ const Field = ({ label, value }) => (
 );
 
 const FacultyDetailsScreen = ({ route, navigation }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { facultyId } = route.params;
   const { data: faculty, isLoading, isError } = useFacultyMember(facultyId);
   const { mutateAsync: deleteFaculty, isPending: deleting } = useDeleteFaculty();
@@ -33,20 +36,20 @@ const FacultyDetailsScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="FacultyList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <LoadingIndicator fullscreen label="Loading faculty details..." />
       </ScreenLayout>
     );
   }
   if (isError || !faculty) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="FacultyList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <EmptyState icon="alert-circle-outline" title="Faculty member not found" />
       </ScreenLayout>
     );
   }
 
-  const statusStyle = STATUS_STYLE[faculty.status] || { bg: colors.border, text: colors.textSecondary };
+  const statusStyle = getStatusStyle(colors)[faculty.status] || { bg: colors.border, text: colors.textSecondary };
 
   const handleDelete = async () => {
     try {
@@ -60,7 +63,7 @@ const FacultyDetailsScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="FacultyList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
         {/* Header */}
@@ -79,20 +82,20 @@ const FacultyDetailsScreen = ({ route, navigation }) => {
 
         {/* Professional */}
         <InfoCard title="Professional Information">
-          <Field label="Designation"   value={faculty.designation} />
-          <Field label="Qualification" value={faculty.qualification} />
-          <Field label="Specialization" value={faculty.specialization} />
-          <Field label="Experience"    value={faculty.experienceYears != null ? `${faculty.experienceYears} years` : null} />
-          <Field label="Department"    value={faculty.departmentName} />
-          <Field label="Joining Date"  value={faculty.joiningDate ? new Date(faculty.joiningDate).toLocaleDateString() : null} />
+          <Field styles={styles} label="Designation"   value={faculty.designation} />
+          <Field styles={styles} label="Qualification" value={faculty.qualification} />
+          <Field styles={styles} label="Specialization" value={faculty.specialization} />
+          <Field styles={styles} label="Experience"    value={faculty.experienceYears != null ? `${faculty.experienceYears} years` : null} />
+          <Field styles={styles} label="Department"    value={faculty.departmentName} />
+          <Field styles={styles} label="Joining Date"  value={faculty.joiningDate ? new Date(faculty.joiningDate).toLocaleDateString() : null} />
         </InfoCard>
 
         {/* Personal */}
         <InfoCard title="Personal Information">
-          <Field label="Email"    value={faculty.email} />
-          <Field label="Phone"    value={faculty.phone} />
-          <Field label="Gender"   value={faculty.gender} />
-          <Field label="Username" value={faculty.username} />
+          <Field styles={styles} label="Email"    value={faculty.email} />
+          <Field styles={styles} label="Phone"    value={faculty.phone} />
+          <Field styles={styles} label="Gender"   value={faculty.gender} />
+          <Field styles={styles} label="Username" value={faculty.username} />
         </InfoCard>
 
         {/* Actions */}
@@ -128,7 +131,7 @@ const FacultyDetailsScreen = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container:    { flex: 1, backgroundColor: colors.background },
   content:      { padding: spacing.lg, paddingBottom: spacing.xxl },
   headerRow: {

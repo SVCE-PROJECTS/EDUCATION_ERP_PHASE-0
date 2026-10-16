@@ -27,7 +27,10 @@ import { confirmDelete, showError } from '../../../utils/confirmDialog';
 const CAL_W = 340;
 const BREAKPOINT = CAL_W + 220;
 
-export default function MySchedulesScreen({ navigation }: { navigation: any }) {
+// embedded: true when rendered as a tab inside the My Schedules / Meeting
+// Management combined screen (skips its own ScreenLayout/sidebar, since the
+// parent already provides one). Does not change any schedule behavior.
+export default function MySchedulesScreen({ navigation, embedded = false }: { navigation: any; embedded?: boolean }) {
   const { colors } = useTheme();
 
   const [contentWidth, setContentWidth] = useState(0);
@@ -89,8 +92,8 @@ export default function MySchedulesScreen({ navigation }: { navigation: any }) {
     );
   };
 
-  return (
-    <ScreenLayout navigation={navigation} activeScreen="MySchedules">
+  const content = (
+    <>
       {/* ScreenLayout's content View is flex:1 — give it a ScrollView */}
       <ScrollView
         style={s.scroll}
@@ -225,6 +228,14 @@ export default function MySchedulesScreen({ navigation }: { navigation: any }) {
         onClose={() => { setFormVisible(false); setEditingSchedule(null); }}
         theme={colors}
       />
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenLayout navigation={navigation} activeScreen="MySchedules">
+      {content}
     </ScreenLayout>
   );
 }

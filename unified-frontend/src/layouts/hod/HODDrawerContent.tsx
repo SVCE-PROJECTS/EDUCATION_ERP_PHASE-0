@@ -1,21 +1,18 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   LayoutDashboard,
   Users,
-  BookOpen,
-  Award,
   Flame,
-  GraduationCap,
   CalendarClock,
   History,
+  ChartBar,
   LogOut,
   Sun,
   Moon,
   Calendar,
-  VideoIcon,
 } from '../../components/hod/icons';
 import Avatar from '../../components/hod/ui/Avatar';
 import { useAuth } from '../../context/hod/AuthContext';
@@ -28,25 +25,41 @@ import { colors, ThemeColors, shadows } from '../../theme/hod/colors';
 import Toast from '../../services/hod/toast';
 import { unifiedLogoutRef } from '../../context/AuthContext';
 
+const svceLogo = require('../../assets/svce_logo_transparent.png');
+const LOGO_ASPECT = 1087 / 209;
+
 type IconComponent = React.ComponentType<{ size?: number; color?: string; style?: any }>;
 
 interface NavItem {
   label: string;
   route: string;
   icon: IconComponent;
+  matchRoutes?: string[];
 }
 
 // -- Navigation items ---------------------------------------------------------
 
 const HOD_NAV: NavItem[] = [
   { label: 'Dashboard', route: ROUTES.HOD_DASHBOARD, icon: LayoutDashboard },
-  { label: 'Faculty List', route: ROUTES.HOD_FACULTY, icon: Users },
-  { label: 'Student List', route: ROUTES.HOD_STUDENTS, icon: BookOpen },
-  { label: 'Coordinator Management', route: ROUTES.HOD_COORDINATORS, icon: Award },
+  {
+    label: 'Data & Management', route: ROUTES.HOD_FACULTY, icon: Users,
+    // Student List / Coordinator Management live as tabs inside this
+    // screen now; Faculty Profile/Add/Edit are reached from its Faculty
+    // List tab. Still highlight this item while on any of those so the
+    // sidebar doesn't go blank.
+    matchRoutes: [
+      ROUTES.HOD_STUDENTS, ROUTES.HOD_COORDINATORS,
+      ROUTES.FACULTY_PROFILE, ROUTES.FACULTY_ADD, ROUTES.FACULTY_EDIT,
+    ],
+  },
   { label: 'Faculty Allocation', route: ROUTES.HOD_FACULTY_ALLOCATION, icon: CalendarClock },
   { label: 'Activities', route: ROUTES.HOD_ACTIVITIES, icon: Flame },
-  { label: 'Meetings', route: ROUTES.HOD_MEETINGS, icon: VideoIcon },
-  { label: 'My Schedules', route: ROUTES.HOD_MY_SCHEDULES, icon: Calendar },
+  { label: 'Analytics', route: ROUTES.HOD_ANALYTICS, icon: ChartBar },
+  {
+    label: 'My Schedules', route: ROUTES.HOD_MY_SCHEDULES, icon: Calendar,
+    // Meetings lives as a tab inside this screen now.
+    matchRoutes: [ROUTES.HOD_MEETINGS],
+  },
   { label: 'Activity Log', route: ROUTES.HOD_ACTIVITY_LOG, icon: History },
 ];
 
@@ -111,9 +124,12 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
           end={{ x: 1, y: 1 }}
           style={styles.brand}
         >
-          <View style={styles.brandIcon}>
-            <GraduationCap size={20} color={colors.white} />
-          </View>
+          <Image
+            source={svceLogo}
+            style={{ height: 42, width: 42 * LOGO_ASPECT, marginBottom: 8 }}
+            resizeMode="contain"
+            accessibilityLabel="SVCE — Sri Venkateshwara College of Engineering"
+          />
           <Text style={styles.brandName} numberOfLines={1}>
             {user?.departmentCode || 'CSE'} Department Portal
           </Text>
@@ -135,7 +151,7 @@ export default function HODDrawerContent(props: DrawerContentComponentProps) {
             key={item.route}
             icon={item.icon}
             label={item.label}
-            isActive={activeRoute === item.route}
+            isActive={activeRoute === item.route || !!item.matchRoutes?.includes(activeRoute)}
             onPress={() => drawerNav.navigate(item.route as never)}
             theme={theme}
             styles={styles}
@@ -194,15 +210,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     paddingBottom: 24,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-  },
-  brandIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
   },
   brandName: {
     fontSize: 14,

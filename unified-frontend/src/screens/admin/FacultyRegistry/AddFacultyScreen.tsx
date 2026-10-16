@@ -35,7 +35,7 @@ const AddFacultyScreen = ({ navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="FacultyList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
       <View style={styles.container}>
         <FacultyForm
           breadcrumbLabel="Add Faculty"

@@ -3,9 +3,9 @@ import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-// Shared save/share logic for a downloaded Blob — same behavior already used
-// by ExportStudentDataScreen, pulled out so other screens (Transferred
-// Students) can reuse it instead of duplicating the web/native branching.
+// Shared save/share logic for a downloaded Blob — used by the registry
+// export menus and other screens (Transferred Students) so each doesn't
+// duplicate the web/native branching.
 export const downloadBlob = async (blob, filename) => {
   if (Platform.OS === 'web') {
     const url = URL.createObjectURL(blob);

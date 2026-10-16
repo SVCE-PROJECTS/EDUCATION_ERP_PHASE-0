@@ -28,7 +28,7 @@ import { confirmDelete, showError } from '../../utils/confirmDialog';
 const CAL_W = 340;
 const BREAKPOINT = CAL_W + 220;
 
-export default function MySchedules() {
+export default function MySchedules({ embedded = false }: { embedded?: boolean } = {}) {
   const { colors } = useTheme();
 
   const [contentWidth, setContentWidth] = useState(0);
@@ -90,8 +90,8 @@ export default function MySchedules() {
     );
   };
 
-  return (
-    <ScreenWrapper route={ROUTES.HOD_MY_SCHEDULES} scrollable={false}>
+  const content = (
+    <>
       <ScrollView
         style={s.scroll}
         contentContainerStyle={s.scrollContent}
@@ -220,6 +220,14 @@ export default function MySchedules() {
         onClose={() => { setFormVisible(false); setEditingSchedule(null); }}
         theme={colors}
       />
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenWrapper route={ROUTES.HOD_MY_SCHEDULES} scrollable={false}>
+      {content}
     </ScreenWrapper>
   );
 }

@@ -17,14 +17,14 @@ const EditNonTeachingStaffScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="NonTeachingStaffList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <LoadingIndicator fullscreen label="Loading staff details..." />
       </ScreenLayout>
     );
   }
   if (isError || !staff) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="NonTeachingStaffList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <EmptyState icon="alert-circle-outline" title="Staff member not found" />
       </ScreenLayout>
     );
@@ -40,7 +40,7 @@ const EditNonTeachingStaffScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="NonTeachingStaffList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
       <View style={styles.container}>
         <NonTeachingStaffForm
           breadcrumbLabel="Edit Staff Member"

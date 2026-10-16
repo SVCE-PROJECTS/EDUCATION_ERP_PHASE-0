@@ -22,7 +22,9 @@ const SEMESTER_TYPE_OPTIONS = [
   { id: 'EVEN', name: 'Even Semester' },
 ];
 
-const SettingsScreen = ({ navigation }) => {
+// embedded: true when rendered as a tab inside the combined Settings screen
+// (skips its own ScreenLayout/sidebar, since the parent already provides one).
+const SettingsScreen = ({ navigation, embedded = false }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const { data: academicYear, isLoading: loadingYear } = useAcademicYear();
@@ -84,8 +86,8 @@ const SettingsScreen = ({ navigation }) => {
     }
   };
 
-  return (
-    <ScreenLayout navigation={navigation} activeScreen="Settings">
+  const content = (
+    <>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
@@ -182,6 +184,14 @@ const SettingsScreen = ({ navigation }) => {
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={3000}>
         {snackbar}
       </Snackbar>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenLayout navigation={navigation} activeScreen="Settings">
+      {content}
     </ScreenLayout>
   );
 };

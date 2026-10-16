@@ -43,7 +43,7 @@ const AddStudentScreen = ({ navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="StudentList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
       <View style={styles.container}>
         <StudentForm
           breadcrumbLabel="Add Student"

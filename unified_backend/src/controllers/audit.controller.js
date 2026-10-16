@@ -17,7 +17,7 @@ const listAuditLogs = asyncHandler(async (req, res) => {
   const pageNum = page ? parseInt(page, 10) : 1;
   const size = pageSize ? parseInt(pageSize, 10) : 25;
 
-  const { rows, total } = await auditRepository.findAll({
+  const { rows, total } = await auditRepository.findAllCombined({
     page: pageNum,
     pageSize: size,
     module: moduleFilter,

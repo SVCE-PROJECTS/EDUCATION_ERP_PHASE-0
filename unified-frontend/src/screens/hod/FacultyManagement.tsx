@@ -207,7 +207,10 @@ function FacultyCard({
 // Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function FacultyManagement() {
+// embedded: true when rendered as a tab inside the combined Data &
+// Management screen (skips its own ScreenWrapper, since the parent already
+// provides one).
+export default function FacultyManagement({ embedded = false }: { embedded?: boolean } = {}) {
 
   const { colors: theme } = useTheme();
 
@@ -636,12 +639,8 @@ export default function FacultyManagement() {
   // Render
   // ──────────────────────────────────────────────────────────────────────────
 
-  return (
-
-    <ScreenWrapper
-      route={ROUTES.HOD_FACULTY}
-      scrollable={false}
-    >
+  const content = (
+    <>
 
       {/* Header */}
       <View style={s.header}>
@@ -753,6 +752,14 @@ export default function FacultyManagement() {
 
       />
 
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenWrapper route={ROUTES.HOD_FACULTY} scrollable={false}>
+      {content}
     </ScreenWrapper>
   );
 }

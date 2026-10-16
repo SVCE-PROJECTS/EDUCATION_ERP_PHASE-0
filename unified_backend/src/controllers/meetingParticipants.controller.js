@@ -17,15 +17,20 @@ const getFacultyForInvitation = async (req, res) => {
     let conditions = ["f.status = 'ACTIVE'"];
     let params = [];
 
-    // Department filter - Admin can see all departments, others only their own
-    if (req.user.role === 'admin') {
-      if (department_code) {
-        params.push(department_code);
-        conditions.push('d.department_code = $' + params.length);
-      }
-    } else {
-      // HOD and Faculty can only see their department
-      params.push(req.user.departmentCode);
+    // Never let a user invite themselves. For faculty/HOD callers req.user.id
+    // holds their own employee_id; for admin it's a numeric user_id that never
+    // matches an employee_id, so this is a no-op for admin (admin has no
+    // faculty row anyway).
+    if (req.user?.id) {
+      params.push(req.user.id);
+      conditions.push('f.employee_id != $' + params.length);
+    }
+
+    // Everyone can invite across departments — department_code narrows the
+    // list when a caller explicitly asks for one department, but it's never
+    // forced to the caller's own department.
+    if (department_code) {
+      params.push(department_code);
       conditions.push('d.department_code = $' + params.length);
     }
 

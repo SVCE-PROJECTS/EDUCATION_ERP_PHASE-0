@@ -7,11 +7,17 @@ import NonTeachingStaffTable from '../../../components/Table/NonTeachingStaffTab
 import LoadingIndicator from '../../../components/Loading/LoadingIndicator';
 import EmptyState from '../../../components/EmptyState/EmptyState';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
+import ExportMenu from '../../../components/admin/ExportMenu';
 import { useNonTeachingStaff } from '../../../hooks/admin/useNonTeachingStaff';
 import { PAGE_SIZE } from '../../../constants';
-import { colors, spacing, typography } from '../../../theme';
+import { useTheme } from '../../../context/admin/ThemeContext';
+import { spacing, typography } from '../../../theme';
 
-const NonTeachingStaffListScreen = ({ navigation }) => {
+// embedded: true when rendered as a tab inside RegistryScreen (skips its own
+// ScreenLayout/sidebar, since the parent already provides one).
+const NonTeachingStaffListScreen = ({ navigation, embedded = false }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [search, setSearch] = useState('');
   const [page, setPage]     = useState(1);
 
@@ -22,12 +28,19 @@ const NonTeachingStaffListScreen = ({ navigation }) => {
   const members = data?.data || [];
   const meta    = data?.meta;
 
-  return (
-    <ScreenLayout navigation={navigation} activeScreen="NonTeachingStaffList">
+  const content = (
+    <>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Non-Teaching Staff Registry</Text>
-          <Text style={styles.subtitle}>Manage all non-teaching staff members</Text>
+          <View>
+            <Text style={styles.title}>Non-Teaching Staff Registry</Text>
+            <Text style={styles.subtitle}>Manage all non-teaching staff members</Text>
+          </View>
+          <ExportMenu
+            entity="non-teaching-staff"
+            filenameBase="non-teaching-staff"
+            filters={{ search: search || undefined }}
+          />
         </View>
 
         <View style={styles.searchWrap}>
@@ -46,6 +59,8 @@ const NonTeachingStaffListScreen = ({ navigation }) => {
             icon="account-hard-hat-outline"
             title="No staff members found"
             description="Try adjusting your search, or add a new staff member."
+            actionLabel={search ? 'Clear search' : undefined}
+            onAction={search ? () => { setSearch(''); setPage(1); } : undefined}
           />
         ) : (
           <>
@@ -84,13 +99,24 @@ const NonTeachingStaffListScreen = ({ navigation }) => {
           onPress={() => navigation.navigate('AddNonTeachingStaff')}
         />
       </View>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
+      {content}
     </ScreenLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container:        { flex: 1, backgroundColor: colors.background },
-  header:           { padding: spacing.lg, paddingBottom: 0 },
+  header:           {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    padding: spacing.lg, paddingBottom: 0,
+  },
   title:            { ...typography.h1, color: colors.textPrimary },
   subtitle:         { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs },
   searchWrap:       { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },

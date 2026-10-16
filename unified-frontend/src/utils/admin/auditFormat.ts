@@ -7,6 +7,7 @@ export const MODULE_META = {
   transfer: { icon: 'swap-horizontal', accent: 'violet' },
   faculty: { icon: 'briefcase-outline', accent: 'teal' },
   admin_user: { icon: 'shield-account-outline', accent: 'amber' },
+  meeting: { icon: 'calendar-account', accent: 'violet' },
 };
 
 export const getModuleMeta = (module) => MODULE_META[module] || { icon: 'clipboard-text-outline', accent: 'blue' };

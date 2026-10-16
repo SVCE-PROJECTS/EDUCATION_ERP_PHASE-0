@@ -16,6 +16,7 @@ export const ROUTES = {
   HOD_ACTIVITY_LOG: 'ActivityLog',
   HOD_MY_SCHEDULES: 'MySchedules',
   HOD_MEETINGS: 'MeetingManagement',
+  HOD_ANALYTICS: 'HODAnalytics',
 
   // ── HOD Stack screens (pushed on top of drawer) ──────────────────────────
   FACULTY_PROFILE: 'FacultyProfile',
@@ -33,7 +34,7 @@ export type RouteName = (typeof ROUTES)[keyof typeof ROUTES];
  */
 export const SCREEN_TITLES: Record<string, string> = {
   [ROUTES.HOD_DASHBOARD]: 'Dashboard',
-  [ROUTES.HOD_FACULTY]: 'Faculty Management',
+  [ROUTES.HOD_FACULTY]: 'Data & Management',
   [ROUTES.HOD_STUDENTS]: 'Student Management',
   [ROUTES.HOD_COORDINATORS]: 'Coordinator Management',
   [ROUTES.HOD_ACTIVITIES]: 'Student Activities',
@@ -41,6 +42,7 @@ export const SCREEN_TITLES: Record<string, string> = {
   [ROUTES.HOD_ACTIVITY_LOG]: 'Activity Log',
   [ROUTES.HOD_MY_SCHEDULES]: 'My Schedules',
   [ROUTES.HOD_MEETINGS]: 'Meeting Management',
+  [ROUTES.HOD_ANALYTICS]: 'Analytics',
   [ROUTES.FACULTY_PROFILE]: 'Faculty Profile',
   [ROUTES.FACULTY_ADD]: 'Add Faculty',
   [ROUTES.FACULTY_EDIT]: 'Edit Faculty',

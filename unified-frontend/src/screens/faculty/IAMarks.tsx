@@ -215,7 +215,6 @@ function FormSheet({ visible, onClose, initial, onSubmit, loading, myClasses }: 
       ia2: form.ia2 !== '' ? Number(form.ia2) : undefined,
       ia3: form.ia3 !== '' ? Number(form.ia3) : undefined,
     };
-    console.log('[IAMarks] submitting:', payload);
     onSubmit(payload);
   };
 

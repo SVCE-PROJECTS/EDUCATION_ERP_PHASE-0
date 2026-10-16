@@ -1,14 +1,14 @@
 /**
  * Faculty Portal — Topbar
- * SVCE banner only, styled like Admin portal (black bg, left-aligned).
+ * The SVCE brand mark lives in the drawer header (FacultyDrawerContent) —
+ * this bar only surfaces the current screen's title plus, on narrow
+ * screens, the hamburger to reach that drawer.
  */
 import React from 'react';
-import { View, Image, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { Menu } from '../icons';
-
-const svceBanner = require('../../../assets/svce_banner.png');
-const BANNER_ASPECT = 1133 / 260;
+import { useTheme } from '../../../context/faculty/ThemeContext';
 
 export interface TopbarProps { title?: string; }
 
@@ -16,49 +16,42 @@ export default function Topbar({ title }: TopbarProps) {
   const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
+  const { colors: theme } = useTheme();
+  const styles = getStyles(theme);
 
   return (
     <View style={styles.bar}>
-      {/* Hamburger menu for mobile (positioned absolutely over banner area) */}
       {!isLargeScreen && (
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
-          style={styles.menuBtn} 
+          style={styles.menuBtn}
           accessibilityLabel="Open menu"
         >
-          <Menu size={20} color="#ffffff" />
+          <Menu size={20} color={theme.textPrimary} />
         </TouchableOpacity>
       )}
-
-      {/* SVCE Banner - left aligned like Admin portal - 261.5 x 60 */}
-      <Image
-        source={svceBanner}
-        style={{ width: 261.5, height: 60 }}
-        resizeMode="contain"
-        accessibilityLabel="SVCE"
-      />
+      <Text style={styles.title} numberOfLines={1}>{title}</Text>
     </View>
   );
 }
 
-const BAR_HEIGHT = 80; // Accommodate 60px banner + padding
-
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   bar: {
-    height: BAR_HEIGHT,
+    height: 56,
     width: '100%',
-    backgroundColor: '#000000',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    paddingLeft: 24,
-    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    backgroundColor: theme.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
   },
-  menuBtn: {
-    position: 'absolute',
-    left: 8,
-    top: '50%',
-    transform: [{ translateY: -20 }],
-    padding: 8,
-    zIndex: 10,
+  menuBtn: { padding: 4 },
+  title: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.textPrimary,
   },
 });

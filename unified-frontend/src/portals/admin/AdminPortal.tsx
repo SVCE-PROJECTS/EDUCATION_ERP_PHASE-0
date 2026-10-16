@@ -17,13 +17,15 @@ import AddStudentScreen          from '../../screens/admin/StudentRegistry/AddSt
 import EditStudentScreen         from '../../screens/admin/StudentRegistry/EditStudentScreen';
 import StudentDetailsScreen      from '../../screens/admin/StudentRegistry/StudentDetailsScreen';
 import TransferStudentScreen     from '../../screens/admin/TransferStudent/TransferStudentScreen';
-import ExportStudentDataScreen   from '../../screens/admin/ExportStudentData/ExportStudentDataScreen';
+import RegistryScreen            from '../../screens/admin/Registry/RegistryScreen';
+import AnalyticsScreen           from '../../screens/admin/Analytics/AnalyticsScreen';
+import MyProfileScreen           from '../../screens/admin/MyProfile/MyProfileScreen';
 import FeeScreen                 from '../../screens/admin/Fee/FeeScreen';
 import AcademicFeeScreen         from '../../screens/admin/Fee/AcademicFeeScreen';
 import FeeStubScreen             from '../../screens/admin/Fee/FeeStubScreen';
 import ActivityLogScreen         from '../../screens/admin/ActivityLog/ActivityLogScreen';
 import AdminUsersScreen          from '../../screens/admin/AdminUsers/AdminUsersScreen';
-import SettingsScreen            from '../../screens/admin/Settings/SettingsScreen';
+import SettingsAndUsersScreen    from '../../screens/admin/Settings/SettingsAndUsersScreen';
 import TransferredStudentsScreen from '../../screens/admin/TransferredStudents/TransferredStudentsScreen';
 import FacultyListScreen         from '../../screens/admin/FacultyRegistry/FacultyListScreen';
 import AddFacultyScreen          from '../../screens/admin/FacultyRegistry/AddFacultyScreen';
@@ -33,7 +35,7 @@ import NonTeachingStaffListScreen    from '../../screens/admin/NonTeachingStaffR
 import AddNonTeachingStaffScreen     from '../../screens/admin/NonTeachingStaffRegistry/AddNonTeachingStaffScreen';
 import EditNonTeachingStaffScreen    from '../../screens/admin/NonTeachingStaffRegistry/EditNonTeachingStaffScreen';
 import NonTeachingStaffDetailsScreen from '../../screens/admin/NonTeachingStaffRegistry/NonTeachingStaffDetailsScreen';
-import MySchedulesScreen             from '../../screens/admin/Schedules/MySchedulesScreen';
+import SchedulesAndMeetingsScreen    from '../../screens/admin/Schedules/SchedulesAndMeetingsScreen';
 
 // Meeting Management Screens
 import MeetingManagementScreen       from '../../screens/admin/MeetingManagement/MeetingManagementScreen';
@@ -122,13 +124,15 @@ function AdminNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Dashboard">
       <Stack.Screen name="Dashboard"             component={DashboardScreen} />
+      <Stack.Screen name="Registry"               component={RegistryScreen} />
       <Stack.Screen name="StudentList"           component={StudentListScreen} />
       <Stack.Screen name="AddStudent"            component={AddStudentScreen} />
       <Stack.Screen name="EditStudent"           component={EditStudentScreen} />
       <Stack.Screen name="StudentDetails"        component={StudentDetailsScreen} />
       <Stack.Screen name="TransferStudent"       component={TransferStudentScreen} />
-      <Stack.Screen name="ExportStudentData"     component={ExportStudentDataScreen} />
       <Stack.Screen name="Fee"                   component={FeeScreen} />
+      <Stack.Screen name="Analytics"              component={AnalyticsScreen} />
+      <Stack.Screen name="MyProfile"              component={MyProfileScreen} />
       <Stack.Screen name="AcademicFee"           component={AcademicFeeScreen} />
       <Stack.Screen name="TuitionFee"            component={FeeStubScreen}
         initialParams={{ title: 'Tuition Fees', icon: 'currency-inr', description: 'Coming soon.' }} />
@@ -148,9 +152,9 @@ function AdminNavigator() {
       <Stack.Screen name="NonTeachingStaffDetails" component={NonTeachingStaffDetailsScreen} />
       <Stack.Screen name="ActivityLog"           component={ActivityLogScreen} />
       <Stack.Screen name="AdminUsers"            component={AdminUsersScreen} />
-      <Stack.Screen name="Settings"              component={SettingsScreen} />
+      <Stack.Screen name="Settings"              component={SettingsAndUsersScreen} />
       <Stack.Screen name="TransferredStudents"   component={TransferredStudentsScreen} />
-      <Stack.Screen name="MySchedules"           component={MySchedulesScreen} />
+      <Stack.Screen name="MySchedules"           component={SchedulesAndMeetingsScreen} />
       <Stack.Screen name="MeetingManagement"     component={MeetingManagementScreen} />
       <Stack.Screen name="CreateMeeting"         component={CreateMeetingScreen} />
       <Stack.Screen name="MeetingDetails"        component={MeetingDetailsScreen} />

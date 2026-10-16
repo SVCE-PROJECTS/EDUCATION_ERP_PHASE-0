@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Icon, FAB, Menu, Divider } from 'react-native-paper';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
@@ -21,7 +20,7 @@ import { useAuth } from '../../../context/admin/AuthContext';
 import { useTheme } from '../../../context/admin/ThemeContext';
 import { shadows, spacing, radius } from '../../../theme';
 import { formatDateShort, format12Hour } from '../../../utils/dateHelpers';
-import { confirmDelete, showError } from '../../../utils/confirmDialog';
+import { confirmDelete, showError, showSuccess } from '../../../utils/confirmDialog';
 import MeetingTypeSelector from '../../../components/meeting/MeetingTypeSelector';
 import OfflineMeetingForm from '../../../components/meeting/OfflineMeetingForm';
 
@@ -33,6 +32,7 @@ const STATUS_COLORS = {
   in_progress: { bg: '#DBEAFE', text: '#2563EB' },
   completed: { bg: '#F3E8FF', text: '#9333EA' },
   cancelled: { bg: '#F1F5F9', text: '#64748B' },
+  missed: { bg: '#FEE2E2', text: '#B91C1C' },
 };
 
 const STATUS_LABELS = {
@@ -43,9 +43,25 @@ const STATUS_LABELS = {
   in_progress: 'In Progress',
   completed: 'Completed',
   cancelled: 'Cancelled',
+  missed: 'Missed',
 };
 
-export default function MeetingManagementScreen({ navigation }: { navigation: any }) {
+// A confirmed online meeting whose scheduled end time has already passed
+// without it ever being started — it never happened. Surfaced under the
+// "Pending" filter so these don't just silently sit as "Confirmed" forever.
+const isMissedMeeting = (meeting: any) => {
+  if (meeting.meeting_type !== 'online' || meeting.status !== 'confirmed') return false;
+  if (!meeting.scheduled_date || !meeting.start_time) return false;
+  const start = new Date(`${meeting.scheduled_date}T${meeting.start_time}:00`);
+  if (Number.isNaN(start.getTime())) return false;
+  const end = new Date(start.getTime() + (Number(meeting.duration_minutes) || 0) * 60000);
+  return end.getTime() < Date.now();
+};
+
+// embedded: true when rendered as a tab inside the My Schedules / Meeting
+// Management combined screen (skips its own ScreenLayout/sidebar, since the
+// parent already provides one).
+export default function MeetingManagementScreen({ navigation, embedded = false }: { navigation: any; embedded?: boolean }) {
   const { colors } = useTheme();
   const { user } = useAuth();
 
@@ -66,9 +82,13 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
     // Apply status filter - "All" should show all non-deleted meetings
     if (statusFilter !== 'all') {
       filtered = meetings.filter(meeting => {
-        // Map frontend filter values to backend status values
+        // "Pending" also surfaces missed meetings (confirmed, online, scheduled
+        // time already passed, never started) — those never happened and
+        // otherwise sit silently under "Confirmed" forever.
+        if (statusFilter === 'pending_approval') {
+          return ['pending_approval', 'pending_availability'].includes(meeting.status) || isMissedMeeting(meeting);
+        }
         const statusMap = {
-          'pending_approval': ['pending_approval', 'pending_availability'],
           'confirmed': ['confirmed'],
           'in_progress': ['in_progress'],
           'completed': ['completed']
@@ -108,7 +128,7 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
 
   const handleEditMeeting = (meeting: any) => {
     if (['completed', 'cancelled', 'in_progress'].includes(meeting.status)) {
-      Alert.alert('Cannot Edit', 'Cannot edit meeting in current status');
+      showError('Cannot Edit', 'Cannot edit meeting in current status');
       return;
     }
     navigation.navigate('EditMeeting', { meetingId: meeting.meeting_id });
@@ -131,6 +151,7 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
   const handleApproveMeeting = async (meeting: any, action: 'approve' | 'reject') => {
     try {
       await approveMeeting({ id: meeting.meeting_id, action });
+      showSuccess('Success', `Meeting ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
     } catch (error: any) {
       showError('Error', error.message || `Failed to ${action} meeting`);
     }
@@ -148,7 +169,11 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
   };
 
   const renderMeetingCard = (meeting: any, index: number) => {
-    const canApprove = meeting.status === 'pending_approval' && meeting.pending_approvals > 0;
+    // user_pending_approvals is scoped to approvals actually assigned to the
+    // viewing admin — meeting.pending_approvals (global count) would also be
+    // true for a Faculty -> HOD submission where the HOD, not Admin, is the
+    // real approver.
+    const canApprove = meeting.status === 'pending_approval' && Number(meeting.user_pending_approvals) > 0;
 
     return (
       <TouchableOpacity
@@ -169,7 +194,7 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
             </TouchableOpacity>
           </View>
 
-          {getStatusBadge(meeting.status)}
+          {getStatusBadge(isMissedMeeting(meeting) ? 'missed' : meeting.status)}
         </View>
 
         <View style={s.cardContent}>
@@ -212,7 +237,7 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
           <View style={s.infoRow}>
             <Icon source="account-tie" size={16} color={colors.textMuted} />
             <Text style={[s.infoText, { color: colors.textSecondary }]} numberOfLines={1}>
-              Created by {meeting.created_by_name || 'Unknown'}
+              Created by {meeting.created_by_name || 'Creator unavailable'}
             </Text>
           </View>
 
@@ -289,8 +314,7 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
     );
   };
 
-  return (
-    <ScreenLayout navigation={navigation} activeScreen="MeetingManagement">
+  const content = (
       <View style={s.container}>
         {/* Header */}
         <View style={s.header}>
@@ -320,9 +344,10 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={s.filterTabContent}
               >
+                {/* Offline meetings never go through approval, so there's no
+                    "Pending" state for them to filter by. */}
                 {(meetingType === 'offline' ? [
                   { key: 'all', label: 'All' },
-                  { key: 'pending', label: 'Pending' },
                   { key: 'confirmed', label: 'Confirmed' },
                   { key: 'in_progress', label: 'Active' },
                   { key: 'completed', label: 'Completed' }
@@ -406,16 +431,27 @@ export default function MeetingManagementScreen({ navigation }: { navigation: an
               )}
             </ScrollView>
 
-            {/* FAB - Different labels for different types */}
-            <FAB
-              icon="plus"
-              style={[s.fab, { backgroundColor: colors.primary }]}
-              onPress={handleCreateMeeting}
-              label={meetingType === 'offline' ? 'Arrange Offline Meeting' : 'Create Meeting'}
-            />
+            {/* FAB — suppressed when the offline empty state already shows
+                its own "Arrange Offline Meeting" button, to avoid showing
+                the same action twice on screen. */}
+            {!(meetingType === 'offline' && filteredMeetings.length === 0) && (
+              <FAB
+                icon="plus"
+                style={[s.fab, { backgroundColor: colors.primary }]}
+                onPress={handleCreateMeeting}
+                label={meetingType === 'offline' ? 'Arrange Offline Meeting' : 'Create Meeting'}
+              />
+            )}
           </>
         )}
       </View>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenLayout navigation={navigation} activeScreen="MySchedules">
+      {content}
     </ScreenLayout>
   );
 }

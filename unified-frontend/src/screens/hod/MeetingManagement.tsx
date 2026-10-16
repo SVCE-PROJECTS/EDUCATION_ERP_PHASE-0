@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Icon, Menu, Divider, FAB } from 'react-native-paper';
 import ScreenWrapper from '../../layouts/hod/ScreenWrapper';
@@ -23,28 +22,45 @@ import { shadows } from '../../theme/hod/colors';
 import { ROUTES } from '../../navigation/hod/routes';
 import { formatDateShort, format12Hour } from '../../utils/dateHelpers';
 import { confirmDelete, showError } from '../../utils/confirmDialog';
+import Toast from '../../services/hod/toast';
 import MeetingTypeSelector from '../../components/meeting/MeetingTypeSelector';
 import OfflineMeetingForm from '../../components/meeting/OfflineMeetingForm';
 
 const STATUS_COLORS = {
   pending_approval: { bg: '#FEF9C3', text: '#CA8A04' },
   approved: { bg: '#DCFCE7', text: '#16A34A' },
+  confirmed: { bg: '#DCFCE7', text: '#16A34A' },
   rejected: { bg: '#FEE2E2', text: '#DC2626' },
   in_progress: { bg: '#DBEAFE', text: '#2563EB' },
   completed: { bg: '#F3E8FF', text: '#9333EA' },
   cancelled: { bg: '#F1F5F9', text: '#64748B' },
+  missed: { bg: '#FEE2E2', text: '#B91C1C' },
 };
 
 const STATUS_LABELS = {
   pending_approval: 'Pending Approval',
   approved: 'Approved',
+  confirmed: 'Approved',
   rejected: 'Rejected',
   in_progress: 'In Progress',
   completed: 'Completed',
   cancelled: 'Cancelled',
+  missed: 'Missed',
 };
 
-export default function MeetingManagement({ navigation }: { navigation: any }) {
+// A confirmed online meeting whose scheduled end time has already passed
+// without it ever being started — it never happened. Surfaced under the
+// "Pending" filter so these don't just silently sit as "Approved" forever.
+const isMissedMeeting = (meeting: any) => {
+  if (meeting.meeting_type !== 'online' || meeting.status !== 'confirmed') return false;
+  if (!meeting.scheduled_date || !meeting.start_time) return false;
+  const start = new Date(`${meeting.scheduled_date}T${meeting.start_time}:00`);
+  if (Number.isNaN(start.getTime())) return false;
+  const end = new Date(start.getTime() + (Number(meeting.duration_minutes) || 0) * 60000);
+  return end.getTime() < Date.now();
+};
+
+export default function MeetingManagement({ navigation, embedded = false }: { navigation: any; embedded?: boolean }) {
   const { colors } = useTheme();
   const { user } = useAuth();
 
@@ -53,9 +69,10 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
   const [meetingType, setMeetingType] = useState<'online' | 'offline'>('online');
   const [showOfflineForm, setShowOfflineForm] = useState(false);
 
-  // Fetch meetings for HOD's department
+  // Fetch meetings for HOD's department — status filtering now happens
+  // client-side (see filteredMeetings) so the "Pending" tab can also surface
+  // missed meetings, which the backend has no "status" value for.
   const { data: meetings = [], isLoading, error } = useMeetings({
-    status: statusFilter === 'all' ? undefined : statusFilter,
     department_code: user?.departmentCode,
     meeting_type: meetingType,
   });
@@ -64,7 +81,21 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
   const { mutateAsync: approveMeeting } = useApproveMeeting();
 
   const filteredMeetings = useMemo(() => {
-    return [...meetings].sort((a, b) => { // Create copy to avoid mutating React Query cache
+    let filtered = meetings;
+
+    if (statusFilter !== 'all') {
+      filtered = meetings.filter((meeting) => {
+        if (statusFilter === 'pending_approval') {
+          return ['pending_approval', 'pending_availability'].includes(meeting.status) || isMissedMeeting(meeting);
+        }
+        if (statusFilter === 'approved') {
+          return meeting.status === 'confirmed' && !isMissedMeeting(meeting);
+        }
+        return meeting.status === statusFilter;
+      });
+    }
+
+    return [...filtered].sort((a, b) => { // Create copy to avoid mutating React Query cache
       // Sort by date desc, then by status priority
       if (a.scheduled_date !== b.scheduled_date) {
         return b.scheduled_date.localeCompare(a.scheduled_date);
@@ -79,7 +110,7 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
       };
       return (statusPriority[a.status] || 99) - (statusPriority[b.status] || 99);
     });
-  }, [meetings]);
+  }, [meetings, statusFilter]);
 
   const handleCreateMeeting = () => {
     if (meetingType === 'offline') setShowOfflineForm(true);
@@ -92,7 +123,7 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
 
   const handleEditMeeting = (meeting: any) => {
     if (['completed', 'cancelled', 'in_progress'].includes(meeting.status)) {
-      Alert.alert('Cannot Edit', 'Cannot edit meeting in current status');
+      showError('Cannot Edit', 'Cannot edit meeting in current status');
       return;
     }
     navigation.navigate('EditMeeting', { meetingId: meeting.meeting_id });
@@ -115,6 +146,7 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
   const handleApproveMeeting = async (meeting: any, action: 'approve' | 'reject') => {
     try {
       await approveMeeting({ id: meeting.meeting_id, action });
+      Toast.show({ type: 'success', text1: `Meeting ${action === 'approve' ? 'approved' : 'rejected'} successfully` });
     } catch (error: any) {
       showError('Error', error.message || `Failed to ${action} meeting`);
     }
@@ -154,7 +186,7 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
             </TouchableOpacity>
           </View>
 
-          {getStatusBadge(meeting.status)}
+          {getStatusBadge(isMissedMeeting(meeting) ? 'missed' : meeting.status)}
         </View>
 
         <View style={s.cardContent}>
@@ -270,8 +302,8 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
     );
   };
 
-  return (
-    <ScreenWrapper route={ROUTES.HOD_MEETINGS} scrollable={false}>
+  const content = (
+    <>
       <View style={s.container}>
         {/* Header */}
         <View style={s.header}>
@@ -302,9 +334,10 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
                 contentContainerStyle={s.filterTabContent}
                 style={s.filterScrollView}
               >
+                {/* Offline meetings never go through approval, so there's no
+                    "Pending" state for them to filter by. */}
                 {(meetingType === 'offline' ? [
                   { key: 'all', label: 'All' },
-                  { key: 'pending', label: 'Pending' },
                   { key: 'confirmed', label: 'Confirmed' },
                   { key: 'in_progress', label: 'Active' },
                   { key: 'completed', label: 'Completed' }
@@ -383,16 +416,28 @@ export default function MeetingManagement({ navigation }: { navigation: any }) {
               )}
             </ScrollView>
 
-            {/* FAB - Different labels for different types */}
-            <FAB
-              icon="plus"
-              style={[s.fab, { backgroundColor: colors.primary }]}
-              onPress={handleCreateMeeting}
-              label={meetingType === 'offline' ? 'Arrange Offline Meeting' : 'Create Meeting'}
-            />
+            {/* FAB — suppressed when the offline empty state already shows
+                its own "Arrange Offline Meeting" button, to avoid the same
+                action appearing twice on screen. */}
+            {!(meetingType === 'offline' && filteredMeetings.length === 0) && (
+              <FAB
+                icon="plus"
+                style={[s.fab, { backgroundColor: colors.primary }]}
+                onPress={handleCreateMeeting}
+                label={meetingType === 'offline' ? 'Arrange Offline Meeting' : 'Create Meeting'}
+              />
+            )}
           </>
         )}
       </View>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenWrapper route={ROUTES.HOD_MEETINGS} scrollable={false}>
+      {content}
     </ScreenWrapper>
   );
 }

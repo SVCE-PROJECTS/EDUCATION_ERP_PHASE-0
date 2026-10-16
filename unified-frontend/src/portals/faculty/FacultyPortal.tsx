@@ -15,11 +15,13 @@ import MyProfile            from '../../screens/faculty/MyProfile';
 import Assignments          from '../../screens/faculty/Assignments';
 import Attendance           from '../../screens/faculty/Attendance';
 import IAMarks              from '../../screens/faculty/IAMarks';
-import MySchedules          from '../../screens/faculty/MySchedules';
 import Meetings             from '../../screens/faculty/Meetings';
+import SchedulesAndMeetings from '../../screens/faculty/SchedulesAndMeetings';
 import FacultyMeetingDetails from '../../screens/faculty/meeting/MeetingDetailsScreen';
 import FacultyCreateMeeting  from '../../screens/faculty/meeting/CreateMeetingScreen';
+import FacultyEditMeeting    from '../../screens/faculty/meeting/EditMeetingScreen';
 import ActivityLog          from '../../screens/faculty/ActivityLog';
+import FacultyAnalytics     from '../../screens/faculty/Analytics';
 import FacultyDrawerContent from '../../layouts/faculty/FacultyDrawerContent';
 import SnackbarHost         from '../../components/faculty/ui/SnackbarHost';
 
@@ -103,10 +105,18 @@ function FacultyDrawerNav() {
       <Drawer.Screen name={ROUTES.ASSIGNMENTS}       component={Assignments} />
       <Drawer.Screen name={ROUTES.ATTENDANCE}        component={Attendance} />
       <Drawer.Screen name={ROUTES.IA_MARKS}          component={IAMarks} />
-      <Drawer.Screen name={ROUTES.MY_SCHEDULES}      component={MySchedules} />
+      <Drawer.Screen name={ROUTES.MY_SCHEDULES}      component={SchedulesAndMeetings} />
       <Drawer.Screen name={ROUTES.MEETINGS}          component={Meetings} />
       <Drawer.Screen name={ROUTES.MY_PROFILE}        component={MyProfile} />
       <Drawer.Screen name={ROUTES.ACTIVITY_LOG}      component={ActivityLog} />
+      <Drawer.Screen name={ROUTES.ANALYTICS}         component={FacultyAnalytics} />
+
+      {/* Meeting screens live inside the Drawer (not the outer Stack) so the
+          sidebar/hamburger stays visible and toggleable on them, same as
+          every other Faculty screen. */}
+      <Drawer.Screen name={ROUTES.MEETING_DETAILS} component={FacultyMeetingDetails} />
+      <Drawer.Screen name={ROUTES.CREATE_MEETING}  component={FacultyCreateMeeting} />
+      <Drawer.Screen name={ROUTES.EDIT_MEETING}    component={FacultyEditMeeting} />
     </Drawer.Navigator>
   );
 }
@@ -126,8 +136,6 @@ function FacultyNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="FacultyRoot" component={FacultyDrawerNav} />
-      <Stack.Screen name={ROUTES.MEETING_DETAILS} component={FacultyMeetingDetails} />
-      <Stack.Screen name={ROUTES.CREATE_MEETING} component={FacultyCreateMeeting} />
     </Stack.Navigator>
   );
 }

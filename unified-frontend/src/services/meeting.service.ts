@@ -17,6 +17,9 @@ export interface Meeting {
   location?: string;
   meeting_type: 'online' | 'offline';
   meeting_url?: string;
+  external_meeting_url?: string;
+  /** external_meeting_url when set, otherwise the generated meeting_url — use this for any "open meeting link" action. */
+  effective_meeting_url?: string;
   status: 'pending_approval' | 'approved' | 'rejected' | 'in_progress' | 'completed' | 'cancelled';
   approval_required: boolean;
   created_by: string;
@@ -214,6 +217,7 @@ export const createMeeting = async (meeting: {
   location?: string;
   participant_ids?: string[];
   meeting_type?: 'online' | 'offline';
+  external_url?: string;
 }): Promise<Meeting> => {
   try {
     const response = await axiosInstance.post('/meetings', meeting);
@@ -241,6 +245,7 @@ export const updateMeeting = async (id: number, meeting: {
   duration_minutes: number;
   location?: string;
   participant_ids?: string[];
+  external_url?: string;
 }): Promise<Meeting> => {
   try {
     const response = await axiosInstance.put(`/meetings/${id}`, meeting);
@@ -296,14 +301,14 @@ export const updateAvailability = async (id: number, status: string, comments?: 
 
 // ── Meeting Control ───────────────────────────────────────────────────────────
 
-export const startMeeting = async (id: number): Promise<{ meeting_url: string }> => {
+export const startMeeting = async (id: number): Promise<{ meeting_url: string; effective_meeting_url?: string }> => {
   try {
     const response = await axiosInstance.post(`/meetings/${id}/start`);
 
     // Axios interceptor returns { success: true, message: '...', meeting_url: '...' }
     // For this endpoint, the meeting_url is at the top level of response
     if (response && response.success && response.meeting_url) {
-      return { meeting_url: response.meeting_url };
+      return { meeting_url: response.meeting_url, effective_meeting_url: response.effective_meeting_url };
     }
 
     // Handle unexpected response structure

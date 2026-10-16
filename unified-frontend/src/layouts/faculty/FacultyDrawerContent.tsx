@@ -7,7 +7,7 @@
 
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, Image, TouchableOpacity, StyleSheet, SafeAreaView,
 } from 'react-native';
 import {
   DrawerContentComponentProps,
@@ -15,8 +15,8 @@ import {
 } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  LayoutDashboard, Users, ClipboardList, CheckSquare,
-  Award, GraduationCap, LogOut, Sun, Moon, Calendar, CalendarMonth, Video,
+  LayoutDashboard, ClipboardList, CheckSquare,
+  Award, LogOut, Sun, Moon, Calendar, CalendarMonth, ChartBar,
 } from '../../components/faculty/icons';
 import Avatar from '../../components/faculty/ui/Avatar';
 import { useAuth } from '../../context/faculty/AuthContext';
@@ -29,18 +29,26 @@ import { colors, shadows, ThemeColors } from '../../theme/faculty/colors';
 import Toast from '../../services/faculty/toast';
 import { unifiedLogoutRef } from '../../context/AuthContext';
 
+const svceLogo = require('../../assets/svce_logo_transparent.png');
+const LOGO_ASPECT = 1087 / 209;
+
 type IconComponent = React.ComponentType<{ size?: number; color?: string; style?: any }>;
 
-interface NavItem { label: string; route: string; icon: IconComponent; }
+interface NavItem { label: string; route: string; icon: IconComponent; matchRoutes?: string[]; }
 
 const FACULTY_NAV: NavItem[] = [
   { label: 'Dashboard',    route: ROUTES.FACULTY_DASHBOARD, icon: LayoutDashboard },
   { label: 'Assignments',  route: ROUTES.ASSIGNMENTS,       icon: ClipboardList },
   { label: 'Attendance',   route: ROUTES.ATTENDANCE,        icon: CheckSquare },
   { label: 'IA Marks',     route: ROUTES.IA_MARKS,          icon: Award },
-  { label: 'My Schedules', route: ROUTES.MY_SCHEDULES,      icon: Calendar },
-  { label: 'Meetings',     route: ROUTES.MEETINGS,          icon: Video },
-  { label: 'My Profile',   route: ROUTES.MY_PROFILE,        icon: Users },
+  {
+    label: 'My Schedules', route: ROUTES.MY_SCHEDULES, icon: Calendar,
+    // The My Schedules screen itself now holds My Schedules + Meetings as
+    // tabs — the standalone Meetings route is still directly reachable
+    // (e.g. from meeting detail/create/edit screens), so match it here too.
+    matchRoutes: [ROUTES.MEETINGS, ROUTES.MEETING_DETAILS, ROUTES.CREATE_MEETING, ROUTES.EDIT_MEETING],
+  },
+  { label: 'Analytics',    route: ROUTES.ANALYTICS,         icon: ChartBar },
   { label: 'Activity Log', route: ROUTES.ACTIVITY_LOG,      icon: CalendarMonth },
 ];
 
@@ -91,11 +99,16 @@ export default function FacultyDrawerContent(props: DrawerContentComponentProps)
           end={{ x: 1, y: 1 }}
           style={styles.brand}
         >
-          <View style={styles.brandIcon}>
-            <GraduationCap size={20} color={colors.white} />
-          </View>
-          <Text style={styles.brandName}>Faculty Portal</Text>
-          <Text style={styles.brandDept}>SVCE — Engineering College ERP</Text>
+          <Image
+            source={svceLogo}
+            // At height 54 the logo's natural width (~281px) badly exceeded
+            // the drawer's available content width (260px container - 32px
+            // padding = 228px) and got clipped. 42 keeps it within that
+            // space, matching how HOD/Admin fit theirs.
+            style={{ height: 42, width: 42 * LOGO_ASPECT }}
+            resizeMode="contain"
+            accessibilityLabel="SVCE — Sri Venkateshwara College of Engineering"
+          />
         </LinearGradient>
       </TouchableOpacity>
 
@@ -108,7 +121,7 @@ export default function FacultyDrawerContent(props: DrawerContentComponentProps)
         {FACULTY_NAV.map((item) => (
           <SidebarItem
             key={item.route} icon={item.icon} label={item.label}
-            isActive={activeRoute === item.route}
+            isActive={activeRoute === item.route || !!item.matchRoutes?.includes(activeRoute)}
             onPress={() => drawerNav.navigate(item.route as never)}
             theme={theme} styles={styles}
           />
@@ -151,13 +164,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 24, paddingBottom: 24,
     borderBottomLeftRadius: 20, borderBottomRightRadius: 20,
   },
-  brandIcon: {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 8,
-  },
-  brandName: { fontSize: 14, fontWeight: '700', color: colors.white, letterSpacing: 0.3 },
-  brandDept: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-
   userSection: {
     paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: theme.border,

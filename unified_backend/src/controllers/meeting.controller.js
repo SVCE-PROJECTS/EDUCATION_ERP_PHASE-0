@@ -12,6 +12,11 @@ const pool = require('../config/db').pool;
 const { ApiError } = require('../utils/response');
 const { logger } = require('../utils/logger');
 
+// Must mirror OFFLINE_MEETING_VENUES in unified-frontend/src/constants.ts —
+// the frontend dropdown only ever submits one of these, but a direct API
+// call must not be able to set an arbitrary venue.
+const OFFLINE_MEETING_VENUES = ['Project Room 1', 'Meeting Room 2', 'Project Room 3', 'Project Room 4'];
+
 const getMeetingRole = (user) => {
   if (user.role === 'admin' || user.isAdmin) return 'admin';
   if (user.role === 'hod' || user.isHOD || user.roles?.includes('HOD')) return 'hod';
@@ -35,6 +40,30 @@ const formatMeetingDate = (value) => {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
 };
 
+// Only absolute http(s) URLs are accepted — rejects javascript:, data:, etc.
+const isValidMeetingUrl = (value) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+// Mirrors the frontend's isFutureDateTime() in dateHelpers.ts — the frontend
+// check alone can't be trusted, since a direct API call could bypass it.
+// Combines a YYYY-MM-DD date and HH:MM(:SS) time as local server time and
+// checks it's still strictly ahead of "now" (the exact current time is rejected too).
+const isFutureDateTime = (dateStr, timeStr) => {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr || ''));
+  const timeMatch = /^(\d{2}):(\d{2})/.exec(String(timeStr || ''));
+  if (!dateMatch || !timeMatch) return false;
+  const [, year, month, day] = dateMatch;
+  const [, hours, minutes] = timeMatch;
+  const combined = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), 0, 0);
+  return combined.getTime() > Date.now();
+};
+
 /**
  * Get meetings with role-based filtering
  * GET /api/meetings?status=pending&from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -48,16 +77,13 @@ const getMeetings = async (req, res) => {
     const params = [];
     let employeeIdParam = null;
 
-    // Role-based filtering with proper user ID mapping
-    if (role === 'admin') {
-      // Admin can see all meetings
-      if (department_code) {
-        params.push(department_code);
-        conditions.push('d.department_code = $' + params.length);
-      }
-    } else {
-      // HOD and Faculty can only see their department's meetings
-      params.push(req.user.departmentCode);
+    // Optional department filter — additive for everyone, never forced.
+    // Participants can now be invited across departments, so pinning
+    // non-admin viewers to their own department here would hide meetings
+    // they're genuinely invited to (the participant/creator/approver
+    // condition below is what actually scopes their visibility).
+    if (department_code) {
+      params.push(department_code);
       conditions.push('d.department_code = $' + params.length);
     }
 
@@ -138,9 +164,20 @@ const getMeetings = async (req, res) => {
     conditions.push("m.status != 'deleted'");
 
     const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
-    const userPendingApprovalsSelect = role === 'admin'
-      ? '0 as user_pending_approvals'
-      : `(SELECT COUNT(*) FROM meeting_approvals ma
+    // Scoped to the actual approver, not "any pending approval on the
+    // meeting" — a Faculty -> HOD submission's approver is the HOD, and
+    // Admin must not see it as theirs to act on just because they can see
+    // every meeting. Admin's own user_id (numeric) is compared directly;
+    // faculty/HOD resolve their employee_id to a user_id first.
+    let userPendingApprovalsSelect;
+    if (role === 'admin') {
+      params.push(req.user.id);
+      userPendingApprovalsSelect = `(SELECT COUNT(*) FROM meeting_approvals ma
+          WHERE ma.meeting_id = m.meeting_id
+            AND ma.approval_status = 'pending'
+            AND ma.approver_user_id = $${params.length}) as user_pending_approvals`;
+    } else {
+      userPendingApprovalsSelect = `(SELECT COUNT(*) FROM meeting_approvals ma
           WHERE ma.meeting_id = m.meeting_id
             AND ma.approval_status = 'pending'
             AND ma.approver_user_id IN (
@@ -148,6 +185,7 @@ const getMeetings = async (req, res) => {
               JOIN faculty f ON u.faculty_id = f.faculty_id
               WHERE f.employee_id::text = $${employeeIdParam}::text
             )) as user_pending_approvals`;
+    }
 
     const query = `
       SELECT
@@ -161,6 +199,8 @@ const getMeetings = async (req, res) => {
         m.location,
         COALESCE(m.meeting_type, 'online') as meeting_type,
         m.meeting_url,
+        m.external_meeting_url,
+        COALESCE(m.external_meeting_url, m.meeting_url) as effective_meeting_url,
         m.status,
         CASE
           WHEN m.requester_user_id IN (SELECT user_id FROM users WHERE role_id = (SELECT role_id FROM roles WHERE role_name = 'admin'))
@@ -170,7 +210,7 @@ const getMeetings = async (req, res) => {
         m.requester_user_id as created_by,
         m.created_at,
         m.updated_at,
-        f.name as created_by_name,
+        COALESCE(f.name, u.username) as created_by_name,
         f.designation as created_by_designation,
         f.employee_id as created_by_employee_id,
         -- Count participants
@@ -221,8 +261,9 @@ const getMeetingById = async (req, res) => {
         m.*,
         m.agenda as description,
         m.meeting_date as scheduled_date,
+        COALESCE(m.external_meeting_url, m.meeting_url) as effective_meeting_url,
         d.department_code,
-        f.name as created_by_name,
+        COALESCE(f.name, u.username) as created_by_name,
         f.designation as created_by_designation,
         f.employee_id as created_by_employee_id
       FROM meetings m
@@ -240,9 +281,52 @@ const getMeetingById = async (req, res) => {
 
     const meeting = meetingResult.rows[0];
 
-    // Role-based access control
-    if (role !== 'admin' && meeting.department_code !== req.user.departmentCode) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
+    // Role-based access control — a plain department match is wrong now that
+    // participants can span departments (the meeting's own department_code
+    // can differ from every viewer's, including the creator's, or be null
+    // entirely). Access instead follows the same creator/participant/
+    // pending-approver rule getMeetings() uses.
+    if (role !== 'admin') {
+      const accessQuery = `
+        SELECT 1
+        FROM meetings m
+        WHERE m.meeting_id = $1
+          AND (
+            m.requester_user_id IN (
+              SELECT u.user_id FROM users u
+              JOIN faculty f ON u.faculty_id = f.faculty_id
+              WHERE f.employee_id::text = $2::text
+            )
+            OR EXISTS (
+              SELECT 1 FROM meeting_participants mp
+              WHERE mp.meeting_id = m.meeting_id
+                AND (
+                  mp.participant_user_id IN (
+                    SELECT u.user_id FROM users u
+                    JOIN faculty f ON u.faculty_id = f.faculty_id
+                    WHERE f.employee_id::text = $2::text
+                  )
+                  OR LOWER(mp.participant_email) = LOWER((
+                    SELECT f.email FROM faculty f WHERE f.employee_id::text = $2::text
+                  ))
+                )
+            )
+            ${role === 'hod' ? `OR EXISTS (
+              SELECT 1 FROM meeting_approvals ma
+              WHERE ma.meeting_id = m.meeting_id
+                AND ma.approval_status = 'pending'
+                AND ma.approver_user_id IN (
+                  SELECT u.user_id FROM users u
+                  JOIN faculty f ON u.faculty_id = f.faculty_id
+                  WHERE f.employee_id::text = $2::text
+                )
+            )` : ''}
+          )
+      `;
+      const accessResult = await pool.query(accessQuery, [id, req.user.id]);
+      if (accessResult.rows.length === 0) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
     }
 
     // Get participants
@@ -329,7 +413,8 @@ const createMeeting = async (req, res) => {
     duration_minutes,
     location,
     meeting_type = 'online',
-    participant_ids = []
+    participant_ids = [],
+    external_url,
   } = req.body;
   const role = getMeetingRole(req.user);
   const isOffline = meeting_type === 'offline';
@@ -338,7 +423,12 @@ const createMeeting = async (req, res) => {
     return res.status(400).json({ success: false, message: 'meeting_type must be online or offline' });
   }
 
-  if (!title || !scheduled_date || !start_time || (!isOffline && !duration_minutes) || (isOffline && !location?.trim())) {
+  const trimmedExternalUrl = typeof external_url === 'string' ? external_url.trim() : '';
+  if (trimmedExternalUrl && !isValidMeetingUrl(trimmedExternalUrl)) {
+    return res.status(400).json({ success: false, message: 'External meeting link must be a valid http(s) URL' });
+  }
+
+  if (!title?.trim() || !scheduled_date || !start_time || (!isOffline && !duration_minutes) || (isOffline && !location?.trim())) {
     return res.status(400).json({
       success: false,
       message: isOffline
@@ -347,14 +437,38 @@ const createMeeting = async (req, res) => {
     });
   }
 
+  if (isOffline && !OFFLINE_MEETING_VENUES.includes(location.trim())) {
+    return res.status(400).json({ success: false, message: 'Venue must be one of the available rooms' });
+  }
+
   if (duration_minutes != null && (!Number.isInteger(Number(duration_minutes)) || Number(duration_minutes) <= 0 || Number(duration_minutes) > 480)) {
     return res.status(400).json({ success: false, message: 'Duration must be between 1 and 480 minutes' });
   }
+
+  // Server-side enforcement — a direct API call must not be able to bypass
+  // the frontend's future-time rule (applies to both online and offline).
+  if (!isFutureDateTime(scheduled_date, start_time)) {
+    return res.status(400).json({ success: false, message: 'Please select a valid future meeting date and time' });
+  }
+
   if (!Array.isArray(participant_ids)) {
     return res.status(400).json({ success: false, message: 'participant_ids must be an array' });
   }
 
-  const uniqueParticipantIds = [...new Set(participant_ids.map(String).filter(Boolean))];
+  let uniqueParticipantIds = [...new Set(participant_ids.map(String).filter(Boolean))];
+
+  // A creator can never invite themselves — for faculty/HOD req.user.id is
+  // their own employee_id; for admin it's a numeric user_id that never
+  // matches an employee_id, so this is a no-op for admin.
+  if (role !== 'admin' && req.user?.id) {
+    uniqueParticipantIds = uniqueParticipantIds.filter((pid) => pid !== String(req.user.id));
+  }
+
+  // Mirror the frontend's "select at least one participant" rule here too —
+  // the frontend alone can't be trusted to enforce it.
+  if (uniqueParticipantIds.length === 0) {
+    return res.status(400).json({ success: false, message: 'Select at least one participant other than yourself' });
+  }
 
   const client = await pool.connect();
 
@@ -448,7 +562,11 @@ const createMeeting = async (req, res) => {
       }
     }
 
-    if (role === 'admin' && uniqueParticipantIds.length > 0) {
+    // Participants can now span departments regardless of who's inviting, so
+    // recompute department_id from the actual invite list: a single shared
+    // department narrows it, multiple departments leave it null rather than
+    // mislabeling the meeting under the requester's own department.
+    if (uniqueParticipantIds.length > 0) {
       const participantDepartments = await client.query(
         `SELECT DISTINCT department_id FROM faculty
          WHERE employee_id = ANY($1::varchar[]) AND status = 'ACTIVE'`,
@@ -465,8 +583,8 @@ const createMeeting = async (req, res) => {
     const meetingQuery = `
       INSERT INTO meetings (
         title, agenda, department_id, meeting_date, start_time,
-        duration_minutes, meeting_url, status, requester_user_id, meeting_type, location
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        duration_minutes, meeting_url, status, requester_user_id, meeting_type, location, external_meeting_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
@@ -484,7 +602,8 @@ const createMeeting = async (req, res) => {
       status,
       requester_user_id,
       meeting_type,
-      isOffline ? location.trim() : (location?.trim() || null)
+      isOffline ? location.trim() : (location?.trim() || null),
+      !isOffline && trimmedExternalUrl ? trimmedExternalUrl : null,
     ]);
 
     const meeting = meetingResult.rows[0];
@@ -506,11 +625,6 @@ const createMeeting = async (req, res) => {
         }
 
         const participant = participantQuery.rows[0];
-        if (role !== 'admin' && String(participant.department_id) !== String(department_id)) {
-          const error = new Error('You can only invite faculty from your department');
-          error.statusCode = 403;
-          throw error;
-        }
 
         await client.query(
           `INSERT INTO meeting_participants
@@ -519,40 +633,46 @@ const createMeeting = async (req, res) => {
           [meeting.meeting_id, participant.user_id, participant.name, participant.email]
         );
 
-        if (isOffline) {
-          const creatorResult = await client.query(
-            `SELECT COALESCE(f.name, u.username) as name, f.designation
-             FROM users u LEFT JOIN faculty f ON u.faculty_id = f.faculty_id
-             WHERE u.user_id = $1`,
-            [requester_user_id]
-          );
-          const creatorName = creatorResult.rows[0]?.name || req.user.username || 'A user';
-          const creatorRole = role === 'admin' ? 'Admin' : role === 'hod' ? 'HOD' : 'Faculty';
-          const durationText = duration_minutes ? ` for ${duration_minutes} minutes` : '';
-          const message = `${creatorName} (${creatorRole}) has arranged an offline meeting: ${title.trim()}, on ${scheduled_date} at ${start_time}${durationText}, at ${location.trim()}.${description?.trim() ? ` ${description.trim()}` : ''}`;
+        // Notify every invited participant in-app, for both meeting types —
+        // this used to only fire for offline meetings, so online invites
+        // never surfaced a notification for the invitee.
+        const creatorResult = await client.query(
+          `SELECT COALESCE(f.name, u.username) as name, f.designation
+           FROM users u LEFT JOIN faculty f ON u.faculty_id = f.faculty_id
+           WHERE u.user_id = $1`,
+          [requester_user_id]
+        );
+        const creatorName = creatorResult.rows[0]?.name || req.user.username || 'A user';
+        const creatorRole = role === 'admin' ? 'Admin' : role === 'hod' ? 'HOD' : 'Faculty';
+        const durationText = duration_minutes ? ` for ${duration_minutes} minutes` : '';
+        const message = isOffline
+          ? `${creatorName} (${creatorRole}) has arranged an offline meeting: ${title.trim()}, on ${scheduled_date} at ${start_time}${durationText}, at ${location.trim()}.${description?.trim() ? ` ${description.trim()}` : ''}`
+          : `${creatorName} (${creatorRole}) has invited you to an online meeting: ${title.trim()}, on ${scheduled_date} at ${start_time}${durationText}.${description?.trim() ? ` ${description.trim()}` : ''}`;
 
-          await client.query(
-            `INSERT INTO meeting_notifications
-               (meeting_id, recipient_user_id, recipient_employee_id, notification_type, message)
-             VALUES ($1, $2, $3, 'offline_meeting_arranged', $4)
-             ON CONFLICT DO NOTHING`,
-            [meeting.meeting_id, participant.user_id, participant.employee_id, message]
-          );
-        }
+        await client.query(
+          `INSERT INTO meeting_notifications
+             (meeting_id, recipient_user_id, recipient_employee_id, notification_type, message)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT DO NOTHING`,
+          [meeting.meeting_id, participant.user_id, participant.employee_id, isOffline ? 'offline_meeting_arranged' : 'online_meeting_invite', message]
+        );
       }
     }
 
     // Create approval workflow if needed (non-admin users need approval)
     if (!isOffline && role !== 'admin') {
       if (role === 'faculty') {
-        // Faculty -> HOD approval
+        // Faculty -> HOD approval. department_id can be null when the invite
+        // spans multiple departments (no single HOD owns it) — fall back to
+        // Admin approval in that case rather than leaving the meeting with
+        // no approver at all.
         const hodQuery = `
           SELECT u.user_id, f.name FROM faculty f
           JOIN users u ON u.faculty_id = f.faculty_id
           WHERE f.department_id = $1 AND f.is_hod = true AND f.status = 'ACTIVE'
           LIMIT 1
         `;
-        const hodResult = await client.query(hodQuery, [department_id]);
+        const hodResult = department_id != null ? await client.query(hodQuery, [department_id]) : { rows: [] };
 
         if (hodResult.rows.length > 0) {
           await client.query(
@@ -560,6 +680,19 @@ const createMeeting = async (req, res) => {
              VALUES ($1, $2, $3, 'pending')`,
             [meeting.meeting_id, hodResult.rows[0].user_id, hodResult.rows[0].name]
           );
+        } else {
+          const adminQuery = await client.query(
+            `SELECT u.user_id FROM users u
+             JOIN roles r ON u.role_id = r.role_id
+             WHERE r.role_name = 'admin' LIMIT 1`
+          );
+          if (adminQuery.rows.length > 0) {
+            await client.query(
+              `INSERT INTO meeting_approvals (meeting_id, approver_user_id, approver_name, approval_status)
+               VALUES ($1, $2, 'Admin', 'pending')`,
+              [meeting.meeting_id, adminQuery.rows[0].user_id]
+            );
+          }
         }
       } else if (role === 'hod') {
         // HOD -> Admin approval
@@ -584,7 +717,8 @@ const createMeeting = async (req, res) => {
     // Fetch complete meeting data to return
     const completeResult = await pool.query(
       `SELECT m.*, m.agenda as description, m.meeting_date as scheduled_date,
-              d.department_code, f.name as created_by_name
+              COALESCE(m.external_meeting_url, m.meeting_url) as effective_meeting_url,
+              d.department_code, COALESCE(f.name, u.username) as created_by_name
        FROM meetings m
        LEFT JOIN users u ON m.requester_user_id = u.user_id
        LEFT JOIN faculty f ON u.faculty_id = f.faculty_id
@@ -629,14 +763,24 @@ const updateMeeting = async (req, res) => {
     start_time,
     duration_minutes,
     location,
-    participant_ids = []
+    participant_ids = [],
+    external_url,
   } = req.body;
 
-  if (!title || !scheduled_date || !start_time || !duration_minutes) {
+  if (!title?.trim() || !scheduled_date || !start_time || !duration_minutes) {
     return res.status(400).json({
       success: false,
       message: 'Title, scheduled_date, start_time, and duration_minutes are required'
     });
+  }
+
+  // Only touch external_meeting_url when the caller actually sent the field
+  // — omitting it (older clients, or edit forms that don't surface it yet)
+  // must preserve whatever was already saved, not silently clear it.
+  const externalUrlProvided = Object.prototype.hasOwnProperty.call(req.body, 'external_url');
+  const trimmedExternalUrl = externalUrlProvided && typeof external_url === 'string' ? external_url.trim() : '';
+  if (externalUrlProvided && trimmedExternalUrl && !isValidMeetingUrl(trimmedExternalUrl)) {
+    return res.status(400).json({ success: false, message: 'External meeting link must be a valid http(s) URL' });
   }
 
   const client = await pool.connect();
@@ -666,6 +810,13 @@ const updateMeeting = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
+    // Edit forms don't currently expose venue editing, but a direct API call
+    // setting location on an offline meeting must still be constrained to
+    // the fixed venue list, same as creation.
+    if (meeting.meeting_type === 'offline' && location != null && !OFFLINE_MEETING_VENUES.includes(String(location).trim())) {
+      return res.status(400).json({ success: false, message: 'Venue must be one of the available rooms' });
+    }
+
     // Don't allow editing if meeting is in progress or completed
     if (['in_progress', 'completed', 'cancelled'].includes(meeting.status)) {
       return res.status(400).json({
@@ -674,27 +825,50 @@ const updateMeeting = async (req, res) => {
       });
     }
 
+    // Server-side enforcement — only re-validate the future-time rule when the
+    // request actually changes the date/time, so edits to an already-past
+    // meeting that don't touch scheduling aren't blocked.
+    const originalDateString = formatMeetingDate(meeting.meeting_date);
+    const originalTimeString = meeting.start_time?.slice(0, 5);
+    const newTimeString = String(start_time).slice(0, 5);
+    const isRescheduled = scheduled_date !== originalDateString || newTimeString !== originalTimeString;
+    if (isRescheduled && !isFutureDateTime(scheduled_date, start_time)) {
+      return res.status(400).json({ success: false, message: 'Please select a valid future meeting date and time' });
+    }
+
     // Update meeting
     const updateQuery = `
       UPDATE meetings
       SET title = $1, agenda = $2, meeting_date = $3, start_time = $4,
           duration_minutes = $5, location = $6, updated_at = NOW()
+          ${externalUrlProvided ? ', external_meeting_url = $8' : ''}
       WHERE meeting_id = $7
-      RETURNING *, agenda as description, meeting_date as scheduled_date
+      RETURNING *, agenda as description, meeting_date as scheduled_date,
+                COALESCE(external_meeting_url, meeting_url) as effective_meeting_url
     `;
 
-    const updateResult = await client.query(updateQuery, [
-      title, description, scheduled_date, start_time, duration_minutes, location || null, id
-    ]);
+    const updateParams = [
+      title, description, scheduled_date, start_time, duration_minutes, location || null, id,
+    ];
+    if (externalUrlProvided) updateParams.push(trimmedExternalUrl || null);
+
+    const updateResult = await client.query(updateQuery, updateParams);
+
+    // A creator can never re-invite themselves on edit either — for
+    // faculty/HOD req.user.id is their own employee_id; no-op for admin.
+    const dedupedParticipantIds = [...new Set(participant_ids.map(String).filter(Boolean))];
+    const finalParticipantIds = role !== 'admin' && req.user?.id
+      ? dedupedParticipantIds.filter((pid) => pid !== String(req.user.id))
+      : dedupedParticipantIds;
 
     // Update participants if provided
-    if (participant_ids.length >= 0) { // Allow empty array to clear participants
+    if (finalParticipantIds.length >= 0) { // Allow empty array to clear participants
       // Remove existing participants
       await client.query('DELETE FROM meeting_participants WHERE meeting_id = $1', [id]);
 
       // Add new participants
-      if (participant_ids.length > 0) {
-        for (const participantId of participant_ids) {
+      if (finalParticipantIds.length > 0) {
+        for (const participantId of finalParticipantIds) {
           // Get participant details
           const participantQuery = await client.query(
             'SELECT f.name, f.email FROM faculty f WHERE f.employee_id = $1',
@@ -798,7 +972,6 @@ const deleteMeeting = async (req, res) => {
 const approveMeeting = async (req, res) => {
   const { id } = req.params;
   const { action, comments } = req.body; // action: 'approve' | 'reject'
-  const role = getMeetingRole(req.user);
 
   if (!['approve', 'reject'].includes(action)) {
     return res.status(400).json({ success: false, message: 'Invalid action' });
@@ -821,20 +994,16 @@ const approveMeeting = async (req, res) => {
 
     const meeting = meetingResult.rows[0];
 
-    // Find pending approval for current user
-    let approvalQuery = `
+    // Find pending approval actually assigned to the current user. Admin is
+    // not a blanket approver for every meeting — only for the ones where
+    // Admin is the designated approver (e.g. HOD -> Admin submissions); a
+    // Faculty -> HOD submission's approver is the HOD, and must stay theirs
+    // to decide, even though Admin can see and manage every meeting elsewhere.
+    const approvalQuery = `
       SELECT * FROM meeting_approvals
-      WHERE meeting_id = $1 AND approval_status = 'pending'
+      WHERE meeting_id = $1 AND approval_status = 'pending' AND approver_user_id = $2
     `;
-    let approvalParams = [id];
-
-    if (role === 'admin') {
-      // Admin can approve any pending approval
-      approvalQuery += ` ORDER BY required_at LIMIT 1`;
-    } else {
-      approvalQuery += ` AND approver_user_id = $2`;
-      approvalParams.push(await getMeetingUserId(client, req.user));
-    }
+    const approvalParams = [id, await getMeetingUserId(client, req.user)];
 
     const approvalResult = await client.query(approvalQuery, approvalParams);
 
@@ -984,7 +1153,8 @@ const startMeeting = async (req, res) => {
     res.json({
       success: true,
       message: 'Meeting started successfully',
-      meeting_url: meeting.meeting_url
+      meeting_url: meeting.meeting_url,
+      effective_meeting_url: meeting.external_meeting_url || meeting.meeting_url,
     });
 
   } catch (error) {

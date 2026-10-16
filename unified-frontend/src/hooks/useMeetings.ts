@@ -108,6 +108,9 @@ export const useCreateMeeting = () => {
       queryClient.refetchQueries({ queryKey: ['meetings'] });
       queryClient.invalidateQueries({ queryKey: ['meeting-today'] });
       queryClient.invalidateQueries({ queryKey: ['meeting-notifications'] });
+      // Admin/HOD/Faculty Analytics all show meeting-status/type breakdowns
+      // sourced from a separately-cached query — keep them in sync too.
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'overview'] });
     },
   });
 };
@@ -132,6 +135,7 @@ export const useDeleteMeeting = () => {
     mutationFn: deleteMeeting,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'overview'] });
     },
   });
 };
@@ -147,6 +151,7 @@ export const useApproveMeeting = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       queryClient.invalidateQueries({ queryKey: ['meeting-details', id] });
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'overview'] });
     },
   });
 };
@@ -162,6 +167,8 @@ export const useUpdateAvailability = () => {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['meeting-details', id] });
       queryClient.invalidateQueries({ queryKey: ['meeting-participants', id] });
+      // Analytics' "participant responses" breakdown reads this too.
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'overview'] });
     },
   });
 };
@@ -176,6 +183,7 @@ export const useStartMeeting = () => {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       queryClient.invalidateQueries({ queryKey: ['meeting-details', id] });
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'overview'] });
     },
   });
 };
@@ -188,6 +196,7 @@ export const useCompleteMeeting = () => {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] });
       queryClient.invalidateQueries({ queryKey: ['meeting-details', id] });
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'overview'] });
     },
   });
 };

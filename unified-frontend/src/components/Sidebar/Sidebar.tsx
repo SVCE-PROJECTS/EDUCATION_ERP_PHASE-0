@@ -3,6 +3,7 @@
 import React from 'react';
 import {
   View,
+  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -17,6 +18,9 @@ import {
   spacing, typography, radius, shadows,
 } from '../../theme';
 
+const svceLogo = require('../../assets/svce_logo_transparent.png');
+const LOGO_ASPECT = 1087 / 209;
+
 const NAV_ITEMS = [
   {
     key: 'Dashboard',
@@ -25,34 +29,24 @@ const NAV_ITEMS = [
     screen: 'Dashboard',
   },
   {
-    key: 'StudentList',
-    label: 'Student Registry',
-    icon: 'account-group-outline',
-    screen: 'StudentList',
-  },
-  {
-    key: 'FacultyList', label: 'Faculty Registry', icon: 'account-tie-outline', screen: 'FacultyList',
-  },
-  {
-    key: 'NonTeachingStaffList', label: 'Non-Teaching Staff', icon: 'account-hard-hat-outline', screen: 'NonTeachingStaffList',
-  },
-  {
-    key: 'MeetingManagement',
-    label: 'Meeting Management',
-    icon: 'calendar-account',
-    screen: 'MeetingManagement',
+    key: 'Registry',
+    label: 'Registry',
+    icon: 'folder-account-outline',
+    screen: 'Registry',
+    // The Add/Edit/Details screens for all three registries still carry
+    // their old activeScreen value — treat any of them as "Registry" too
+    // so the sidebar highlights correctly no matter which sub-screen you're on.
+    matchScreens: ['StudentList', 'FacultyList', 'NonTeachingStaffList'],
   },
   {
     key: 'TransferStudent',
     label: 'Transfer Student',
     icon: 'swap-horizontal',
     screen: 'TransferStudent',
-  },
-  {
-    key: 'ExportStudentData',
-    label: 'Download Student Data',
-    icon: 'tray-arrow-down',
-    screen: 'ExportStudentData',
+    // Reached from the Dashboard's "Transferred Students" quick action, not
+    // from this sidebar item directly — still highlight it as the closest
+    // match so the sidebar doesn't go blank while you're there.
+    matchScreens: ['TransferredStudents'],
   },
   {
     key: 'Fee',
@@ -61,35 +55,55 @@ const NAV_ITEMS = [
     screen: 'Fee',
   },
   {
+    key: 'Analytics',
+    label: 'Analytics',
+    icon: 'chart-box-outline',
+    screen: 'Analytics',
+  },
+  {
     key: 'ActivityLog',
     label: 'Activity Log',
     icon: 'clipboard-text-clock-outline',
     screen: 'ActivityLog',
   },
   {
-    key: 'AdminUsers',
-    label: 'Admin Users',
-    icon: 'shield-account-outline',
-    screen: 'AdminUsers',
-  },
-  {
     key: 'Settings',
     label: 'Settings',
     icon: 'cog-outline',
     screen: 'Settings',
+    // The Settings screen itself now holds Settings + Admin Users as tabs —
+    // AdminUsers is still a directly-reachable standalone route (e.g. from
+    // the Dashboard's quick action), so match it here for sidebar highlighting.
+    matchScreens: ['AdminUsers'],
   },
   {
     key: 'MySchedules',
     label: 'My Schedules',
     icon: 'calendar-month',
     screen: 'MySchedules',
+    // The My Schedules screen itself now holds My Schedules + Meeting
+    // Management as tabs — the standalone meeting screens are still
+    // directly-reachable routes, so match them here for sidebar highlighting.
+    matchScreens: ['MeetingManagement', 'CreateMeeting', 'EditMeeting', 'MeetingDetails'],
   },
 ];
 
-const Sidebar = ({ navigation, activeScreen }) => {
+// onNavigate: optional — called after every navigation (nav item tap, brand
+// tap). Used by ScreenLayout's mobile overlay to close itself once the user
+// has picked a destination; the always-visible desktop sidebar doesn't pass it.
+const Sidebar = ({ navigation, activeScreen, onNavigate }) => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme, colors } = useTheme();
   const styles = getStyles(colors);
+
+  const goTo = (screen) => {
+    try {
+      navigation.navigate(screen);
+      onNavigate?.();
+    } catch (error) {
+      console.error('[Sidebar] Navigation error:', error);
+    }
+  };
 
   const handleLogout = async () => {
     // Only call unified logout — it clears all session keys and
@@ -109,7 +123,7 @@ const Sidebar = ({ navigation, activeScreen }) => {
 
       {/* Brand — gradient hero panel, tap to jump home */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('Dashboard')}
+        onPress={() => goTo('Dashboard')}
         activeOpacity={0.85}
         accessibilityLabel="Go to Dashboard"
       >
@@ -119,10 +133,16 @@ const Sidebar = ({ navigation, activeScreen }) => {
           end={{ x: 1, y: 1 }}
           style={styles.brand}
         >
-          <View style={styles.brandIconWrap}>
-            <Icon source="school-outline" size={22} color={colors.white} />
-          </View>
-          <Text style={styles.brandTitle}>SVCE EDUCATION ERP</Text>
+          <Image
+            source={svceLogo}
+            // At height 46 the logo's natural width (~239px) exceeds the
+            // sidebar's available content width (248px container - 32px
+            // padding = 216px), so the wordmark was getting clipped. 40
+            // keeps it within that space, matching how HOD/Faculty fit theirs.
+            style={{ height: 40, width: 40 * LOGO_ASPECT, marginBottom: spacing.sm }}
+            resizeMode="contain"
+            accessibilityLabel="SVCE — Sri Venkateshwara College of Engineering"
+          />
           <Text style={styles.brandSubtitle}>Academic Management</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -135,19 +155,12 @@ const Sidebar = ({ navigation, activeScreen }) => {
         keyboardShouldPersistTaps="handled"
       >
         {NAV_ITEMS.map((item) => {
-          const active = item.screen === activeScreen;
+          const active = item.screen === activeScreen || item.matchScreens?.includes(activeScreen);
 
           return (
             <TouchableOpacity
               key={item.key}
-              onPress={() => {
-                console.log('[Sidebar] Navigating to:', item.screen);
-                try {
-                  navigation.navigate(item.screen);
-                } catch (error) {
-                  console.error('[Sidebar] Navigation error:', error);
-                }
-              }}
+              onPress={() => goTo(item.screen)}
               activeOpacity={0.7}
               style={[
                 styles.navItem,
@@ -242,23 +255,6 @@ const getStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
     borderBottomLeftRadius: radius.lg,
     borderBottomRightRadius: radius.lg,
-  },
-
-  brandIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-
-  brandTitle: {
-    ...typography.h3,
-    color: colors.white,
-    textAlign: 'center',
-    letterSpacing: 0.3,
   },
 
   brandSubtitle: {

@@ -152,6 +152,38 @@ export function normalizeDateString(input: string): string | null {
 }
 
 /**
+ * Combine a YYYY-MM-DD date string and an HH:MM time string into a local
+ * Date object. Returns null if either part is missing/malformed. Never use
+ * new Date(`${date}T${time}`) directly for this — on some engines a bare
+ * "YYYY-MM-DDTHH:MM" string without seconds/offset is parsed as UTC, which
+ * shifts the result by the local UTC offset.
+ */
+export function combineLocalDateTime(dateStr: string, timeStr: string): Date | null {
+  const date = parseLocalDate(dateStr);
+  if (!date) return null;
+  if (!timeStr || typeof timeStr !== 'string') return null;
+  const match = /^(\d{2}):(\d{2})$/.exec(timeStr);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  const combined = new Date(date);
+  combined.setHours(hours, minutes, 0, 0);
+  return combined;
+}
+
+/**
+ * True only if the given date+time is strictly after the current moment,
+ * evaluated fresh (never a value captured once at mount) — a meeting at
+ * exactly the current time is not "future", it's already happening/passed.
+ */
+export function isFutureDateTime(dateStr: string, timeStr: string): boolean {
+  const combined = combineLocalDateTime(dateStr, timeStr);
+  if (!combined) return false;
+  return combined.getTime() > Date.now();
+}
+
+/**
  * Get today's date as YYYY-MM-DD in local timezone
  */
 export function getTodayString(): string {

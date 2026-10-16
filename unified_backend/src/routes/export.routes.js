@@ -3,7 +3,8 @@ const exportController = require('../controllers/exportController');
 
 const router = express.Router();
 
-router.get('/preview', exportController.preview);
-router.post('/', exportController.exportData);
+// :entity is one of 'students' | 'faculty' | 'non-teaching-staff'
+router.get('/:entity/preview', exportController.preview);
+router.post('/:entity', exportController.exportData);
 
 module.exports = router;

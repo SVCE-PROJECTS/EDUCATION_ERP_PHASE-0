@@ -51,14 +51,14 @@ const StudentDetailsScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="StudentList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <LoadingIndicator fullscreen label="Loading student details..." />
       </ScreenLayout>
     );
   }
   if (isError || !student) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="StudentList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <EmptyState icon="alert-circle-outline" title="Student not found" />
       </ScreenLayout>
     );
@@ -71,7 +71,7 @@ const StudentDetailsScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="StudentList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
         <View>

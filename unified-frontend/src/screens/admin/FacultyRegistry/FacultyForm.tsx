@@ -8,7 +8,8 @@ import CustomDropdown from '../../../components/Dropdown/CustomDropdown';
 import CustomButton from '../../../components/Button/CustomButton';
 import InfoCard from '../../../components/Card/InfoCard';
 import { useDropdown } from '../../../hooks/admin/useDropdowns';
-import { colors, spacing, typography, radius } from '../../../theme';
+import { useTheme } from '../../../context/admin/ThemeContext';
+import { spacing, typography, radius } from '../../../theme';
 
 const DEFAULTS = {
   employeeId:     '',
@@ -33,7 +34,7 @@ const FACULTY_STATUSES = [
   { id: 'ON_LEAVE', name: 'On Leave' },
 ];
 
-const IconBadge = ({ name }) => (
+const IconBadge = ({ name, colors, styles }) => (
   <View style={styles.iconBadge}>
     <Icon source={name} size={18} color={colors.primary} />
   </View>
@@ -44,6 +45,8 @@ const FacultyForm = ({
   submitLabel = 'Save Faculty Data', submitting = false, continuing = false,
   breadcrumbLabel = 'Add Faculty', isEdit = false,
 }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const {
     control, handleSubmit, reset, formState: { errors },
   } = useForm({ defaultValues: initialValues || DEFAULTS });
@@ -71,7 +74,7 @@ const FacultyForm = ({
       </Text>
 
       {/* ── Personal Info ── */}
-      <InfoCard title="Personal Information" icon={<IconBadge name="account-outline" />}>
+      <InfoCard title="Personal Information" icon={<IconBadge name="account-outline" colors={colors} styles={styles} />}>
         <View style={styles.row}>
           <View style={styles.col}>
             <Controller
@@ -118,7 +121,7 @@ const FacultyForm = ({
       </InfoCard>
 
       {/* ── Professional Info ── */}
-      <InfoCard title="Professional Details" icon={<IconBadge name="briefcase-outline" />}>
+      <InfoCard title="Professional Details" icon={<IconBadge name="briefcase-outline" colors={colors} styles={styles} />}>
         <View style={styles.row}>
           <View style={styles.col}>
             <Controller
@@ -200,7 +203,7 @@ const FacultyForm = ({
       </InfoCard>
 
       {/* ── Login Credentials (hide password field on edit) ── */}
-      <InfoCard title="Login Credentials" icon={<IconBadge name="lock-outline" />}>
+      <InfoCard title="Login Credentials" icon={<IconBadge name="lock-outline" colors={colors} styles={styles} />}>
         <View style={styles.row}>
           <View style={styles.col}>
             <Controller
@@ -256,7 +259,7 @@ const FacultyForm = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   scrollView:       { flex: 1, width: '100%' },
   scrollContent:    { padding: spacing.lg, paddingBottom: spacing.xxl, flexGrow: 1 },
   heading:          { ...typography.h1, color: colors.textPrimary },

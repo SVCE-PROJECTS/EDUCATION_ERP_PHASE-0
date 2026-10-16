@@ -12,18 +12,18 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Linking,
 } from 'react-native';
 import { Calendar, Clock, MapPin, Users, CheckCircle, XCircle, AlertTriangle } from '../../components/faculty/icons';
 import ScreenWrapper from '../../layouts/faculty/ScreenWrapper';
-import { useMeetings, useUpdateAvailability } from '../../hooks/useMeetings';
+import { useMeetings, useUpdateAvailability, useDeleteMeeting } from '../../hooks/useMeetings';
 import { useAuth } from '../../context/faculty/AuthContext';
 import { useTheme } from '../../context/faculty/ThemeContext';
 import { shadows } from '../../theme/faculty/colors';
 import { ROUTES } from '../../navigation/faculty/routes';
 import { formatDateShort, format12Hour } from '../../utils/dateHelpers';
-import { showError } from '../../utils/confirmDialog';
+import { showError, confirmDelete } from '../../utils/confirmDialog';
+import Toast from '../../services/faculty/toast';
 import MeetingTypeSelector from '../../components/meeting/MeetingTypeSelector';
 import OfflineMeetingForm from '../../components/meeting/OfflineMeetingForm';
 
@@ -42,6 +42,7 @@ const STATUS_COLORS = {
   in_progress: { bg: '#DBEAFE', text: '#2563EB' },
   completed: { bg: '#F3E8FF', text: '#9333EA' },
   cancelled: { bg: '#F1F5F9', text: '#64748B' },
+  missed: { bg: '#FEE2E2', text: '#B91C1C' },
 };
 
 const STATUS_LABELS = {
@@ -52,6 +53,19 @@ const STATUS_LABELS = {
   in_progress: 'In Progress',
   completed: 'Completed',
   cancelled: 'Cancelled',
+  missed: 'Missed',
+};
+
+// A confirmed online meeting whose scheduled end time has already passed
+// without it ever being started — it never happened. Surfaced under the
+// "Pending" filter so these don't just silently sit as "Confirmed" forever.
+const isMissedMeeting = (meeting: any) => {
+  if (meeting.meeting_type !== 'online' || meeting.status !== 'confirmed') return false;
+  if (!meeting.scheduled_date || !meeting.start_time) return false;
+  const start = new Date(`${meeting.scheduled_date}T${meeting.start_time}:00`);
+  if (Number.isNaN(start.getTime())) return false;
+  const end = new Date(start.getTime() + (Number(meeting.duration_minutes) || 0) * 60000);
+  return end.getTime() < Date.now();
 };
 
 const AVAILABILITY_COLORS = {
@@ -61,7 +75,10 @@ const AVAILABILITY_COLORS = {
   tentative: { bg: '#FEF3C7', text: '#D97706' },
 };
 
-export default function Meetings({ navigation }: { navigation: any }) {
+// embedded: true when rendered as a tab inside the combined My Schedules /
+// Meetings screen (skips its own ScreenWrapper, since the parent already
+// provides one).
+export default function Meetings({ navigation, embedded = false }: { navigation: any; embedded?: boolean }) {
   const { colors } = useTheme();
   const { user } = useAuth();
 
@@ -69,47 +86,81 @@ export default function Meetings({ navigation }: { navigation: any }) {
   const [meetingType, setMeetingType] = useState<'online' | 'offline'>('online');
   const [showOfflineForm, setShowOfflineForm] = useState(false);
 
-  // Fetch meetings for faculty's department
+  // Fetch meetings for faculty's department — status filtering now happens
+  // client-side (see filteredMeetings) so the "Pending" tab can also surface
+  // missed meetings, which the backend has no "status" value for.
   const { data: meetings = [], isLoading, error } = useMeetings({
-    status: statusFilter === 'all' ? undefined : statusFilter,
     department_code: user?.departmentCode,
     meeting_type: meetingType,
   });
 
   const { mutateAsync: updateAvailability, isPending: isUpdatingAvailability } = useUpdateAvailability();
+  const { mutateAsync: deleteMeeting } = useDeleteMeeting();
 
   const handleCreateMeeting = () => {
     if (meetingType === 'offline') setShowOfflineForm(true);
     else navigation.navigate(ROUTES.CREATE_MEETING);
   };
 
-  const filteredMeetings = useMemo(() => {
-    return [...meetings]
-      .map((meeting) => ({
-        ...meeting,
-        status: normalizeMeetingStatus(meeting.status),
-      }))
-      .sort((a, b) => {
-        if (a.scheduled_date !== b.scheduled_date) {
-          return b.scheduled_date.localeCompare(a.scheduled_date);
+  const handleEditMeeting = (meeting: any) => {
+    navigation.navigate(ROUTES.EDIT_MEETING, { meetingId: meeting.meeting_id });
+  };
+
+  const handleDeleteMeeting = (meeting: any) => {
+    confirmDelete(
+      'Delete Meeting',
+      `Delete "${meeting.title}"? This action cannot be undone.`,
+      async () => {
+        try {
+          await deleteMeeting(meeting.meeting_id);
+          Toast.show({ type: 'success', text1: 'Meeting deleted successfully' });
+        } catch (error: any) {
+          showError('Error', error.message || 'Failed to delete meeting');
         }
-        const statusPriority = {
-          pending_approval: 1,
-          confirmed: 2,
-          approved: 2,
-          in_progress: 3,
-          completed: 4,
-          rejected: 5,
-          cancelled: 6,
-        };
-        return (statusPriority[a.status] || 99) - (statusPriority[b.status] || 99);
+      }
+    );
+  };
+
+  const filteredMeetings = useMemo(() => {
+    const withMissedFlag = meetings.map((meeting) => ({
+      ...meeting,
+      missed: isMissedMeeting(meeting),
+      status: normalizeMeetingStatus(meeting.status),
+    }));
+
+    const filtered = statusFilter === 'all'
+      ? withMissedFlag
+      : withMissedFlag.filter((meeting) => {
+        if (statusFilter === 'pending_approval') {
+          return meeting.status === 'pending_approval' || meeting.missed;
+        }
+        if (statusFilter === 'confirmed' || statusFilter === 'approved') {
+          return meeting.status === 'confirmed' && !meeting.missed;
+        }
+        return meeting.status === statusFilter;
       });
-  }, [meetings]);
+
+    return [...filtered].sort((a, b) => {
+      if (a.scheduled_date !== b.scheduled_date) {
+        return b.scheduled_date.localeCompare(a.scheduled_date);
+      }
+      const statusPriority = {
+        pending_approval: 1,
+        confirmed: 2,
+        approved: 2,
+        in_progress: 3,
+        completed: 4,
+        rejected: 5,
+        cancelled: 6,
+      };
+      return (statusPriority[a.status] || 99) - (statusPriority[b.status] || 99);
+    });
+  }, [meetings, statusFilter]);
 
   const handleUpdateAvailability = async (meetingId: number, status: string) => {
     try {
       await updateAvailability({ id: meetingId, status });
-      Alert.alert('Success', 'Availability updated successfully');
+      Toast.show({ type: 'success', text1: 'Availability updated successfully' });
     } catch (error: any) {
       showError('Error', error.message || 'Failed to update availability');
     }
@@ -149,6 +200,8 @@ export default function Meetings({ navigation }: { navigation: any }) {
     const participantData = meeting.participants?.find((p: any) => String(p.participant_user_id ?? p.participant_id ?? p.user_id ?? '') === String(user?.id ?? ''));
     const canRespond = isParticipant && (normalizedStatus === 'approved' || normalizedStatus === 'confirmed') &&
       (participantData?.availability_status === 'pending' || !participantData?.availability_status);
+    const isCreator = String(meeting.created_by_employee_id ?? meeting.created_by ?? '') === String(user?.id ?? '');
+    const canEdit = isCreator && !['completed', 'cancelled'].includes(normalizedStatus);
 
     return (
       <View
@@ -163,7 +216,7 @@ export default function Meetings({ navigation }: { navigation: any }) {
           </View>
 
           <View style={s.badgeRow}>
-            {getStatusBadge(normalizedStatus)}
+            {getStatusBadge(meeting.missed ? 'missed' : normalizedStatus)}
             {isParticipant && participantData && (
               getAvailabilityBadge(participantData.availability_status)
             )}
@@ -210,12 +263,32 @@ export default function Meetings({ navigation }: { navigation: any }) {
             </Text>
           )}
 
-          <TouchableOpacity
-            style={[s.detailsButton, { borderColor: colors.border }]}
-            onPress={() => navigation.navigate(ROUTES.MEETING_DETAILS, { meetingId: meeting.meeting_id })}
-          >
-            <Text style={[s.detailsButtonText, { color: colors.primary }]}>View details</Text>
-          </TouchableOpacity>
+          <View style={s.cardActions}>
+            <TouchableOpacity
+              style={[s.detailsButton, { borderColor: colors.border }]}
+              onPress={() => navigation.navigate(ROUTES.MEETING_DETAILS, { meetingId: meeting.meeting_id })}
+            >
+              <Text style={[s.detailsButtonText, { color: colors.primary }]}>View details</Text>
+            </TouchableOpacity>
+
+            {canEdit && (
+              <TouchableOpacity
+                style={[s.detailsButton, { borderColor: colors.primary }]}
+                onPress={() => handleEditMeeting(meeting)}
+              >
+                <Text style={[s.detailsButtonText, { color: colors.primary }]}>Edit</Text>
+              </TouchableOpacity>
+            )}
+
+            {isCreator && (
+              <TouchableOpacity
+                style={[s.detailsButton, { borderColor: '#DC2626' }]}
+                onPress={() => handleDeleteMeeting(meeting)}
+              >
+                <Text style={[s.detailsButtonText, { color: '#DC2626' }]}>Delete</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {canRespond && (
             <View style={s.responseSection}>
@@ -251,16 +324,15 @@ export default function Meetings({ navigation }: { navigation: any }) {
             </View>
           )}
 
-          {meeting.meeting_type !== 'offline' && meeting.meeting_url && normalizedStatus === 'in_progress' && (
+          {meeting.meeting_type !== 'offline' && (meeting.effective_meeting_url || meeting.meeting_url) && normalizedStatus === 'in_progress' && (
             <TouchableOpacity
               style={[s.joinButton, { backgroundColor: colors.primary }]}
               onPress={() => {
-                if (meeting.meeting_url) {
-                  Linking.openURL(meeting.meeting_url);
-                }
+                const url = meeting.effective_meeting_url || meeting.meeting_url;
+                if (url) Linking.openURL(url);
               }}
             >
-              <Text style={s.joinButtonText}>Join Meeting</Text>
+              <Text style={s.joinButtonText}>{meeting.external_meeting_url ? 'Open Meeting Link' : 'Join Meeting'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -268,8 +340,7 @@ export default function Meetings({ navigation }: { navigation: any }) {
     );
   };
 
-  return (
-    <ScreenWrapper route={ROUTES.MEETINGS} scrollable={false}>
+  const content = (
       <View style={s.container}>
         {/* Header */}
         <View style={s.header}>
@@ -297,9 +368,10 @@ export default function Meetings({ navigation }: { navigation: any }) {
           <>
             {/* Status Filter - Only show for the selected meeting type */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterContainer}>
+              {/* Offline meetings never go through approval, so there's no
+                  "Pending" state for them to filter by. */}
               {(meetingType === 'offline' ? [
                 { key: 'all', label: 'All' },
-                { key: 'pending', label: 'Pending' },
                 { key: 'confirmed', label: 'Confirmed' },
                 { key: 'in_progress', label: 'Active' },
                 { key: 'completed', label: 'Completed' }
@@ -353,15 +425,8 @@ export default function Meetings({ navigation }: { navigation: any }) {
                       : `No ${statusFilter} ${meetingType} meetings found`
                     }
                   </Text>
-                  {meetingType === 'offline' && (
-                    <TouchableOpacity
-                      style={[s.emptyButton, { backgroundColor: colors.primary }]}
-                      onPress={() => setShowOfflineForm(true)}
-                    >
-                      <Calendar size={20} color="#FFFFFF" />
-                      <Text style={[s.emptyButtonText, { color: '#FFFFFF' }]}>Arrange Offline Meeting</Text>
-                    </TouchableOpacity>
-                  )}
+                  {/* The header already has an "Arrange Offline" button —
+                      no second one here to avoid showing the same action twice. */}
                 </View>
               ) : (
                 <View style={s.meetingsList}>
@@ -372,6 +437,13 @@ export default function Meetings({ navigation }: { navigation: any }) {
           </>
         )}
       </View>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenWrapper route={ROUTES.MEETINGS} scrollable={false}>
+      {content}
     </ScreenWrapper>
   );
 }
@@ -413,7 +485,8 @@ const s = StyleSheet.create({
   filterText: { fontSize: 12, fontWeight: '600' },
   createButton: { minHeight: 36, paddingHorizontal: 14, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   createButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  detailsButton: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, marginTop: 8 },
+  cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  detailsButton: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 },
   detailsButtonText: { fontSize: 12, fontWeight: '600' },
 
   scrollView: { flex: 1 },
@@ -427,19 +500,6 @@ const s = StyleSheet.create({
   errorText: { fontSize: 16, marginTop: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '600', marginTop: 16 },
   emptySubtitle: { fontSize: 14, marginTop: 8, textAlign: 'center' },
-  emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  emptyButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
 
   meetingsList: { gap: 12 },
 

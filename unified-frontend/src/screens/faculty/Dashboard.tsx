@@ -9,7 +9,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ClipboardList, Award, User, ChevronRight, LayoutDashboard, CalendarClock } from '../../components/faculty/icons';
+import { ClipboardList, Award, ChevronRight, CalendarClock } from '../../components/faculty/icons';
 import { MiniCalendar, SchedulePopup, ScheduleFormModal } from '../../components/calendar';
 import { useMonthSchedules } from '../../hooks/useSchedules';
 import { Schedule } from '../../services/schedule.service';
@@ -20,9 +20,10 @@ import { useTheme } from '../../context/faculty/ThemeContext';
 import ScreenWrapper from '../../layouts/faculty/ScreenWrapper';
 import SimpleBarChart from '../../components/faculty/ui/SimpleBarChart';
 import ClassAttendanceChart from '../../components/faculty/ui/ClassAttendanceChart';
-import RoleNotifications from '../../components/faculty/ui/RoleNotifications';
-import MeetingReminders from '../../components/meeting/MeetingReminders';
-import api from '../../services/faculty/api';
+import NotificationBell from '../../components/meeting/NotificationBell';
+import Avatar from '../../components/faculty/ui/Avatar';
+import api, { resolveFileUrl } from '../../services/faculty/api';
+import { activityLogService } from '../../services/faculty/activityLog.service';
 import { colors, shadows, primaryScale, ThemeColors } from '../../theme/faculty/colors';
 import { ROUTES } from '../../navigation/faculty/routes';
 
@@ -77,18 +78,6 @@ function ManagementCard({ title, description, icon: Icon, color, route, stat, st
   );
 }
 
-function QuickAction({ icon: Icon, label, color, onPress, s }: { icon: React.ComponentType<{ size?: number; color?: string }>; label: string; color: TileColor; onPress: () => void; s: ReturnType<typeof getStyles> }) {
-  const c = COLOR_MAP[color];
-  return (
-    <TouchableOpacity style={s.quickAction} onPress={onPress} activeOpacity={0.75}>
-      <View style={[s.quickActionIcon, { backgroundColor: c.light, borderColor: c.border }]}>
-        <Icon size={18} color={c.icon} />
-      </View>
-      <Text style={s.quickActionLabel} numberOfLines={1}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 export default function Dashboard() {
   const { user } = useAuth();
   const { colors: theme } = useTheme();
@@ -102,6 +91,13 @@ export default function Dashboard() {
   const [formVisible, setFormVisible] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [formDate, setFormDate] = useState<string | undefined>(undefined);
+
+  const { data: recentActivityLogs, isLoading: loadingActivityLogs, isError: activityLogsError } = useQuery({
+    queryKey: ['my-activity-log'],
+    queryFn: () => activityLogService.getMyLogs({ page: 1, pageSize: 5 }),
+    staleTime: 60_000,
+    retry: 1,
+  });
 
   const today = React.useMemo(
     () => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
@@ -178,17 +174,6 @@ export default function Dashboard() {
       stat: stats.iaAverage !== undefined ? `${stats.iaAverage}` : '—',
       statLabel: 'avg score',
     },
-    {
-      title: 'My Profile',
-      description: 'View your profile details and assigned roles',
-      icon: User, color: 'amber', route: ROUTES.MY_PROFILE,
-    },
-  ];
-
-  const quickActions: { key: string; label: string; icon: React.ComponentType<{ size?: number; color?: string }>; color: TileColor; route: string }[] = [
-    { key: 'assignments', label: 'Assignments', icon: ClipboardList, color: 'indigo', route: ROUTES.ASSIGNMENTS },
-    { key: 'ia-marks', label: 'IA Marks', icon: Award, color: 'purple', route: ROUTES.IA_MARKS },
-    { key: 'profile', label: 'My Profile', icon: User, color: 'amber', route: ROUTES.MY_PROFILE },
   ];
 
   // Transform class attendance data for chart
@@ -206,8 +191,10 @@ export default function Dashboard() {
     }));
   }, [classAttendanceData]);
 
+  // title="" suppresses the generic Topbar title — the greeting banner
+  // below already carries the page's identity.
   return (
-    <ScreenWrapper route={ROUTES.FACULTY_DASHBOARD}>
+    <ScreenWrapper route={ROUTES.FACULTY_DASHBOARD} title="">
 
       {/* Gradient greeting header */}
       <LinearGradient
@@ -233,15 +220,24 @@ export default function Dashboard() {
             <CalendarClock size={26} color={colors.white} />
           </TouchableOpacity>
           <View style={s.headerIconWrap}>
-            <LayoutDashboard size={26} color={colors.white} />
+            <NotificationBell
+              colors={theme}
+              onViewMeeting={(meetingId) => navigation.navigate(ROUTES.MEETING_DETAILS, { meetingId })}
+              activities={recentActivityLogs?.data || []}
+              activitiesLoading={loadingActivityLogs}
+              activitiesError={activityLogsError}
+              iconColor={colors.white}
+            />
           </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate(ROUTES.MY_PROFILE)}
+            activeOpacity={0.75}
+            accessibilityLabel="My Profile"
+          >
+            <Avatar src={resolveFileUrl(user?.photoUrl)} name={user?.name} size="md" />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
-
-      <MeetingReminders
-        colors={theme}
-        onOpenMeeting={(meetingId) => navigation.navigate(ROUTES.MEETING_DETAILS, { meetingId })}
-      />
 
       {/* Calendar popover — transparent Modal so tapping outside closes it */}
       <Modal
@@ -313,39 +309,6 @@ export default function Dashboard() {
         </ScrollView>
       )}
 
-      {/* Quick Actions */}
-      <View style={s.quickActionsCard}>
-        <Text style={s.sectionLabel}>QUICK ACTIONS</Text>
-        <View style={s.quickActionsRow}>
-          {quickActions.map((action) => (
-            <QuickAction
-              key={action.key}
-              icon={action.icon}
-              label={action.label}
-              color={action.color}
-              onPress={() => navigation.navigate(action.route)}
-              s={s}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* Role notifications */}
-      <RoleNotifications roles={user?.roles} />
-
-      {/* Recent activity */}
-      {!isLoading && stats.recentActivities?.length > 0 && (
-        <View style={s.activityCard}>
-          <Text style={s.activityTitle}>Recent Activity</Text>
-          {stats.recentActivities.map((act: string, i: number) => (
-            <View key={i} style={s.activityRow}>
-              <View style={s.activityDot} />
-              <Text style={s.activityText}>{act}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
       {/* Schedule Popup */}
       <SchedulePopup
         visible={popupVisible}
@@ -411,24 +374,6 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   mgmtStatLabel: { fontSize: 12, color: theme.textSecondary },
   skeleton: { height: 160, backgroundColor: theme.border, borderRadius: 20 },
 
-  quickActionsCard: {
-    backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border,
-    borderRadius: 20, padding: 20, gap: 12, ...shadows.card,
-  },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: theme.textSecondary, letterSpacing: 0.6 },
-  quickActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  quickAction: {
-    flexGrow: 1, minWidth: 140, flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.primarySoft,
-  },
-  quickActionIcon: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  quickActionLabel: { fontSize: 13, fontWeight: '600', color: theme.textPrimary, flexShrink: 1 },
-
-  activityCard: { backgroundColor: theme.surface, borderRadius: 20, borderWidth: 1, borderColor: theme.border, padding: 20, gap: 10, ...shadows.card },
-  activityTitle: { fontSize: 14, fontWeight: '600', color: theme.textPrimary },
-  activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  activityDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: primaryScale[400], marginTop: 6 },
-  activityText: { flex: 1, fontSize: 12, color: theme.textSecondary, lineHeight: 18 },
 });
 
 // Popover styles — module-level so they don't depend on theme

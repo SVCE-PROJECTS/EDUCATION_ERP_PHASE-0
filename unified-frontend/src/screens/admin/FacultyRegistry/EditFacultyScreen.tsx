@@ -17,14 +17,14 @@ const EditFacultyScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="FacultyList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <LoadingIndicator fullscreen label="Loading faculty details..." />
       </ScreenLayout>
     );
   }
   if (isError || !faculty) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="FacultyList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <EmptyState icon="alert-circle-outline" title="Faculty member not found" />
       </ScreenLayout>
     );
@@ -43,7 +43,7 @@ const EditFacultyScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="FacultyList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
       <View style={styles.container}>
         <FacultyForm
           breadcrumbLabel="Edit Faculty"

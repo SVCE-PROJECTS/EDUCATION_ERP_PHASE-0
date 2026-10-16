@@ -27,6 +27,7 @@ export const BookOpen       = makeIcon('book-open-variant');
 export const Briefcase      = makeIcon('briefcase');
 export const Building2      = makeIcon('office-building');
 export const Calendar       = makeIcon('calendar');
+export const ChartBar       = makeIcon('chart-bar');
 export const CalendarMonth  = makeIcon('calendar-month');
 export const CheckCircle    = makeIcon('check-circle-outline');
 export const Edit           = makeIcon('pencil-outline');

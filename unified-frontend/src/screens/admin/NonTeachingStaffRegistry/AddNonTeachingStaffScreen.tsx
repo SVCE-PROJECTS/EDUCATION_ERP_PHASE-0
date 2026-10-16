@@ -35,7 +35,7 @@ const AddNonTeachingStaffScreen = ({ navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="NonTeachingStaffList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
       <View style={styles.container}>
         <NonTeachingStaffForm
           breadcrumbLabel="Add Staff Member"

@@ -30,6 +30,7 @@ import {
 } from '../../../hooks/useMeetings';
 import { useAuth } from '../../../context/admin/AuthContext';
 import { useTheme } from '../../../context/admin/ThemeContext';
+import { showError, showSuccess } from '../../../utils/confirmDialog';
 import { shadows, spacing, radius } from '../../../theme';
 import { formatDateShort, formatDateLong, format12Hour } from '../../../utils/dateHelpers';
 
@@ -61,7 +62,6 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
   // Meeting Summary State
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [summary, setSummary] = useState('');
-  const [attendedCount, setAttendedCount] = useState('');
   const [isSavingSummary, setIsSavingSummary] = useState(false);
 
   // Initialize summary from existing minutes
@@ -74,9 +74,9 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
   const handleApprove = async (action: 'approve' | 'reject') => {
     try {
       await approveMeeting({ id: meetingId, action });
-      Alert.alert('Success', `Meeting ${action}d successfully`);
+      showSuccess('Success', `Meeting ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
     } catch (error: any) {
-      Alert.alert('Error', error.message || `Failed to ${action} meeting`);
+      showError('Error', error.message || `Failed to ${action} meeting`);
     }
   };
 
@@ -85,8 +85,9 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
     try {
       const result = await startMeeting(meetingId);
 
-      // Open Jitsi meeting in new tab/window
-      const meetingUrl = result.meeting_url || meeting?.meeting_url;
+      // Open the effective meeting link (external link if the creator
+      // supplied one, otherwise the generated Jitsi URL)
+      const meetingUrl = result.effective_meeting_url || result.meeting_url || meeting?.effective_meeting_url || meeting?.meeting_url;
       if (meetingUrl) {
         if (Platform.OS === 'web') {
           window.open(meetingUrl, '_blank', 'noopener,noreferrer');
@@ -97,19 +98,19 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
             { text: 'OK' }
           ]);
         }
-        Alert.alert('Success', 'Meeting started successfully and opened in new tab');
+        showSuccess('Success', 'Meeting started successfully and opened in new tab');
       } else {
-        Alert.alert('Meeting Started', 'Meeting status updated to In Progress');
+        showSuccess('Meeting Started', 'Meeting status updated to In Progress');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to start meeting');
+      showError('Error', error.message || 'Failed to start meeting');
     }
   };
 
   const handleOpenMeetingLink = () => {
-    const meetingUrl = meeting?.meeting_url;
+    const meetingUrl = meeting?.effective_meeting_url || meeting?.meeting_url;
     if (!meetingUrl) {
-      Alert.alert('No Meeting URL', 'Meeting URL not available');
+      showError('No Meeting URL', 'Meeting URL not available');
       return;
     }
 
@@ -126,36 +127,32 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
   const handleCompleteMeeting = async () => {
     try {
       await completeMeeting(meetingId);
-      Alert.alert('Success', 'Meeting marked as completed');
+      showSuccess('Success', 'Meeting marked as completed');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to complete meeting');
+      showError('Error', error.message || 'Failed to complete meeting');
     }
   };
 
   const handleSaveSummary = async () => {
     if (!summary.trim()) {
-      Alert.alert('Validation Error', 'Please enter a meeting summary');
+      showError('Validation Error', 'Please enter a meeting summary');
       return;
     }
 
     setIsSavingSummary(true);
     try {
-      // Prepare attendees data if we have attendance tracking
-      const attendeesData = meetingMinutes?.attendees?.map(participant => ({
-        participant_id: participant.participant_id,
-        status: 'present' // For now, default to present; can be enhanced later
-      })) || [];
-
+      // No real attendance-tracking mechanism exists for meetings, so this
+      // no longer invents a "present" status for every participant — the
+      // summary itself (content) is the only thing actually being recorded.
       await saveMeetingMinutes({
         id: meetingId,
         content: summary.trim(),
-        attendees: attendeesData
       });
 
-      Alert.alert('Success', 'Meeting summary saved successfully');
+      showSuccess('Success', 'Meeting summary saved successfully');
       setShowSummaryModal(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save meeting summary');
+      showError('Error', error.message || 'Failed to save meeting summary');
     } finally {
       setIsSavingSummary(false);
     }
@@ -177,9 +174,9 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
               documentType: 'attachment',
               description: 'Meeting attachment'
             });
-            Alert.alert('Success', 'File uploaded successfully');
+            showSuccess('Success', 'File uploaded successfully');
           } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to upload file');
+            showError('Error', error.message || 'Failed to upload file');
           }
         }
       };
@@ -189,16 +186,11 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
     }
   };
 
-  const getCreatorDisplay = () => {
-    if (meeting?.created_by_name) {
-      return meeting.created_by_name;
-    }
-    // If no name but we know it's admin
-    if (user?.role === 'admin' && (!meeting?.created_by_name || meeting.created_by_name === 'Unknown')) {
-      return user.name || 'Admin';
-    }
-    return 'Unknown User';
-  };
+  // The backend now resolves created_by_name for every requester (faculty,
+  // HOD, or admin — via COALESCE(f.name, u.username)), so a missing value
+  // here means the creator record genuinely can't be resolved (e.g. a
+  // deleted account) — never substitute the current viewer's own name.
+  const getCreatorDisplay = () => meeting?.created_by_name || 'Creator unavailable';
 
   const getStatusBadge = (status: string) => {
     const statusColors = STATUS_COLORS[status] || { bg: '#F1F5F9', text: '#64748B' };
@@ -236,7 +228,13 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
     );
   }
 
-  const canApprove = meeting.status === 'pending_approval';
+  // Admin is not a blanket approver for every meeting — only for the ones
+  // where Admin is the actual designated approver (e.g. HOD -> Admin
+  // submissions). A Faculty -> HOD submission's approver is the HOD, and
+  // must stay theirs to decide.
+  const canApprove = meeting.status === 'pending_approval' && meeting.approvals?.some(
+    (approval: any) => approval.approval_status === 'pending' && String(approval.approver_user_id ?? '') === String(user?.id ?? '')
+  );
   const canStart = meeting.status === 'confirmed' && meeting.meeting_type !== 'offline';
   const canComplete = meeting.status === 'in_progress';
 
@@ -319,13 +317,13 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
               </Text>
             </View>
 
-            {meeting.meeting_url && (
+            {(meeting.effective_meeting_url || meeting.meeting_url) && (
               <View style={s.infoRow}>
                 <Icon source="video" size={20} color={colors.textMuted} />
                 <Text style={[s.infoLabel, { color: colors.textMuted }]}>Meeting Link</Text>
                 <TouchableOpacity onPress={handleOpenMeetingLink}>
                   <Text style={[s.linkText, { color: colors.primary }]}>
-                    Click to open Jitsi meeting
+                    {meeting.external_meeting_url ? 'Open meeting link' : 'Click to open Jitsi meeting'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -557,16 +555,12 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
                   </View>
                   <View style={s.statItem}>
                     <Text style={[s.statLabel, { color: colors.textMuted }]}>Attended:</Text>
-                    <TextInput
-                      value={attendedCount}
-                      onChangeText={setAttendedCount}
-                      placeholder="0"
-                      keyboardType="numeric"
-                      style={s.statInput}
-                      mode="outlined"
-                      dense
-                      theme={{ colors: { primary: colors.primary } }}
-                    />
+                    {/* No attendance-tracking mechanism exists for meetings
+                        (only student class attendance does) — show that
+                        honestly instead of a number nothing ever saves. */}
+                    <Text style={[s.statValue, { color: colors.textMuted, fontStyle: 'italic' }]}>
+                      Attendance not recorded
+                    </Text>
                   </View>
                 </View>
               </View>

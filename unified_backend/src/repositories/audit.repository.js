@@ -164,4 +164,103 @@ const findByActor = async ({
   };
 };
 
-module.exports = { create, log, findAll, findByActor };
+/**
+ * Admin Activity Log feed — audit_logs (CRUD on students/transfers/faculty/
+ * admin users) merged with meeting_notifications (invites, offline meeting
+ * arrangements, etc.), so the admin sees one combined chronological feed
+ * instead of needing to check two separate places. HOD's department-scoped
+ * view and the "my own actions" view are untouched — this merge is specific
+ * to the admin-only Activity Log screen.
+ *
+ * `module: 'meeting'` selects only the meeting_notifications branch; the
+ * other module values only ever appear on the audit_logs branch, so a plain
+ * module filter naturally scopes to the right source.
+ */
+const findAllCombined = async ({
+  page = 1, pageSize = 25,
+  module: moduleFilter, action, dateFrom, dateTo,
+} = {}) => {
+  const limit  = Math.min(Math.max(Number(pageSize) || 25, 1), 100);
+  const offset = (Math.max(Number(page) || 1, 1) - 1) * limit;
+
+  const includeAudit = !moduleFilter || moduleFilter !== 'meeting';
+  const includeNotifications = !moduleFilter || moduleFilter === 'meeting';
+
+  // One running placeholder index shared across both branches — they're
+  // concatenated into a single SQL statement, so $N must be globally unique,
+  // not per-branch. Only branches that are actually included consume params.
+  const params = [];
+  let idx = 1;
+
+  const auditConditions = [];
+  if (includeAudit) {
+    if (action)   { auditConditions.push(`a.action = $${idx++}`);      params.push(action); }
+    if (dateFrom) { auditConditions.push(`a.created_at >= $${idx++}`); params.push(dateFrom); }
+    if (dateTo)   { auditConditions.push(`a.created_at <= $${idx++}`); params.push(dateTo); }
+    if (moduleFilter) { auditConditions.push(`a.module = $${idx++}`); params.push(moduleFilter); }
+  }
+  const auditWhere = auditConditions.length ? `WHERE ${auditConditions.join(' AND ')}` : '';
+
+  const notifConditions = [];
+  if (includeNotifications) {
+    if (action)   { notifConditions.push(`mn.notification_type = $${idx++}`); params.push(action); }
+    if (dateFrom) { notifConditions.push(`mn.created_at >= $${idx++}`);       params.push(dateFrom); }
+    if (dateTo)   { notifConditions.push(`mn.created_at <= $${idx++}`);       params.push(dateTo); }
+  }
+  const notifWhere = notifConditions.length ? `WHERE ${notifConditions.join(' AND ')}` : '';
+
+  const auditBranch = `
+    SELECT
+      'audit-' || a.audit_id AS id,
+      a.module,
+      a.action,
+      a.record_id  AS "recordId",
+      NULL::text   AS message,
+      COALESCE(u.username, pf.name) AS "performedBy",
+      a.created_at AS "createdAt"
+    FROM audit_logs a
+    LEFT JOIN users   u  ON u.user_id      = a.user_id
+    LEFT JOIN faculty pf ON pf.employee_id = a.performed_by_employee_id
+    ${auditWhere}
+  `;
+
+  const notifBranch = `
+    SELECT
+      'notif-' || mn.notification_id AS id,
+      'meeting' AS module,
+      mn.notification_type AS action,
+      mn.meeting_id::text AS "recordId",
+      mn.message AS message,
+      COALESCE(rf.name, ru.username) AS "performedBy",
+      mn.created_at AS "createdAt"
+    FROM meeting_notifications mn
+    LEFT JOIN faculty rf ON rf.employee_id = mn.recipient_employee_id
+    LEFT JOIN users   ru ON ru.user_id     = mn.recipient_user_id
+    ${notifWhere}
+  `;
+
+  const branches = [];
+  if (includeAudit) branches.push(auditBranch);
+  if (includeNotifications) branches.push(notifBranch);
+  const unionSql = branches.map((b) => `(${b})`).join(' UNION ALL ');
+
+  const limitIdx = params.length + 1;
+  const offsetIdx = params.length + 2;
+
+  const [countResult, dataResult] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS total FROM (${unionSql}) combined`, params),
+    query(
+      `SELECT * FROM (${unionSql}) combined ORDER BY "createdAt" DESC LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      [...params, limit, offset],
+    ),
+  ]);
+
+  return {
+    rows:  dataResult.rows,
+    total: countResult.rows[0]?.total || 0,
+  };
+};
+
+module.exports = {
+  create, log, findAll, findByActor, findAllCombined,
+};

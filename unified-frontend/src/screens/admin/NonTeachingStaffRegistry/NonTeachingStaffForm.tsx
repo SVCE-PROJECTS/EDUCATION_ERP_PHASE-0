@@ -8,7 +8,8 @@ import CustomDropdown from '../../../components/Dropdown/CustomDropdown';
 import CustomButton from '../../../components/Button/CustomButton';
 import InfoCard from '../../../components/Card/InfoCard';
 import { useDropdown } from '../../../hooks/admin/useDropdowns';
-import { colors, spacing, typography, radius } from '../../../theme';
+import { useTheme } from '../../../context/admin/ThemeContext';
+import { spacing, typography, radius } from '../../../theme';
 
 const DEFAULTS = {
   employeeId:    '',
@@ -29,7 +30,7 @@ const STAFF_STATUSES = [
   { id: 'ON_LEAVE', name: 'On Leave' },
 ];
 
-const IconBadge = ({ name }) => (
+const IconBadge = ({ name, colors, styles }) => (
   <View style={styles.iconBadge}>
     <Icon source={name} size={18} color={colors.primary} />
   </View>
@@ -40,6 +41,8 @@ const NonTeachingStaffForm = ({
   submitLabel = 'Save Staff Data', submitting = false, continuing = false,
   breadcrumbLabel = 'Add Staff Member',
 }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const {
     control, handleSubmit, reset, formState: { errors },
   } = useForm({ defaultValues: initialValues || DEFAULTS });
@@ -70,7 +73,7 @@ const NonTeachingStaffForm = ({
       </Text>
 
       {/* ── Personal Info ── */}
-      <InfoCard title="Personal Information" icon={<IconBadge name="account-outline" />}>
+      <InfoCard title="Personal Information" icon={<IconBadge name="account-outline" colors={colors} styles={styles} />}>
         <View style={styles.row}>
           <View style={styles.col}>
             <Controller
@@ -117,7 +120,7 @@ const NonTeachingStaffForm = ({
       </InfoCard>
 
       {/* ── Employment Info ── */}
-      <InfoCard title="Employment Details" icon={<IconBadge name="domain" />}>
+      <InfoCard title="Employment Details" icon={<IconBadge name="domain" colors={colors} styles={styles} />}>
         <View style={styles.row}>
           <View style={styles.col}>
             <Controller
@@ -199,7 +202,7 @@ const NonTeachingStaffForm = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   scrollView:       { flex: 1, width: '100%' },
   scrollContent:    { padding: spacing.lg, paddingBottom: spacing.xxl, flexGrow: 1 },
   heading:          { ...typography.h1, color: colors.textPrimary },

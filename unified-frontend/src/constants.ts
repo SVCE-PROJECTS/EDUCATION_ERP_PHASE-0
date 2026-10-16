@@ -32,6 +32,15 @@ export const STATUS_COLOR_KEY = {
 
 export const PAGE_SIZE = 20;
 
+// Fixed, shared venue list for offline meetings across all 3 portals.
+// Temporary placeholder set until the college provides a real room directory.
+export const OFFLINE_MEETING_VENUES = [
+  'Project Room 1',
+  'Meeting Room 2',
+  'Project Room 3',
+  'Project Room 4',
+];
+
 export const EXPORT_FORMATS = {
   EXCEL: 'excel',
   PDF: 'pdf',

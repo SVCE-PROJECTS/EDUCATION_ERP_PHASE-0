@@ -22,6 +22,9 @@ import FacultyAllocation     from '../../screens/hod/FacultyAllocation';
 import ActivityLog           from '../../screens/hod/ActivityLog';
 import MySchedules           from '../../screens/hod/MySchedules';
 import MeetingManagement     from '../../screens/hod/MeetingManagement';
+import HODAnalytics          from '../../screens/hod/Analytics';
+import DataAndManagement     from '../../screens/hod/DataAndManagement';
+import SchedulesAndMeetings  from '../../screens/hod/SchedulesAndMeetings';
 
 // Meeting Management Screens
 import CreateMeetingScreen   from '../../screens/hod/meeting/CreateMeetingScreen';
@@ -107,14 +110,35 @@ function HODDrawerNav() {
       }}
     >
       <Drawer.Screen name={ROUTES.HOD_DASHBOARD}        component={HODDashboard} />
-      <Drawer.Screen name={ROUTES.HOD_FACULTY}          component={FacultyManagement} />
-      <Drawer.Screen name={ROUTES.HOD_STUDENTS}         component={StudentManagement} />
-      <Drawer.Screen name={ROUTES.HOD_COORDINATORS}     component={CoordinatorManagement} />
+      <Drawer.Screen name={ROUTES.HOD_FACULTY}          component={DataAndManagement} />
       <Drawer.Screen name={ROUTES.HOD_ACTIVITIES}       component={ActivitiesPage} />
       <Drawer.Screen name={ROUTES.HOD_FACULTY_ALLOCATION} component={FacultyAllocation} />
       <Drawer.Screen name={ROUTES.HOD_ACTIVITY_LOG}     component={ActivityLog} />
-      <Drawer.Screen name={ROUTES.HOD_MY_SCHEDULES}     component={MySchedules} />
+      <Drawer.Screen name={ROUTES.HOD_MY_SCHEDULES}     component={SchedulesAndMeetings} />
+      <Drawer.Screen name={ROUTES.HOD_ANALYTICS}        component={HODAnalytics} />
+
+      {/* Kept registered standalone (not in the sidebar — reached only via
+          Data & Management's tabs or a direct deep-link from Dashboard
+          cards/charts that pass semester/section params) so those
+          cross-navigations still land on a real Drawer screen with the
+          sidebar intact. */}
+      <Drawer.Screen name={ROUTES.HOD_STUDENTS}         component={StudentManagement} />
+      <Drawer.Screen name={ROUTES.HOD_COORDINATORS}     component={CoordinatorManagement} />
       <Drawer.Screen name={ROUTES.HOD_MEETINGS}         component={MeetingManagement} />
+
+      {/* Meeting Management screens live inside the Drawer (not the outer
+          Stack) so the sidebar/hamburger stays visible and toggleable on
+          them, same as every other HOD screen. */}
+      <Drawer.Screen name="CreateMeeting"  component={CreateMeetingScreen} />
+      <Drawer.Screen name="MeetingDetails" component={MeetingDetailsScreen} />
+      <Drawer.Screen name="EditMeeting"    component={EditMeetingScreen} />
+
+      {/* Same reasoning — these used to live on the outer Stack (sibling to
+          this Drawer), which fully replaced it and hid the sidebar/hamburger
+          whenever you viewed, added or edited a faculty member. */}
+      <Drawer.Screen name={ROUTES.FACULTY_PROFILE} component={FacultyProfile} />
+      <Drawer.Screen name={ROUTES.FACULTY_ADD}     component={AddEditFaculty} />
+      <Drawer.Screen name={ROUTES.FACULTY_EDIT}    component={AddEditFaculty} />
     </Drawer.Navigator>
   );
 }
@@ -135,14 +159,6 @@ function HODNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HODRoot"                 component={HODDrawerNav} />
-      <Stack.Screen name={ROUTES.FACULTY_PROFILE} component={FacultyProfile} />
-      <Stack.Screen name={ROUTES.FACULTY_ADD}     component={AddEditFaculty} />
-      <Stack.Screen name={ROUTES.FACULTY_EDIT}    component={AddEditFaculty} />
-
-      {/* Meeting Management Screens */}
-      <Stack.Screen name="CreateMeeting"           component={CreateMeetingScreen} />
-      <Stack.Screen name="MeetingDetails"          component={MeetingDetailsScreen} />
-      <Stack.Screen name="EditMeeting"             component={EditMeetingScreen} />
     </Stack.Navigator>
   );
 }

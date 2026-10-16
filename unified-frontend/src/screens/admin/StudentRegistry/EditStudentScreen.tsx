@@ -19,14 +19,14 @@ const EditStudentScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="StudentList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <LoadingIndicator fullscreen label="Loading student..." />
       </ScreenLayout>
     );
   }
   if (isError || !student) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="StudentList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <EmptyState icon="alert-circle-outline" title="Student not found" />
       </ScreenLayout>
     );
@@ -42,7 +42,7 @@ const EditStudentScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="StudentList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
       <View style={styles.container}>
         <StudentForm
           breadcrumbLabel="Edit Student"

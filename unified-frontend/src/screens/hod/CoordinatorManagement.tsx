@@ -21,7 +21,7 @@ const COORDINATOR_SLUGS = [
   'PLACEMENT_COORDINATOR',
 ];
 
-export default function CoordinatorManagement() {
+export default function CoordinatorManagement({ embedded = false }: { embedded?: boolean } = {}) {
   const { colors: theme } = useTheme();
   const s = getStyles(theme);
 
@@ -35,8 +35,8 @@ export default function CoordinatorManagement() {
     f.roles?.some((fr) => COORDINATOR_SLUGS.includes(fr.role?.slug || (fr as any).slug))
   );
 
-  return (
-    <ScreenWrapper route={ROUTES.HOD_COORDINATORS} scrollable={false}>
+  const content = (
+    <>
       {/* Section card */}
       <View style={s.card}>
         {/* Card header */}
@@ -66,6 +66,14 @@ export default function CoordinatorManagement() {
           />
         )}
       </View>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenWrapper route={ROUTES.HOD_COORDINATORS} scrollable={false}>
+      {content}
     </ScreenWrapper>
   );
 }

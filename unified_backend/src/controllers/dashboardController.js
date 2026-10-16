@@ -33,6 +33,8 @@ const getDashboardStats = async (req, res) => {
       studentCount,
       transferredCount,
       departmentCounts,
+      facultyDepartmentCounts,
+      staffDepartmentCounts,
       departmentByYear,
       assignmentCount,
       openAssignments,
@@ -51,6 +53,24 @@ const getDashboardStats = async (req, res) => {
         JOIN departments d ON d.department_id = s.department_id
         GROUP BY d.department_id, d.department_name
         ORDER BY COUNT(*) DESC, d.department_name ASC
+        LIMIT 7
+      `),
+      pool.query(`
+        SELECT d.department_name AS label, COUNT(*)::int AS value
+        FROM faculty f
+        JOIN departments d ON d.department_id = f.department_id
+        WHERE f.status = 'ACTIVE'
+        GROUP BY d.department_id, d.department_name
+        ORDER BY COUNT(*) DESC, d.department_name ASC
+        LIMIT 7
+      `),
+      pool.query(`
+        SELECT sd.name AS label, COUNT(*)::int AS value
+        FROM non_teaching_staff s
+        JOIN staff_departments sd ON sd.staff_dept_id = s.staff_dept_id
+        WHERE s.status = 'ACTIVE'
+        GROUP BY sd.staff_dept_id, sd.name
+        ORDER BY COUNT(*) DESC, sd.name ASC
         LIMIT 7
       `),
       pool.query(`
@@ -125,6 +145,14 @@ const getDashboardStats = async (req, res) => {
       totalStudents: Number(studentCount.rows[0].count),
       transferredStudents: Number(transferredCount.rows[0].count),
       departmentCounts: departmentCounts.rows.map((row) => ({
+        label: row.label,
+        value: Number(row.value),
+      })),
+      facultyDepartmentCounts: facultyDepartmentCounts.rows.map((row) => ({
+        label: row.label,
+        value: Number(row.value),
+      })),
+      staffDepartmentCounts: staffDepartmentCounts.rows.map((row) => ({
         label: row.label,
         value: Number(row.value),
       })),

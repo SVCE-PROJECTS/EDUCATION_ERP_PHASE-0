@@ -6,6 +6,8 @@ import {
 import { Text, Icon } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
+import GlobalSearch from '../../../components/GlobalSearch/GlobalSearch';
+import NotificationBell from '../../../components/meeting/NotificationBell';
 import { MiniCalendar, SchedulePopup, ScheduleFormModal } from '../../../components/calendar';
 import { useMonthSchedules } from '../../../hooks/useSchedules';
 import { Schedule } from '../../../services/schedule.service';
@@ -14,12 +16,10 @@ import { useAuditLogs } from '../../../hooks/admin/useAuditLogs';
 import { useAdminUsers } from '../../../hooks/admin/useAdminUsers';
 import { useAuth } from '../../../context/admin/AuthContext';
 import { useTheme } from '../../../context/admin/ThemeContext';
-import { getModuleMeta, actionLabel, formatTimestamp } from '../../../utils/admin/auditFormat';
 import {
   spacing, typography, radius, shadows,
 } from '../../../theme';
 import { getTodayString } from '../../../utils/dateHelpers';
-import MeetingReminders from '../../../components/meeting/MeetingReminders';
 
 const CHART_COLORS = {
   primary: '#3B82F6',
@@ -50,18 +50,12 @@ const getGreeting = () => {
   return 'Good evening';
 };
 
+// Only destinations not already one tap away via the sidebar live here —
+// Transfer Student, Download Data, Meetings and Settings all duplicate
+// sidebar nav items, so they were dropped from this list.
 const QUICK_ACTIONS = [
   {
     key: 'AddStudent', label: 'Add Student', icon: 'account-plus-outline', accent: 'blue', screen: 'AddStudent',
-  },
-  {
-    key: 'Meetings', label: 'Meetings', icon: 'calendar-account', accent: 'violet', screen: 'Meetings',
-  },
-  {
-    key: 'TransferStudent', label: 'Transfer Student', icon: 'swap-horizontal', accent: 'teal', screen: 'TransferStudent',
-  },
-  {
-    key: 'ExportStudentData', label: 'Download Data', icon: 'tray-arrow-down', accent: 'amber', screen: 'ExportStudentData',
   },
 ];
 
@@ -198,27 +192,6 @@ const PieChart = ({ transferred, active }) => {
   );
 };
 
-const ActivityRow = ({ entry }) => {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
-  const meta = getModuleMeta(entry.module);
-  const palette = colors.accent[meta.accent] || colors.accent.blue;
-
-  return (
-    <View style={styles.activityRow}>
-      <View style={[styles.activityIcon, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-        <Icon source={meta.icon} size={16} color={palette.icon} />
-      </View>
-      <View style={styles.activityContent}>
-        <Text style={styles.activityAction}>{actionLabel(entry.action)}</Text>
-        <Text style={styles.activityMeta}>
-          {entry.performedBy || 'System'} · {formatTimestamp(entry.createdAt)}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
 const DashboardScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -275,6 +248,26 @@ const DashboardScreen = ({ navigation }) => {
       .slice(0, 7);
   }, [dashboard.departmentCounts]);
 
+  const facultyDepartmentData = useMemo(() => {
+    const counts = dashboard.facultyDepartmentCounts;
+    if (!Array.isArray(counts) || counts.length === 0) return [];
+    return counts
+      .map(item => ({ label: String(item.label || 'Unassigned'), value: Number(item.value || 0) }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 7);
+  }, [dashboard.facultyDepartmentCounts]);
+
+  const staffDepartmentData = useMemo(() => {
+    const counts = dashboard.staffDepartmentCounts;
+    if (!Array.isArray(counts) || counts.length === 0) return [];
+    return counts
+      .map(item => ({ label: String(item.label || 'Unassigned'), value: Number(item.value || 0) }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 7);
+  }, [dashboard.staffDepartmentCounts]);
+
   const transferred = Number(dashboard.transferredStudents || 0);
   const transferData = useMemo(
     () => ({ transferred, active: Math.max(totalStudents - transferred, 0) }),
@@ -307,15 +300,33 @@ const DashboardScreen = ({ navigation }) => {
               <Icon source="calendar-month" size={26} color={colors.white} />
             </TouchableOpacity>
             <View style={styles.headerIconWrap}>
-              <Icon source="view-dashboard-outline" size={26} color={colors.white} />
+              <NotificationBell
+                colors={colors}
+                onViewMeeting={(meetingId) => navigation.navigate('MeetingDetails', { meetingId })}
+                activities={activityRows}
+                activitiesLoading={loadingActivity}
+                iconColor={colors.white}
+              />
             </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('MyProfile')}
+              activeOpacity={0.75}
+              accessibilityLabel="My Profile"
+            >
+              <View style={styles.profileAvatar}>
+                <Text style={styles.profileAvatarText}>
+                  {(user?.fullName || user?.username || 'AD').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </LinearGradient>
 
-        <MeetingReminders
-          colors={colors}
-          onOpenMeeting={(meetingId) => navigation.navigate('MeetingDetails', { meetingId })}
-        />
+        <Text style={styles.pageTitle}>Dashboard</Text>
+
+        <View style={styles.searchRow}>
+          <GlobalSearch />
+        </View>
 
         {/* Calendar popover — transparent Modal so tapping outside closes it */}
         <Modal
@@ -371,19 +382,6 @@ const DashboardScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.quickActionsCard}>
-          <Text style={styles.sectionLabel}>Administrative</Text>
-          <View style={styles.quickActionsRow}>
-            <QuickAction
-              key="Settings"
-              icon="cog-outline"
-              label="Settings"
-              accent="amber"
-              onPress={() => navigation.navigate('Settings')}
-            />
-          </View>
-        </View>
-
-        <View style={styles.quickActionsCard}>
           <Text style={styles.sectionLabel}>Facilities</Text>
           <View style={styles.quickActionsRow}>
             {FACILITIES.map((facility) => (
@@ -424,22 +422,34 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <PieChart transferred={transferData.transferred} active={transferData.active} />
           </View>
-        </View>
 
-        <View style={styles.activityCard}>
-          <View style={styles.activityHeader}>
-            <Text style={styles.chartTitle}>Recent Activity</Text>
-            <Text style={styles.viewAllLink} onPress={() => navigation.navigate('ActivityLog')}>
-              View all →
-            </Text>
+          {/* Faculty Bar Chart */}
+          <View style={styles.chartCard}>
+            <View style={styles.chartHeader}>
+              <View>
+                <Text style={styles.chartTitle}>Faculty Registry</Text>
+                <Text style={styles.chartSubtitle}>Active faculty by department</Text>
+              </View>
+              <Icon source="chart-bar" size={22} color={CHART_COLORS.secondary} />
+            </View>
+            {facultyDepartmentData.length
+              ? <BarChart data={facultyDepartmentData} />
+              : <Text style={styles.emptyChart}>{isError ? (error?.message || 'Unable to load data.') : 'No faculty registry data available.'}</Text>}
           </View>
-          {loadingActivity ? (
-            <Text style={styles.emptyChart}>Loading...</Text>
-          ) : activityRows.length === 0 ? (
-            <Text style={styles.emptyChart}>No recent activity yet.</Text>
-          ) : (
-            activityRows.map((entry) => <ActivityRow key={entry.id} entry={entry} />)
-          )}
+
+          {/* Non-Teaching Staff Bar Chart */}
+          <View style={styles.chartCard}>
+            <View style={styles.chartHeader}>
+              <View>
+                <Text style={styles.chartTitle}>Non-Teaching Staff</Text>
+                <Text style={styles.chartSubtitle}>Active staff by department</Text>
+              </View>
+              <Icon source="chart-bar" size={22} color={CHART_COLORS.warning} />
+            </View>
+            {staffDepartmentData.length
+              ? <BarChart data={staffDepartmentData} />
+              : <Text style={styles.emptyChart}>{isError ? (error?.message || 'Unable to load data.') : 'No non-teaching staff data available.'}</Text>}
+          </View>
         </View>
       </ScrollView>
 
@@ -494,6 +504,15 @@ const getStyles = (colors) => StyleSheet.create({
     width: 52, height: 52, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
   },
+  profileAvatar: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF',
+  },
+  profileAvatarText: {
+    ...typography.bodyBold, color: colors.white, fontSize: 15,
+  },
+  pageTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.md },
+  searchRow: { marginBottom: spacing.lg },
   calendarPopover: {
     position: 'absolute' as any,
     top: 140,
@@ -573,26 +592,6 @@ const getStyles = (colors) => StyleSheet.create({
   legendLabel: { ...typography.body, color: colors.textSecondary, flex: 1 },
   legendValue: { ...typography.bodyBold, color: colors.textPrimary },
   emptyChart: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.xxl },
-  activityCard: {
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radius.lg, padding: spacing.lg,
-    ...shadows.soft,
-  },
-  activityHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md,
-  },
-  viewAllLink: { ...typography.bodyBold, color: colors.primary, fontSize: 13 },
-  activityRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  activityIcon: {
-    width: 32, height: 32, borderRadius: radius.sm, borderWidth: 1,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  activityContent: { flex: 1, minWidth: 0 },
-  activityAction: { ...typography.bodyBold, color: colors.textPrimary, fontSize: 13 },
-  activityMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 1 },
 });
 
 // Popover styles — module-level (no theme dependency for positioning)

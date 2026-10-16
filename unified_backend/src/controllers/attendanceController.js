@@ -152,7 +152,7 @@ const getClassStatistics = async (req, res) => {
     // Get all classes for this faculty
     const classesResult = await pool.query(
       `SELECT c.class_id, sub.subject_name, sub.subject_code,
-              sec.name AS section_name, sem.semester_number
+              sec.section_name AS section_name, sem.semester_number
        FROM classes c
        JOIN faculty f    ON f.faculty_id = c.faculty_id
        JOIN subjects sub ON sub.subject_id = c.subject_id

@@ -14,26 +14,29 @@ export function useAttendance(params?: { class_id?: number; date?: string; stude
   });
 }
 
+// Dashboard tiles/charts (faculty-dashboard stats, weekly attendance trend,
+// per-class attendance chart) and the Analytics overview all cache their own
+// data separately from the Attendance screen — without invalidating these
+// too, marking attendance saved correctly but both kept showing stale
+// numbers until their own staleTime window happened to expire.
+const invalidateDashboard = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['faculty-dashboard'] });
+  qc.invalidateQueries({ queryKey: ['weekly-attendance'] });
+  qc.invalidateQueries({ queryKey: ['class-attendance-statistics'] });
+  qc.invalidateQueries({ queryKey: ['analytics', 'overview'] });
+};
+
 export function useMarkAttendance(options: { onSuccess?: () => void } = {}) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (record: AttendancePayload) => {
-      console.log('=== ATTENDANCE API CALL ===');
-      console.log('Sending to backend:', record);
-      return attendanceService.save(record);
-    },
-    onSuccess: (data) => { 
-      console.log('Attendance save successful:', data);
-      qc.invalidateQueries({ queryKey: ['attendance'] }); 
-      ok('Attendance saved successfully'); 
-      options.onSuccess?.(); 
+    mutationFn: (record: AttendancePayload) => attendanceService.save(record),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+      invalidateDashboard(qc);
+      ok('Attendance saved successfully');
+      options.onSuccess?.();
     },
     onError: (e: any) => {
-      console.error('=== ATTENDANCE SAVE ERROR ===');
-      console.error('Error object:', e);
-      console.error('Response data:', e.response?.data);
-      console.error('Response status:', e.response?.status);
-      
       const errorMsg = e.response?.data?.message || e.message || 'Unknown error occurred';
       err('Failed to save attendance', errorMsg);
     },
@@ -46,6 +49,7 @@ export function useMarkAttendanceBulk(options: { onSuccess?: () => void } = {}) 
     mutationFn: (records: AttendancePayload[]) => attendanceService.saveBulk(records),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['attendance'] });
+      invalidateDashboard(qc);
       options.onSuccess?.();
     },
     onError: (e: any) => {

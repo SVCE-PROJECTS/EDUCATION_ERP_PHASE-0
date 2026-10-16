@@ -18,6 +18,7 @@ const MODULE_OPTIONS = [
   { id: 'transfer', name: 'Transfer' },
   { id: 'faculty', name: 'Faculty' },
   { id: 'admin_user', name: 'Admin User' },
+  { id: 'meeting', name: 'Meeting' },
 ];
 
 const LogRow = ({ entry }) => {
@@ -25,6 +26,7 @@ const LogRow = ({ entry }) => {
   const styles = getStyles(colors);
   const meta = getModuleMeta(entry.module);
   const palette = colors.accent[meta.accent] || colors.accent.blue;
+  const isMeeting = entry.module === 'meeting';
 
   return (
     <View style={styles.row}>
@@ -33,10 +35,15 @@ const LogRow = ({ entry }) => {
       </View>
       <View style={styles.rowContent}>
         <Text style={styles.rowAction}>{actionLabel(entry.action)}</Text>
+        {isMeeting && entry.message ? (
+          <Text style={styles.rowMessage} numberOfLines={2}>{entry.message}</Text>
+        ) : null}
         <Text style={styles.rowMeta}>
           {entry.module ? `${entry.module} · ` : ''}
           {entry.recordId ? `#${entry.recordId} · ` : ''}
-          {entry.performedBy || 'System'}
+          {isMeeting
+            ? (entry.performedBy ? `Notified: ${entry.performedBy}` : 'Notified')
+            : (entry.performedBy || 'System')}
         </Text>
       </View>
       <Text style={styles.rowTime}>{formatTimestamp(entry.createdAt)}</Text>
@@ -62,7 +69,7 @@ const ActivityLogScreen = ({ navigation }) => {
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>Activity Log</Text>
-          <Text style={styles.subtitle}>Who changed what, and when — across the student registry and transfers</Text>
+          <Text style={styles.subtitle}>Who changed what, and when — across the student registry, transfers and meetings</Text>
         </View>
 
         <View style={styles.filterRow}>
@@ -151,6 +158,7 @@ const getStyles = (colors) => StyleSheet.create({
   },
   rowContent: { flex: 1, minWidth: 0 },
   rowAction: { ...typography.bodyBold, color: colors.textPrimary },
+  rowMessage: { ...typography.body, color: colors.textSecondary, marginTop: 2, fontSize: 13 },
   rowMeta: { ...typography.caption, color: colors.textSecondary, marginTop: 2, textTransform: 'capitalize' },
   rowTime: { ...typography.caption, color: colors.textMuted },
   paginationRow: {

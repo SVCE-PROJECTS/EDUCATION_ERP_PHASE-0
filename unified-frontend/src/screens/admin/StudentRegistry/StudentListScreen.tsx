@@ -13,13 +13,16 @@ import CustomModal from '../../../components/Modal/CustomModal';
 import CustomDropdown from '../../../components/Dropdown/CustomDropdown';
 import ConfirmationDialog from '../../../components/Dialog/ConfirmationDialog';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
+import ExportMenu from '../../../components/admin/ExportMenu';
 import { useStudents, useUpdateStudent } from '../../../hooks/admin/useStudents';
 import { useDropdown, useSectionsBySemester } from '../../../hooks/admin/useDropdowns';
 import { PAGE_SIZE } from '../../../constants';
 import { useTheme } from '../../../context/admin/ThemeContext';
 import { spacing, typography } from '../../../theme';
 
-const StudentListScreen = ({ navigation }) => {
+// embedded: true when rendered as a tab inside RegistryScreen (skips its own
+// ScreenLayout/sidebar, since the parent already provides one).
+const StudentListScreen = ({ navigation, embedded = false }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const [search, setSearch] = useState('');
@@ -103,6 +106,15 @@ const StudentListScreen = ({ navigation }) => {
     setSelectedStudents(new Map());
   };
 
+  const hasActiveFilters = !!(search || filterDeptId || filterSemId || filterSecId);
+  const clearFilters = () => {
+    setSearch('');
+    setFilterDeptId(undefined);
+    setFilterSemId(undefined);
+    setFilterSecId(undefined);
+    setPage(1);
+  };
+
   const runBulkUpdate = async (buildPayload, successLabel) => {
     setBulkBusy(true);
     const targets = [...selectedStudents.values()];
@@ -141,15 +153,27 @@ const StudentListScreen = ({ navigation }) => {
     setReassignSectionId(undefined);
   };
 
-  return (
-    <ScreenLayout navigation={navigation} activeScreen="StudentList">
+  const content = (
+    <>
       <View style={styles.container}>
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Student Registry</Text>
             <Text style={styles.subtitle}>Manage all admitted students</Text>
           </View>
-          <CustomButton label="Import CSV" variant="outline" onPress={() => setCsvModalVisible(true)} />
+          <View style={styles.headerActions}>
+            <ExportMenu
+              entity="students"
+              filenameBase="students"
+              filters={{
+                search: search || undefined,
+                departmentId: filterDeptId || undefined,
+                semester: filterSemId || undefined,
+                sectionId: filterSecId || undefined,
+              }}
+            />
+            <CustomButton label="Import CSV" variant="outline" onPress={() => setCsvModalVisible(true)} />
+          </View>
         </View>
 
         <View style={styles.searchWrap}>
@@ -178,6 +202,8 @@ const StudentListScreen = ({ navigation }) => {
             icon="account-search-outline"
             title="No students found"
             description="Try adjusting your search, or add a new student to get started."
+            actionLabel={hasActiveFilters ? 'Clear filters' : undefined}
+            onAction={hasActiveFilters ? clearFilters : undefined}
           />
         ) : (
           <>
@@ -281,6 +307,14 @@ const StudentListScreen = ({ navigation }) => {
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={4000}>
         {snackbar}
       </Snackbar>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
+      {content}
     </ScreenLayout>
   );
 };
@@ -305,6 +339,11 @@ const getStyles = (colors) => StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   searchWrap: {
     paddingHorizontal: spacing.lg,

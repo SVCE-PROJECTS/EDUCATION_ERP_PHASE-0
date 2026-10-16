@@ -9,15 +9,16 @@ import LoadingIndicator from '../../../components/Loading/LoadingIndicator';
 import EmptyState from '../../../components/EmptyState/EmptyState';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
 import { useNonTeachingStaffMember, useDeleteNonTeachingStaff } from '../../../hooks/admin/useNonTeachingStaff';
-import { colors, spacing, typography } from '../../../theme';
+import { useTheme } from '../../../context/admin/ThemeContext';
+import { spacing, typography } from '../../../theme';
 
-const STATUS_STYLE = {
+const getStatusStyle = (colors) => ({
   ACTIVE:   { bg: colors.successBg, text: colors.success },
   ON_LEAVE: { bg: colors.warningBg, text: colors.warning },
   INACTIVE: { bg: colors.dangerBg,  text: colors.danger  },
-};
+});
 
-const Field = ({ label, value }) => (
+const Field = ({ label, value, styles }) => (
   <View style={styles.fieldRow}>
     <Text style={styles.fieldLabel}>{label}</Text>
     <Text style={styles.fieldValue}>{value || '—'}</Text>
@@ -25,6 +26,8 @@ const Field = ({ label, value }) => (
 );
 
 const NonTeachingStaffDetailsScreen = ({ route, navigation }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { staffId } = route.params;
   const { data: staff, isLoading, isError } = useNonTeachingStaffMember(staffId);
   const { mutateAsync: deleteStaff, isPending: deleting } = useDeleteNonTeachingStaff();
@@ -33,20 +36,20 @@ const NonTeachingStaffDetailsScreen = ({ route, navigation }) => {
 
   if (isLoading) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="NonTeachingStaffList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <LoadingIndicator fullscreen label="Loading staff details..." />
       </ScreenLayout>
     );
   }
   if (isError || !staff) {
     return (
-      <ScreenLayout navigation={navigation} activeScreen="NonTeachingStaffList">
+      <ScreenLayout navigation={navigation} activeScreen="Registry">
         <EmptyState icon="alert-circle-outline" title="Staff member not found" />
       </ScreenLayout>
     );
   }
 
-  const statusStyle = STATUS_STYLE[staff.status] || { bg: colors.border, text: colors.textSecondary };
+  const statusStyle = getStatusStyle(colors)[staff.status] || { bg: colors.border, text: colors.textSecondary };
 
   const handleDelete = async () => {
     try {
@@ -60,7 +63,7 @@ const NonTeachingStaffDetailsScreen = ({ route, navigation }) => {
   };
 
   return (
-    <ScreenLayout navigation={navigation} activeScreen="NonTeachingStaffList">
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
         {/* Header */}
@@ -79,17 +82,17 @@ const NonTeachingStaffDetailsScreen = ({ route, navigation }) => {
 
         {/* Employment */}
         <InfoCard title="Employment Information">
-          <Field label="Designation"   value={staff.designation} />
-          <Field label="Department"    value={staff.departmentName} />
-          <Field label="Qualification" value={staff.qualification} />
-          <Field label="Joining Date"  value={staff.joiningDate ? new Date(staff.joiningDate).toLocaleDateString() : null} />
+          <Field styles={styles} label="Designation"   value={staff.designation} />
+          <Field styles={styles} label="Department"    value={staff.departmentName} />
+          <Field styles={styles} label="Qualification" value={staff.qualification} />
+          <Field styles={styles} label="Joining Date"  value={staff.joiningDate ? new Date(staff.joiningDate).toLocaleDateString() : null} />
         </InfoCard>
 
         {/* Personal */}
         <InfoCard title="Personal Information">
-          <Field label="Email"  value={staff.email} />
-          <Field label="Phone"  value={staff.phone} />
-          <Field label="Gender" value={staff.gender} />
+          <Field styles={styles} label="Email"  value={staff.email} />
+          <Field styles={styles} label="Phone"  value={staff.phone} />
+          <Field styles={styles} label="Gender" value={staff.gender} />
         </InfoCard>
 
         {/* Actions */}
@@ -125,7 +128,7 @@ const NonTeachingStaffDetailsScreen = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container:    { flex: 1, backgroundColor: colors.background },
   content:      { padding: spacing.lg, paddingBottom: spacing.xxl },
   headerRow: {

@@ -5,12 +5,14 @@
  */
 
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Linking } from 'react-native';
 import { Icon } from 'react-native-paper';
 import ScreenWrapper from '../../../layouts/hod/ScreenWrapper';
 import { useMeetingById, useApproveMeeting } from '../../../hooks/useMeetings';
 import { useAuth } from '../../../context/hod/AuthContext';
 import { useTheme } from '../../../context/hod/ThemeContext';
+import { showError } from '../../../utils/confirmDialog';
+import Toast from '../../../services/hod/toast';
 import { spacing, radius, shadows } from '../../../theme';
 import { formatDateShort, formatDateLong, format12Hour } from '../../../utils/dateHelpers';
 
@@ -44,15 +46,25 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
   const handleApprove = async (action: 'approve' | 'reject') => {
     try {
       await approveMeeting({ id: meetingId, action });
-      Alert.alert('Success', `Meeting ${action}d successfully`);
+      Toast.show({ type: 'success', text1: `Meeting ${action === 'approve' ? 'approved' : 'rejected'} successfully` });
     } catch (error: any) {
-      Alert.alert('Error', error.message || `Failed to ${action} meeting`);
+      showError('Error', error.message || `Failed to ${action} meeting`);
+    }
+  };
+
+  const handleOpenMeetingLink = () => {
+    const url = meeting?.effective_meeting_url || meeting?.meeting_url;
+    if (!url) return;
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      Linking.openURL(url);
     }
   };
 
   if (isLoading) {
     return (
-      <ScreenWrapper title="Meeting Details" scrollable={false} showTopbar={false}>
+      <ScreenWrapper title="Meeting Details" scrollable={false}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading meeting...</Text>
@@ -63,7 +75,7 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
 
   if (error || !meeting) {
     return (
-      <ScreenWrapper title="Meeting Details" scrollable={false} showTopbar={false}>
+      <ScreenWrapper title="Meeting Details" scrollable={false}>
         <View style={styles.centerContent}>
           <Text style={[styles.errorText, { color: colors.error }]}>Unable to load meeting details</Text>
         </View>
@@ -75,9 +87,12 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
   const canApprove = meeting.status === 'pending_approval' && meeting.approvals?.some(
     (approval: any) => String(approval.approver_employee_id ?? '') === String(user?.id ?? '')
   );
+  const isCreator = String(meeting.created_by_employee_id ?? meeting.created_by ?? '') === String(user?.id ?? '');
+  const effectiveUrl = meeting.effective_meeting_url || meeting.meeting_url;
+  const canEdit = isCreator && !['completed', 'cancelled'].includes(meeting.status);
 
   return (
-    <ScreenWrapper title="Meeting Details" scrollable={false} showTopbar={false}>
+    <ScreenWrapper title="Meeting Details" scrollable={false}>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <TouchableOpacity onPress={navigation.goBack} style={styles.backButton}>
@@ -112,6 +127,18 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
                 <Text style={[styles.infoText, { color: colors.textSecondary }]}>{meeting.location}</Text>
               </View>
             ) : null}
+            <View style={styles.infoRow}>
+              <Icon source="account-tie" size={18} color={colors.textMuted} />
+              <Text style={[styles.infoText, { color: colors.textSecondary }]}>Created by {meeting.created_by_name || 'Creator unavailable'}</Text>
+            </View>
+            {meeting.meeting_type !== 'offline' && effectiveUrl ? (
+              <View style={styles.infoRow}>
+                <Icon source="video" size={18} color={colors.textMuted} />
+                <TouchableOpacity onPress={handleOpenMeetingLink}>
+                  <Text style={[styles.infoText, styles.linkText, { color: colors.primary }]}>Open meeting link</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
 
           {meeting.description ? (
@@ -136,6 +163,26 @@ export default function MeetingDetailsScreen({ route, navigation }: { route: any
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>No participants added yet.</Text>
             )}
           </View>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Summary</Text>
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoText, { color: colors.textSecondary }]}>Invited: {meeting.participants?.length || 0}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoText, { color: colors.textMuted, fontStyle: 'italic' }]}>Attendance not recorded</Text>
+            </View>
+          </View>
+
+          {canEdit && (
+            <TouchableOpacity
+              style={[styles.editButton, { borderColor: colors.primary }]}
+              onPress={() => navigation.navigate('EditMeeting', { meetingId })}
+            >
+              <Icon source="pencil" size={18} color={colors.primary} />
+              <Text style={[styles.buttonText, { color: colors.primary }]}>Edit Meeting</Text>
+            </TouchableOpacity>
+          )}
 
           {canApprove && (
             <View style={styles.approvalSection}>
@@ -171,6 +218,7 @@ const styles = StyleSheet.create({
   infoBlock: { gap: spacing.sm },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   infoText: { fontSize: 14, flexShrink: 1 },
+  linkText: { textDecorationLine: 'underline', fontWeight: '600' },
   section: { marginTop: spacing.lg },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: spacing.sm },
   description: { fontSize: 14, lineHeight: 20 },
@@ -179,6 +227,7 @@ const styles = StyleSheet.create({
   participantName: { fontSize: 14, fontWeight: '600' },
   participantMeta: { fontSize: 12, marginTop: 2 },
   emptyText: { fontSize: 14 },
+  editButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, marginTop: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1 },
   approvalSection: { marginTop: spacing.lg },
   approvalButtons: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   approveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md },

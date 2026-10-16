@@ -29,7 +29,10 @@ const CAL_W = 340;
 /** Minimum extra space needed for the list card before going side-by-side */
 const BREAKPOINT = CAL_W + 220; // 560px
 
-export default function MySchedules() {
+// embedded: true when rendered as a tab inside the combined My Schedules /
+// Meetings screen (skips its own ScreenWrapper, since the parent already
+// provides one).
+export default function MySchedules({ embedded = false }: { embedded?: boolean } = {}) {
   const { colors } = useTheme();
 
   // ── Measure actual content width (excludes sidebar, safe-area, padding) ──
@@ -97,9 +100,8 @@ export default function MySchedules() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  return (
-    // Pass scrollable=false: we own the ScrollView to avoid nested-scroll glitch
-    <ScreenWrapper route={ROUTES.MY_SCHEDULES} scrollable={false}>
+  const content = (
+    <>
       <ScrollView
         style={s.scroll}
         contentContainerStyle={s.scrollContent}
@@ -254,6 +256,15 @@ export default function MySchedules() {
         onClose={() => { setFormVisible(false); setEditingSchedule(null); setFormDate(undefined); }}
         theme={colors}
       />
+    </>
+  );
+
+  if (embedded) return content;
+
+  // Pass scrollable=false: we own the ScrollView to avoid nested-scroll glitch
+  return (
+    <ScreenWrapper route={ROUTES.MY_SCHEDULES} scrollable={false}>
+      {content}
     </ScreenWrapper>
   );
 }

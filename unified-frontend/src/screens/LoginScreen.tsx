@@ -18,7 +18,10 @@ import { useAuth } from '../context/AuthContext';
 import { doAdminLogin, doFacultyLogin } from '../context/AuthContext';
 
 // ── Assets ────────────────────────────────────────────────────────────────────
-const svceLogo = require('../assets/svce_banner.png');
+// Transparent crop of the crest — no baked-in black backdrop. Two ink colors
+// so it reads clearly straight on the gradient page background in both themes.
+const svceLogoWhite = require('../assets/svce_logo_transparent.png');
+const svceLogoNavy = require('../assets/svce_logo_navy.png');
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const LIGHT = {
@@ -110,7 +113,7 @@ const getRoles = (C) => [
   },
 ];
 
-const LOGO_ASPECT = 1133 / 260;
+const LOGO_ASPECT = 1087 / 209;
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -333,8 +336,8 @@ export default function LoginScreen() {
           {/* ── SVCE Banner ──────────────────────────────────────────────── */}
           <View style={s.bannerWrap}>
             <Image
-              source={svceLogo}
-              style={{ height: 76, width: 76 * LOGO_ASPECT }}
+              source={isDark ? svceLogoWhite : svceLogoNavy}
+              style={{ height: 72, width: 72 * LOGO_ASPECT }}
               resizeMode="contain"
             />
           </View>

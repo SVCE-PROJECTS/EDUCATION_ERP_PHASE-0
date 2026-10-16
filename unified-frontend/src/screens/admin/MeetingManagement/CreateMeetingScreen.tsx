@@ -4,7 +4,7 @@
  * Form to create new meetings with participant selection
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -21,22 +21,17 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 // Web-compatible date input fallback
 import { TextInput as RNTextInput } from 'react-native';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
-import { useCreateMeeting, useFacultyForInvitation } from '../../../hooks/useMeetings';
+import { useCreateMeeting } from '../../../hooks/useMeetings';
+import ParticipantPicker, { Participant } from '../../../components/meeting/ParticipantPicker';
+import { showError } from '../../../utils/confirmDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { spacing, radius, shadows } from '../../../theme';
-import { formatDateShort, format12Hour } from '../../../utils/dateHelpers';
+import { formatDateShort, format12Hour, isFutureDateTime } from '../../../utils/dateHelpers';
 
 import { useTheme } from '../../../context/admin/ThemeContext';
 import MeetingDatePicker from '../../../components/meeting/MeetingDatePicker';
 import MeetingTimePicker from '../../../components/meeting/MeetingTimePicker';
 import { getTodayString } from '../../../utils/dateHelpers';
-
-interface SelectedParticipant {
-  id: string;
-  name: string;
-  designation: string;
-  department_name: string;
-}
 
 export default function CreateMeetingScreen({ navigation }: { navigation: any }) {
   const { colors } = useTheme();
@@ -54,39 +49,27 @@ export default function CreateMeetingScreen({ navigation }: { navigation: any })
   });
   const [durationMinutes, setDurationMinutes] = useState('60');
   const [durationError, setDurationError] = useState('');
-  const [location, setLocation] = useState('');
-  const [selectedParticipants, setSelectedParticipants] = useState<SelectedParticipant[]>([]);
+  const [dateTimeError, setDateTimeError] = useState('');
+  const [externalUrl, setExternalUrl] = useState('');
+  const [externalUrlError, setExternalUrlError] = useState('');
+  const [selectedParticipants, setSelectedParticipants] = useState<Participant[]>([]);
 
   // UI state
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [showCustomTimePicker, setShowCustomTimePicker] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [showParticipantSearch, setShowParticipantSearch] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdMeeting, setCreatedMeeting] = useState<any>(null);
 
   const { mutateAsync: createMeeting, isPending: isCreating } = useCreateMeeting();
 
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const { data: facultyMembers = [], isLoading: isLoadingFaculty, error: facultyError } = useFacultyForInvitation({
-    search: debouncedSearch.trim() || undefined
-  });
-
   const handleSubmit = async () => {
     // Reset errors
     setTitleError('');
     setDurationError('');
+    setExternalUrlError('');
+    setDateTimeError('');
 
     let hasErrors = false;
 
@@ -100,6 +83,26 @@ export default function CreateMeetingScreen({ navigation }: { navigation: any })
     if (!durationMinutes || parseInt(durationMinutes) <= 0) {
       setDurationError('Please enter a valid duration (minimum 1 minute)');
       hasErrors = true;
+    }
+
+    // Reject a meeting scheduled in the past — checked fresh against "now"
+    // at submit time, never a value captured when the screen first mounted.
+    const localDateStringCheck = `${scheduledDate.getFullYear()}-${String(scheduledDate.getMonth() + 1).padStart(2, '0')}-${String(scheduledDate.getDate()).padStart(2, '0')}`;
+    const startTimeStringCheck = `${String(startTime.getHours()).padStart(2, '0')}:${String(startTime.getMinutes()).padStart(2, '0')}`;
+    if (!isFutureDateTime(localDateStringCheck, startTimeStringCheck)) {
+      setDateTimeError('Please select a valid future meeting date and time.');
+      hasErrors = true;
+    }
+
+    // External link is optional, but if provided it must be a real http(s) URL
+    if (externalUrl.trim()) {
+      try {
+        const parsed = new URL(externalUrl.trim());
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('bad protocol');
+      } catch {
+        setExternalUrlError('Enter a valid http(s) meeting link, or leave this blank');
+        hasErrors = true;
+      }
     }
 
     if (hasErrors) {
@@ -124,7 +127,7 @@ export default function CreateMeetingScreen({ navigation }: { navigation: any })
         scheduled_date: localDateString, // YYYY-MM-DD format in local timezone
         start_time: `${String(startTime.getHours()).padStart(2, '0')}:${String(startTime.getMinutes()).padStart(2, '0')}`, // HH:MM format
         duration_minutes: parseInt(durationMinutes),
-        location: location.trim() || undefined,
+        external_url: externalUrl.trim() || undefined,
         participant_ids: selectedParticipants.map(p => p.id),
       };
 
@@ -142,7 +145,7 @@ export default function CreateMeetingScreen({ navigation }: { navigation: any })
     } catch (error: any) {
       console.error('Meeting creation error:', error);
       const errorMessage = error?.message || 'Failed to create meeting. Please try again.';
-      Alert.alert('Error', errorMessage);
+      showError('Error', errorMessage);
     }
   };
 
@@ -159,23 +162,23 @@ export default function CreateMeetingScreen({ navigation }: { navigation: any })
     setTitleError('');
     setDescription('');
     setSelectedParticipants([]);
-    setLocation('');
+    setExternalUrl('');
+    setExternalUrlError('');
     setDurationMinutes('60');
     setDurationError('');
-    setSearchQuery('');
-    setDebouncedSearch('');
     setCreatedMeeting(null);
     // Navigate back to meetings list
     navigation.goBack();
   };
 
   const handleOpenMeetingLink = () => {
-    if (createdMeeting?.meeting_url) {
+    const url = createdMeeting?.effective_meeting_url || createdMeeting?.meeting_url;
+    if (url) {
       if (Platform.OS === 'web') {
-        window.open(createdMeeting.meeting_url, '_blank');
+        window.open(url, '_blank');
       } else {
         // For mobile, you might want to use Linking.openURL
-        Alert.alert('Meeting Link', createdMeeting.meeting_url);
+        Alert.alert('Meeting Link', url);
       }
     }
   };
@@ -225,43 +228,6 @@ export default function CreateMeetingScreen({ navigation }: { navigation: any })
       }
     }
   };
-
-  const handleAddParticipant = (faculty: any) => {
-    // Check by exact ID match to prevent duplicates
-    if (selectedParticipants.find(p => p.id === faculty.id)) {
-      return; // Already selected
-    }
-
-    setSelectedParticipants(prev => [...prev, {
-      id: faculty.id,
-      name: faculty.name,
-      designation: faculty.designation,
-      department_name: faculty.department_name,
-    }]);
-
-    // Keep search query to allow adding more faculty without clearing search
-    setShowParticipantSearch(false);
-  };
-
-  const handleRemoveParticipant = (participantId: string) => {
-    setSelectedParticipants(prev => prev.filter(p => p.id !== participantId));
-  };
-
-  const handleSearchInputFocus = () => {
-    setShowParticipantSearch(true);
-  };
-
-  const handleSearchInputBlur = () => {
-    // Delay closing to allow clicking on results
-    setTimeout(() => {
-      setShowParticipantSearch(false);
-    }, 200); // Increased delay for better UX
-  };
-
-  // Filter out already selected faculty from search results
-  const filteredFaculty = facultyMembers.filter(f =>
-    !selectedParticipants.find(p => p.id === f.id)
-  );
 
   return (
     <ScreenLayout navigation={navigation} activeScreen="CreateMeeting">
@@ -338,145 +304,56 @@ export default function CreateMeetingScreen({ navigation }: { navigation: any })
               </TouchableOpacity>
             </View>
           </View>
+          {dateTimeError ? (
+            <Text style={[s.errorText, { color: colors.error, marginTop: -spacing.sm, marginBottom: spacing.md }]}>{dateTimeError}</Text>
+          ) : null}
 
-          {/* Duration and Location */}
-          <View style={s.row}>
-            <View style={[s.inputGroup, s.flex1]}>
-              <Text style={[s.label, { color: colors.textSecondary }]}>Duration (minutes) *</Text>
-              <TextInput
-                value={durationMinutes}
-                onChangeText={(text) => {
-                  setDurationMinutes(text);
-                  if (durationError) setDurationError(''); // Clear error when user types
-                }}
-                placeholder="60"
-                mode="outlined"
-                keyboardType="numeric"
-                style={s.textInput}
-                theme={{ colors: { primary: colors.primary } }}
-                error={!!durationError}
-              />
-              {durationError ? (
-                <Text style={[s.errorText, { color: colors.error }]}>{durationError}</Text>
-              ) : null}
-            </View>
-
-            <View style={[s.inputGroup, s.flex1]}>
-              <Text style={[s.label, { color: colors.textSecondary }]}>Location</Text>
-              <TextInput
-                value={location}
-                onChangeText={setLocation}
-                placeholder="Enter location (optional)"
-                mode="outlined"
-                style={s.textInput}
-                theme={{ colors: { primary: colors.primary } }}
-              />
-            </View>
+          {/* Duration */}
+          <View style={s.inputGroup}>
+            <Text style={[s.label, { color: colors.textSecondary }]}>Duration (minutes) *</Text>
+            <TextInput
+              value={durationMinutes}
+              onChangeText={(text) => {
+                setDurationMinutes(text);
+                if (durationError) setDurationError(''); // Clear error when user types
+              }}
+              placeholder="60"
+              mode="outlined"
+              keyboardType="numeric"
+              style={s.textInput}
+              theme={{ colors: { primary: colors.primary } }}
+              error={!!durationError}
+            />
+            {durationError ? (
+              <Text style={[s.errorText, { color: colors.error }]}>{durationError}</Text>
+            ) : null}
           </View>
 
           {/* Participants */}
+          <View style={s.inputGroup}>
+            <ParticipantPicker colors={colors} selected={selectedParticipants} onChange={setSelectedParticipants} />
+          </View>
+
+          {/* External meeting link */}
           <View style={[s.inputGroup, { marginBottom: spacing.xl }]}>
-            <Text style={[s.label, { color: colors.textSecondary }]}>Participants</Text>
-
-            {/* Search Input */}
-            <View style={s.participantSearchContainer}>
-              <TextInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search faculty to add as participants"
-                mode="outlined"
-                style={s.textInput}
-                theme={{ colors: { primary: colors.primary } }}
-                right={<TextInput.Icon icon="magnify" />}
-                onFocus={handleSearchInputFocus}
-                onBlur={handleSearchInputBlur}
-              />
-
-              {/* Search Results */}
-              {showParticipantSearch && (
-                <View style={[s.searchResultsContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <ScrollView
-                    style={s.searchResults}
-                    nestedScrollEnabled={true}
-                    showsVerticalScrollIndicator={true}
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {isLoadingFaculty ? (
-                      <View style={s.searchLoading}>
-                        <ActivityIndicator size="small" color={colors.primary} />
-                        <Text style={[s.searchLoadingText, { color: colors.textMuted }]}>Searching faculty...</Text>
-                      </View>
-                    ) : facultyError ? (
-                      <View style={s.searchError}>
-                        <Text style={[s.errorText, { color: colors.error }]}>Failed to load faculty</Text>
-                        <Text style={[s.errorSubtext, { color: colors.textMuted }]}>Please try again</Text>
-                      </View>
-                    ) : filteredFaculty.length === 0 ? (
-                      <View style={s.noResultsContainer}>
-                        {debouncedSearch ? (
-                          <Text style={[s.noResults, { color: colors.textMuted }]}>
-                            No faculty found matching "{debouncedSearch}"
-                          </Text>
-                        ) : (
-                          <Text style={[s.noResults, { color: colors.textMuted }]}>
-                            Start typing to search for faculty members
-                          </Text>
-                        )}
-                      </View>
-                    ) : (
-                      filteredFaculty.slice(0, 8).map(faculty => (
-                        <TouchableOpacity
-                          key={faculty.id}
-                          style={s.searchResultItem}
-                          onPress={() => handleAddParticipant(faculty)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={s.facultyInfo}>
-                            <Text style={[s.facultyName, { color: colors.textPrimary }]}>
-                              {faculty.name}
-                            </Text>
-                            <Text style={[s.facultyDetails, { color: colors.textMuted }]}>
-                              {faculty.designation} • {faculty.department_name}
-                            </Text>
-                          </View>
-                          <Icon source="plus-circle" size={24} color={colors.primary} />
-                        </TouchableOpacity>
-                      ))
-                    )}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-
-            {/* Selected Participants */}
-            {selectedParticipants.length > 0 && (
-              <View style={s.selectedParticipants}>
-                <Text style={[s.participantLabel, { color: colors.textSecondary }]}>
-                  Selected Participants ({selectedParticipants.length})
-                </Text>
-                <View style={s.participantChips}>
-                  {selectedParticipants.map(participant => (
-                    <View key={participant.id} style={[s.participantChip, { backgroundColor: colors.primarySoft }]}>
-                      <View style={s.participantInfo}>
-                        <Text style={[s.participantName, { color: colors.primary }]}>
-                          {participant.name}
-                        </Text>
-                        <Text style={[s.participantDesignation, { color: colors.textMuted }]}>
-                          {participant.designation}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => handleRemoveParticipant(participant.id)}
-                        style={s.removeButton}
-                        activeOpacity={0.7}
-                      >
-                        <Icon source="close-circle" size={20} color={colors.textMuted} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
+            <Text style={[s.label, { color: colors.textSecondary }]}>External Meeting Link (Optional)</Text>
+            <Text style={[s.helperText, { color: colors.textMuted }]}>
+              Already created a meeting in another app? Paste its link here. If left blank, the system will generate a Jitsi meeting link instead.
+            </Text>
+            <TextInput
+              value={externalUrl}
+              onChangeText={(text) => { setExternalUrl(text); if (externalUrlError) setExternalUrlError(''); }}
+              placeholder="https://..."
+              mode="outlined"
+              autoCapitalize="none"
+              keyboardType="url"
+              style={s.textInput}
+              theme={{ colors: { primary: colors.primary } }}
+              error={!!externalUrlError}
+            />
+            {externalUrlError ? (
+              <Text style={[s.errorText, { color: colors.error }]}>{externalUrlError}</Text>
+            ) : null}
           </View>
 
           {/* Submit Button */}
@@ -574,14 +451,14 @@ export default function CreateMeetingScreen({ navigation }: { navigation: any })
                 </View>
               </View>
 
-              {createdMeeting?.meeting_url && (
+              {(createdMeeting?.effective_meeting_url || createdMeeting?.meeting_url) && (
                 <TouchableOpacity
                   style={[s.linkButton, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}
                   onPress={handleOpenMeetingLink}
                 >
                   <Icon source="video" size={20} color={colors.primary} />
                   <Text style={[s.linkButtonText, { color: colors.primary }]}>
-                    Open Jitsi Meeting
+                    {createdMeeting?.external_meeting_url ? 'Open Meeting Link' : 'Join Jitsi Meeting'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -650,6 +527,7 @@ const s = StyleSheet.create({
 
   inputGroup: { marginBottom: spacing.md },
   label: { fontSize: 14, fontWeight: '600', marginBottom: spacing.xs },
+  helperText: { fontSize: 12, marginBottom: spacing.xs },
   textInput: { fontSize: 16 },
 
   row: {
@@ -670,84 +548,7 @@ const s = StyleSheet.create({
   },
   dateTimeText: { fontSize: 16, flex: 1 },
 
-  participantSearchContainer: {
-    position: 'relative',
-    zIndex: 10,
-  },
-  searchResultsContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    maxHeight: 200,
-    zIndex: 1000,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  searchResults: {
-    maxHeight: 200,
-  },
-  searchLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  searchLoadingText: { fontSize: 14 },
-  searchError: {
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  errorText: { fontSize: 14, fontWeight: '600' },
   errorText: { fontSize: 12, marginTop: 4 },
-  noResultsContainer: {
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  noResults: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  searchResultItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  facultyInfo: {
-    flex: 1,
-  },
-  facultyName: { fontSize: 15, fontWeight: '600' },
-  facultyDetails: { fontSize: 13, marginTop: 2 },
-
-  selectedParticipants: { marginTop: spacing.md },
-  participantLabel: { fontSize: 14, fontWeight: '600', marginBottom: spacing.sm },
-  participantChips: {
-    flexDirection: 'column',
-    gap: spacing.xs,
-  },
-  participantChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-  },
-  participantInfo: { flex: 1 },
-  participantName: { fontSize: 14, fontWeight: '600' },
-  participantDesignation: { fontSize: 12, marginTop: 2 },
-  removeButton: {
-    padding: 4,
-    marginLeft: spacing.sm,
-  },
 
   submitButton: {
     flexDirection: 'row',

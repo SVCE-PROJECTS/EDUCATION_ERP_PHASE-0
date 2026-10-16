@@ -8,12 +8,18 @@ import LoadingIndicator from '../../../components/Loading/LoadingIndicator';
 import EmptyState from '../../../components/EmptyState/EmptyState';
 import CustomDropdown from '../../../components/Dropdown/CustomDropdown';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
+import ExportMenu from '../../../components/admin/ExportMenu';
 import { useFaculty } from '../../../hooks/admin/useFaculty';
 import { useDropdown } from '../../../hooks/admin/useDropdowns';
 import { PAGE_SIZE } from '../../../constants';
-import { colors, spacing, typography } from '../../../theme';
+import { useTheme } from '../../../context/admin/ThemeContext';
+import { spacing, typography } from '../../../theme';
 
-const FacultyListScreen = ({ navigation }) => {
+// embedded: true when rendered as a tab inside RegistryScreen (skips its own
+// ScreenLayout/sidebar, since the parent already provides one).
+const FacultyListScreen = ({ navigation, embedded = false }) => {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
@@ -51,12 +57,24 @@ const FacultyListScreen = ({ navigation }) => {
     { id: 'INACTIVE', name: 'Inactive' },
   ], []);
 
-  return (
-    <ScreenLayout navigation={navigation} activeScreen="FacultyList">
+  const content = (
+    <>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Faculty Registry</Text>
-          <Text style={styles.subtitle}>Manage all faculty members</Text>
+          <View>
+            <Text style={styles.title}>Faculty Registry</Text>
+            <Text style={styles.subtitle}>Manage all faculty members</Text>
+          </View>
+          <ExportMenu
+            entity="faculty"
+            filenameBase="faculty"
+            filters={{
+              search: search || undefined,
+              departmentId: filterDeptId || undefined,
+              designation: filterDesig || undefined,
+              status: filterStatus || undefined,
+            }}
+          />
         </View>
 
         <View style={styles.searchWrap}>
@@ -121,13 +139,24 @@ const FacultyListScreen = ({ navigation }) => {
           onPress={() => navigation.navigate('AddFaculty')}
         />
       </View>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenLayout navigation={navigation} activeScreen="Registry">
+      {content}
     </ScreenLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container:       { flex: 1, backgroundColor: colors.background },
-  header:          { padding: spacing.lg, paddingBottom: 0 },
+  header:          {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    padding: spacing.lg, paddingBottom: 0,
+  },
   title:           { ...typography.h1, color: colors.textPrimary },
   subtitle:        { ...typography.body, color: colors.textSecondary, marginTop: spacing.xs },
   searchWrap:      { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },

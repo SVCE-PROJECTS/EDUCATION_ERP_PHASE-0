@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, TextInput as RNTextInput } from 'react-native';
 import { Icon } from 'react-native-paper';
 import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
 
@@ -35,12 +35,17 @@ export default function MeetingTimePicker({
   const [tempPeriod, setTempPeriod] = useState<'AM' | 'PM'>(() =>
     selectedTime.getHours() >= 12 ? 'PM' : 'AM'
   );
+  // Manual entry mirrors the clock face — kept as plain strings while being
+  // typed so "1" isn't forced to "01" mid-keystroke, then clamped on blur.
+  const [hourText, setHourText] = useState(() => String(tempHour));
+  const [minuteText, setMinuteText] = useState(() => String(tempMinute).padStart(2, '0'));
 
   const clockSize = 200;
   const center = clockSize / 2;
   const radius = 80;
 
-  // Generate hour positions (1-12)
+  // Generate hour positions (1-12) — labels only now; hit-testing below is
+  // computed continuously from the touch angle instead of per-mark circles.
   const hourPositions = useMemo(() => {
     const positions = [];
     for (let i = 1; i <= 12; i++) {
@@ -52,7 +57,8 @@ export default function MeetingTimePicker({
     return positions;
   }, []);
 
-  // Generate minute positions (0, 5, 10, ..., 55)
+  // Generate minute tick labels (0, 5, 10, ..., 55) — also labels only; any
+  // minute 0-59 can be picked by tapping/dragging between ticks.
   const minutePositions = useMemo(() => {
     const positions = [];
     for (let i = 0; i < 60; i += 5) {
@@ -82,13 +88,58 @@ export default function MeetingTimePicker({
     }
   };
 
-  const handleHourPress = (hour: number) => {
-    setTempHour(hour);
-    setStep('minute');
+  // Single continuous hit area for the whole clock face. Earlier this used
+  // one small (40px) TouchableOpacity circle per mark — at a 200px clock
+  // with 12 marks on an 80px-radius ring, adjacent marks sit only ~41px
+  // apart center-to-center, so those circles overlapped and a tap near the
+  // boundary could register the neighboring mark (tapping 12 selected 1,
+  // tapping minute 30 selected 25, etc). Computing the value directly from
+  // the touch angle removes that ambiguity — every angle maps to exactly
+  // one nearest hour/minute — and as a side effect allows picking any
+  // minute (not just 5-minute steps), since the angle is continuous.
+  const handleTouch = (evt: any) => {
+    const { locationX, locationY } = evt.nativeEvent;
+    const dx = locationX - center;
+    const dy = locationY - center;
+    const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
+    const normalized = ((angleDeg + 90) % 360 + 360) % 360; // 0 = 12 o'clock, clockwise
+
+    if (step === 'hour') {
+      let h = Math.round(normalized / 30) % 12;
+      if (h === 0) h = 12;
+      setTempHour(h);
+      setHourText(String(h));
+    } else {
+      const m = Math.round(normalized / 6) % 60;
+      setTempMinute(m);
+      setMinuteText(String(m).padStart(2, '0'));
+    }
   };
 
-  const handleMinutePress = (minute: number) => {
-    setTempMinute(minute);
+  const handleRelease = () => {
+    if (step === 'hour') setStep('minute');
+  };
+
+  const handleHourTextChange = (text: string) => {
+    const digits = text.replace(/[^0-9]/g, '').slice(0, 2);
+    setHourText(digits);
+    const n = parseInt(digits, 10);
+    if (Number.isInteger(n) && n >= 1 && n <= 12) setTempHour(n);
+  };
+
+  const handleMinuteTextChange = (text: string) => {
+    const digits = text.replace(/[^0-9]/g, '').slice(0, 2);
+    setMinuteText(digits);
+    const n = parseInt(digits, 10);
+    if (Number.isInteger(n) && n >= 0 && n <= 59) setTempMinute(n);
+  };
+
+  const handleHourTextBlur = () => {
+    setHourText(String(tempHour));
+  };
+
+  const handleMinuteTextBlur = () => {
+    setMinuteText(String(tempMinute).padStart(2, '0'));
   };
 
   const handleConfirm = () => {
@@ -105,9 +156,12 @@ export default function MeetingTimePicker({
   const handleCancel = () => {
     // Reset to original values
     const origHour = selectedTime.getHours();
-    setTempHour(origHour === 0 ? 12 : origHour > 12 ? origHour - 12 : origHour);
+    const resetHour = origHour === 0 ? 12 : origHour > 12 ? origHour - 12 : origHour;
+    setTempHour(resetHour);
     setTempMinute(selectedTime.getMinutes());
     setTempPeriod(selectedTime.getHours() >= 12 ? 'PM' : 'AM');
+    setHourText(String(resetHour));
+    setMinuteText(String(selectedTime.getMinutes()).padStart(2, '0'));
     setStep('hour');
     onClose();
   };
@@ -201,38 +255,44 @@ export default function MeetingTimePicker({
               />
             </Svg>
 
-            {/* Invisible touch targets */}
-            <View style={styles.touchTargets}>
-              {step === 'hour' ? (
-                hourPositions.map(pos => (
-                  <TouchableOpacity
-                    key={pos.hour}
-                    style={[
-                      styles.touchTarget,
-                      {
-                        left: pos.x - 20,
-                        top: pos.y - 20,
-                      }
-                    ]}
-                    onPress={() => handleHourPress(pos.hour)}
-                  />
-                ))
-              ) : (
-                minutePositions.map(pos => (
-                  <TouchableOpacity
-                    key={pos.minute}
-                    style={[
-                      styles.touchTarget,
-                      {
-                        left: pos.x - 20,
-                        top: pos.y - 20,
-                      }
-                    ]}
-                    onPress={() => handleMinutePress(pos.minute)}
-                  />
-                ))
-              )}
-            </View>
+            {/* Single continuous touch surface — see handleTouch comment */}
+            <View
+              style={styles.touchSurface}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={handleTouch}
+              onResponderMove={handleTouch}
+              onResponderRelease={handleRelease}
+            />
+          </View>
+
+          {/* Manual entry — alternative to tapping the clock face */}
+          <View style={styles.manualRow}>
+            <RNTextInput
+              value={hourText}
+              onChangeText={handleHourTextChange}
+              onBlur={handleHourTextBlur}
+              onFocus={() => setStep('hour')}
+              keyboardType="number-pad"
+              maxLength={2}
+              placeholder="HH"
+              placeholderTextColor={theme.textMuted}
+              style={[styles.manualInput, { color: theme.textPrimary, borderColor: theme.border }]}
+              accessibilityLabel="Hour"
+            />
+            <Text style={[styles.manualColon, { color: theme.textPrimary }]}>:</Text>
+            <RNTextInput
+              value={minuteText}
+              onChangeText={handleMinuteTextChange}
+              onBlur={handleMinuteTextBlur}
+              onFocus={() => setStep('minute')}
+              keyboardType="number-pad"
+              maxLength={2}
+              placeholder="MM"
+              placeholderTextColor={theme.textMuted}
+              style={[styles.manualInput, { color: theme.textPrimary, borderColor: theme.border }]}
+              accessibilityLabel="Minute"
+            />
           </View>
 
           {/* AM/PM Toggle */}
@@ -270,7 +330,7 @@ export default function MeetingTimePicker({
           {/* Step indicator */}
           {step === 'hour' && (
             <Text style={[styles.instruction, { color: theme.textMuted }]}>
-              Tap an hour, then select minutes
+              Tap or drag to pick an hour, then select minutes
             </Text>
           )}
 
@@ -337,21 +397,36 @@ const styles = StyleSheet.create({
   clockContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
     position: 'relative',
   },
-  touchTargets: {
+  touchSurface: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    borderRadius: 100,
   },
-  touchTarget: {
-    position: 'absolute',
-    width: 40,
+  manualRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 16,
+  },
+  manualInput: {
+    width: 52,
     height: 40,
-    borderRadius: 20,
+    borderWidth: 1,
+    borderRadius: 8,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  manualColon: {
+    fontSize: 18,
+    fontWeight: '700',
   },
   periodContainer: {
     flexDirection: 'row',

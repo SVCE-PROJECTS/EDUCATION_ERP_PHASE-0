@@ -13,8 +13,9 @@ import {
   spacing, radius, shadows, typography,
 } from '../../theme';
 
-// Reachable from every screen via ScreenLayout. Debounced search over the
-// student registry; picking a result jumps straight to their detail screen.
+// Lives on the Dashboard, just below the greeting banner. Debounced search
+// over the student registry; picking a result jumps straight to their
+// detail screen.
 const GlobalSearch = () => {
   const navigation = useNavigation();
   const { colors } = useTheme();

@@ -58,7 +58,9 @@ const UserRow = ({ item, isSelf, onToggleStatus, toggling }) => {
   );
 };
 
-const AdminUsersScreen = ({ navigation }) => {
+// embedded: true when rendered as a tab inside the combined Settings screen
+// (skips its own ScreenLayout/sidebar, since the parent already provides one).
+const AdminUsersScreen = ({ navigation, embedded = false }) => {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const { user: currentUser } = useAuth();
@@ -106,8 +108,8 @@ const AdminUsersScreen = ({ navigation }) => {
     }
   };
 
-  return (
-    <ScreenLayout navigation={navigation} activeScreen="AdminUsers">
+  const content = (
+    <>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View>
@@ -186,6 +188,14 @@ const AdminUsersScreen = ({ navigation }) => {
       <Snackbar visible={!!snackbar} onDismiss={() => setSnackbar('')} duration={3000}>
         {snackbar}
       </Snackbar>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenLayout navigation={navigation} activeScreen="Settings">
+      {content}
     </ScreenLayout>
   );
 };

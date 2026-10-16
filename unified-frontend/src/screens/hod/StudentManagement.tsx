@@ -1218,7 +1218,7 @@ function SectionDashboard({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export default function StudentManagement({ route }: { route?: any }) {
+export default function StudentManagement({ route, embedded = false }: { route?: any; embedded?: boolean }) {
   const { colors: theme } = useTheme();
   const s = getStyles(theme);
   const [view, setView] =
@@ -1267,11 +1267,8 @@ export default function StudentManagement({ route }: { route?: any }) {
     setView(VIEW.SECTION);
   };
 
-  return (
-    <ScreenWrapper
-      route={ROUTES.HOD_STUDENTS}
-      scrollable={false}
-    >
+  const content = (
+    <>
       {view === VIEW.SEMESTER && (
         <SemesterPicker
           onSelect={handleSemesterSelect}
@@ -1293,6 +1290,17 @@ export default function StudentManagement({ route }: { route?: any }) {
           onBack={backToSections}
         />
       )}
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <ScreenWrapper
+      route={ROUTES.HOD_STUDENTS}
+      scrollable={false}
+    >
+      {content}
     </ScreenWrapper>
   );
 }
@@ -1322,6 +1330,12 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   section: {
     gap: 16,
     width: '100%',
+    // Self-contained padding — unlike the dashboard view (which pads itself
+    // via listContent), the semester/section pickers had relied entirely on
+    // ScreenWrapper's own padding. That's absent when this screen is
+    // embedded in a tab (Data & Management), which left the chips flush
+    // against the panel edges.
+    padding: 16,
   },
 
   // ── Tabs ───────────────────────────────────────────────────────────────────

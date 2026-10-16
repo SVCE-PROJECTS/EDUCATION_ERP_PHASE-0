@@ -42,9 +42,11 @@ async function findById(id) {
 }
 
 /**
- * All rows in `users` — in this schema that's exclusively admin-portal
- * accounts (faculty/HOD authenticate against the separate `faculty` table),
- * so this doubles as "list admin users" for the Admin Users screen.
+ * Admin Users screen — only users with an admin/super_admin role. `users`
+ * is not exclusively admin accounts: faculty/HOD also get a row there
+ * (created on demand, e.g. the first time they're linked as a meeting
+ * participant or creator) so their employee record can be tied to a
+ * user_id — those must never be listed here as admins.
  */
 async function findAllAdmins() {
   const result = await query(
@@ -58,6 +60,7 @@ async function findAllAdmins() {
        r.role_name  AS "roleName"
      FROM users u
      LEFT JOIN roles r ON r.role_id = u.role_id
+     WHERE r.role_name IN ('admin', 'super_admin')
      ORDER BY u.created_at DESC`,
   );
   return result.rows;

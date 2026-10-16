@@ -11,7 +11,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Topbar from '../../components/faculty/navigation/Topbar';
-import LogoBanner from './LogoBanner';
 import { useTheme } from '../../context/faculty/ThemeContext';
 import { primaryScale, shadows } from '../../theme/faculty/colors';
 import { SCREEN_TITLES, RouteName } from '../../navigation/faculty/routes';

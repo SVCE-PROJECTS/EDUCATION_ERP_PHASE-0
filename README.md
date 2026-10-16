@@ -2,10 +2,6 @@
 
 A unified department ERP system with a shared PostgreSQL database and Express API backend, powering a React Native/Expo frontend that covers Admin, HOD, and Faculty portals.
 
-## 📋 Quick Start
-
-**For detailed setup instructions, dependencies, and troubleshooting, see [SETUP_GUIDE.md](./SETUP_GUIDE.md)**
-
 ## 🚀 Features
 
 - Multi-portal system (Admin, HOD, Faculty)
@@ -59,17 +55,22 @@ npx expo start --clear --web
 
 ## 🔐 Default Credentials
 
-After running database seeds:
+The backend auto-seeds an **Admin** account on first start (see [Database Migrations](#-database-migrations) below):
 
-- **Admin**: `ADMIN001` / `password123`
-- **HOD**: `HOD001` / `password123`
-- **Faculty**: `FAC001` / `password123`
+- **Admin**: `admin` / `Admin@123`
+
+HOD and Faculty logins aren't auto-seeded — they come from a separate seed file:
+
+```bash
+psql -U postgres -d education_erp -f database/seed_faculty_users.sql
+```
+
+Default password for all seeded faculty is `Faculty@123`. See [LOGIN_CREDENTIALS.md](./LOGIN_CREDENTIALS.md) for the full list of usernames/department codes.
 
 ## 📚 Documentation
 
-- **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Complete installation guide with dependencies
-- **[ATTENDANCE_CHART_BUGS_FIXED.md](./ATTENDANCE_CHART_BUGS_FIXED.md)** - Attendance chart implementation details
-- **[TASK_COMPLETION_REPORT.md](./TASK_COMPLETION_REPORT.md)** - Recent feature additions
+- **[MEETING_MANAGEMENT_SETUP.md](./MEETING_MANAGEMENT_SETUP.md)** - Meeting management feature setup
+- **[LOGIN_CREDENTIALS.md](./LOGIN_CREDENTIALS.md)** - Full list of seeded test accounts
 
 ## 🗂️ Project Structure
 
@@ -93,9 +94,7 @@ EDUCATION_ERP_PHASE-0/
 │   │   ├── context/          # React Context (Auth, Theme)
 │   │   └── navigation/       # Navigation configuration
 │
-├── database/                 # SQL schema and seeds
-├── prisma/                   # Prisma ORM schema
-└── SETUP_GUIDE.md           # Detailed setup instructions
+└── database/                 # SQL schema and seeds
 ```
 
 ## 🌐 API Base URL Configuration
@@ -117,29 +116,11 @@ The schema and seeds are applied **automatically on server start** via `src/conf
 ```bash
 psql -U postgres -c "DROP DATABASE IF EXISTS education_erp;"
 psql -U postgres -c "CREATE DATABASE education_erp;"
-psql -U postgres -d education_erp -f database/unified_schema.sql
-psql -U postgres -d education_erp -f database/seed_faculty_users.sql
 ```
 
-## 📊 Recent Updates
-
-### Faculty Dashboard
-- ✅ Class Attendance Chart with tooltips
-- ✅ Click navigation to Attendance screen
-- ✅ Real-time attendance statistics per class
-
-### HOD Dashboard
-- ✅ Department Attendance Chart (Semester × Section)
-- ✅ Fixed data extraction from student list
-- ✅ Skeleton rendering for empty states
-
-### Backend
-- ✅ New endpoint: `GET /api/attendance/class-statistics`
-- ✅ Faculty-scoped attendance aggregation
+Then just start the backend (`npm run dev`) — `dbBootstrap.js` applies the schema, every file under `database/migrations/`, and the base seed automatically. To also get test HOD/Faculty logins, run `database/seed_faculty_users.sql` (and optionally `database/seed_test_data.sql`) afterward.
 
 ## 🐛 Troubleshooting
-
-See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for detailed troubleshooting steps.
 
 ### Common Issues
 
@@ -159,4 +140,4 @@ Educational use only.
 
 ---
 
-**Need help?** Check [SETUP_GUIDE.md](./SETUP_GUIDE.md) for comprehensive documentation.
+**Need help?** Check the Troubleshooting section above, or [LOGIN_CREDENTIALS.md](./LOGIN_CREDENTIALS.md) for test accounts.

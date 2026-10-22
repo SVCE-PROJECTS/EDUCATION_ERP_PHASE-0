@@ -17,6 +17,8 @@ const config                          = require('./src/config');
 const { testConnection, closePool }   = require('./src/config/db');
 const { initializeDatabase }          = require('./src/config/dbBootstrap');
 const { logger }                      = require('./src/utils/logger');
+const duckdbService                   = require('./src/services/analytics/duckdbService');
+const refreshService                  = require('./src/services/analytics/analyticsRefreshService');
 
 async function start() {
   // 1. Verify PostgreSQL
@@ -43,12 +45,29 @@ async function start() {
     logger.info('─────────────────────────────────────────────────');
   });
 
+  // 4. Initialize DuckDB analytics (non-blocking — PostgreSQL writes are unaffected
+  //    even if this fails or DUCKDB_ENABLED=false)
+  duckdbService.initialize()
+    .then((ready) => {
+      if (ready) {
+        if (require('./src/config/analytics').refreshOnStart) {
+          return refreshService.runRefresh();
+        }
+      }
+    })
+    .then(() => refreshService.startScheduledRefresh())
+    .catch((err) =>
+      logger.error('DuckDB startup error (non-fatal)', { error: err.message }),
+    );
+
   // 4. Graceful Shutdown
   const shutdown = async (signal) => {
     logger.info(`\n${signal} received — shutting down...`);
     server.close(async () => {
+      refreshService.stopScheduledRefresh();
+      await duckdbService.close();
       await closePool();
-      logger.info('✅  PostgreSQL pool closed. Bye!');
+      logger.info('✅  PostgreSQL pool and DuckDB closed. Bye!');
       process.exit(0);
     });
     // Force exit if graceful shutdown takes too long

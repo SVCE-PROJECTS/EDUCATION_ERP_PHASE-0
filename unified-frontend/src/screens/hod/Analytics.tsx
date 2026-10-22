@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, Platform, ActivityIndicator } from 'react
 import { Text } from 'react-native-paper';
 import ScreenWrapper from '../../layouts/hod/ScreenWrapper';
 import { useAnalyticsOverview } from '../../hooks/hod/useAnalytics';
+import { useHODAttendanceSummary } from '../../hooks/hod/useAttendanceAnalytics';
 import { useTheme } from '../../context/hod/ThemeContext';
 import { ThemeColors, shadows } from '../../theme/hod/colors';
 import { ROUTES } from '../../navigation/hod/routes';
@@ -185,8 +186,135 @@ export default function HODAnalytics() {
             {data.meetings.participantResponses.length ? <SimpleDonut styles={s} centerLabel="Replies" segments={data.meetings.participantResponses.map((r: any, i: number) => ({ label: label(r.label), value: r.value, color: DONUT_COLORS[i % DONUT_COLORS.length] }))} /> : <Text style={s.emptyChart}>No data.</Text>}
           </ChartCard>
         </View>
+
+        {/* Attendance Intelligence — DuckDB-powered department summary */}
+        <View style={s.sectionDivider} />
+        <HODAttendanceIntelligence s={s} />
+
       </ScrollView>
     </ScreenWrapper>
+  );
+}
+
+// ── HOD Attendance Intelligence section ───────────────────────────────────────
+
+function HODAttendanceIntelligence({ s }: { s: any }) {
+  const { data, isLoading, isError, error } = useHODAttendanceSummary();
+
+  const renderFreshness = () => {
+    if (!data?.freshness) return null;
+    const f     = data.freshness;
+    const stale = f.stale || !f.analyticsAvailable;
+    const label = f.lastSuccessfulRefreshAt
+      ? `Refreshed ${new Date(f.lastSuccessfulRefreshAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : 'Never refreshed';
+    return (
+      <View style={[s.freshnessBadge, stale ? s.freshnessBadgeStale : s.freshnessBadgeFresh]}>
+        <Text style={[s.freshnessText, { color: stale ? '#CA8A04' : '#16A34A' }]}>
+          {f.analyticsAvailable ? label : 'Analytics offline'}
+          {stale && f.analyticsAvailable ? ' · Stale' : ''}
+        </Text>
+      </View>
+    );
+  };
+
+  const content = () => {
+    if (isLoading) return (
+      <ActivityIndicator size="small" color="#1D4ED8" style={{ marginVertical: 16 }} />
+    );
+
+    if (isError) {
+      const is503 = (error as any)?.response?.status === 503;
+      return (
+        <View style={s.unavailableBox}>
+          <Text style={s.unavailableTitle}>{is503 ? '📊 Analytics Offline' : '⚠️ Unavailable'}</Text>
+          <Text style={s.unavailableBody}>
+            {is503
+              ? 'Attendance analytics are temporarily unavailable. All other features work normally.'
+              : (error as any)?.message || 'Unable to load attendance analytics.'}
+          </Text>
+        </View>
+      );
+    }
+
+    if (!data || data.overall.recordedSessions === 0) {
+      return <Text style={s.emptyChart}>No attendance data in the analytics snapshot for this period.</Text>;
+    }
+
+    const { overall, classes } = data;
+    const pct = overall.attendancePercentage;
+
+    const bandCounts = classes.reduce(
+      (acc, c) => { acc[c.overallBand] = (acc[c.overallBand] || 0) + 1; return acc; },
+      {} as Record<string, number>,
+    );
+
+    return (
+      <>
+        {/* Overview tiles */}
+        <View style={s.statsRow}>
+          <View style={s.statTile}>
+            <Text style={s.statTileValue}>{pct !== null ? `${pct.toFixed(1)}%` : '—'}</Text>
+            <Text style={s.statTileLabel}>Dept Attendance</Text>
+            <Text style={s.statTileHint}>{overall.recordedSessions} sessions recorded</Text>
+          </View>
+          <View style={s.statTile}>
+            <Text style={s.statTileValue}>{overall.presentSessions}</Text>
+            <Text style={s.statTileLabel}>Present (total)</Text>
+            <Text style={s.statTileHint}>{overall.recordedSessions - overall.presentSessions} absent</Text>
+          </View>
+          <View style={s.statTile}>
+            <Text style={s.statTileValue}>{classes.length}</Text>
+            <Text style={s.statTileLabel}>Classes</Text>
+            <Text style={s.statTileHint}>{bandCounts['critical'] || 0} critical · {bandCounts['at_risk'] || 0} at-risk</Text>
+          </View>
+        </View>
+
+        {/* Per-class breakdown */}
+        <Text style={s.intelSubLabel}>Per-class attendance</Text>
+        {classes.map((c) => {
+          const cpct = c.attendancePercentage;
+          const bandColors: Record<string, string> = {
+            critical: '#DC2626', at_risk: '#CA8A04', on_track: '#16A34A', insufficient_data: '#94A3B8',
+          };
+          const badgeColor = bandColors[c.overallBand] ?? '#94A3B8';
+          const badgeBg: Record<string, string> = {
+            critical: '#FEE2E2', at_risk: '#FEF9C3', on_track: '#DCFCE7', insufficient_data: '#F1F5F9',
+          };
+          return (
+            <View key={c.classId} style={s.classRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.classRowId}>Class #{c.classId}</Text>
+                <Text style={s.classRowDetail}>
+                  {c.distinctStudents} students · {c.recordedSessions} sessions
+                </Text>
+              </View>
+              <View style={[s.classBand, { backgroundColor: badgeBg[c.overallBand] ?? '#F1F5F9' }]}>
+                <Text style={[s.classBandText, { color: badgeColor }]}>
+                  {cpct !== null ? `${cpct.toFixed(1)}%` : '—'}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+
+        <Text style={s.intelDisclaimer}>
+          Risk bands are demo defaults (critical &lt;60%, at-risk &lt;75%) — not official VTU/SVCE policy.
+          Data reflects the last successful analytics refresh shown above.
+        </Text>
+      </>
+    );
+  };
+
+  return (
+    <View style={s.intelSection}>
+      <View style={s.intelHeader}>
+        <Text style={s.intelTitle}>Attendance Intelligence</Text>
+        {renderFreshness()}
+      </View>
+      <Text style={s.emptyChart} />
+      {content()}
+    </View>
   );
 }
 
@@ -244,4 +372,24 @@ const getStyles = (theme: ThemeColors) => StyleSheet.create({
   legendDot: { width: 9, height: 9, borderRadius: 5 },
   legendLabel: { fontSize: 12, color: theme.textSecondary, flex: 1 },
   legendValue: { fontSize: 12, fontWeight: '700', color: theme.textPrimary },
+
+  // ── Attendance Intelligence additions ─────────────────────────────────────
+  sectionDivider:  { height: 1, backgroundColor: theme.border, marginVertical: 24, marginHorizontal: -16 },
+  intelSection:    { marginBottom: 24 },
+  intelHeader:     { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, flexWrap: 'wrap' as const, gap: 8, marginBottom: 8 },
+  intelTitle:      { fontSize: 17, fontWeight: '700' as const, color: theme.textPrimary },
+  freshnessBadge:  { flexDirection: 'row' as const, alignItems: 'center' as const, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: 1 },
+  freshnessBadgeFresh: { backgroundColor: '#DCFCE7', borderColor: '#16A34A' },
+  freshnessBadgeStale: { backgroundColor: '#FEF9C3', borderColor: '#CA8A04' },
+  freshnessText:   { fontSize: 11, fontWeight: '600' as const },
+  unavailableBox:  { backgroundColor: '#FEF9C3', borderRadius: 12, borderWidth: 1, borderColor: '#CA8A04', padding: 14, marginVertical: 8 },
+  unavailableTitle:{ fontSize: 14, fontWeight: '700' as const, color: '#CA8A04', marginBottom: 4 },
+  unavailableBody: { fontSize: 12, color: '#CA8A04', lineHeight: 18 },
+  intelSubLabel:   { fontSize: 11, fontWeight: '700' as const, color: theme.textSecondary, marginTop: 8, marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' as const },
+  classRow:        { flexDirection: 'row' as const, alignItems: 'center' as const, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.border, gap: 12 },
+  classRowId:      { fontSize: 13, fontWeight: '600' as const, color: theme.textPrimary },
+  classRowDetail:  { fontSize: 11, color: theme.textSecondary, marginTop: 2 },
+  classBand:       { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  classBandText:   { fontSize: 13, fontWeight: '700' as const },
+  intelDisclaimer: { fontSize: 11, color: theme.textMuted, fontStyle: 'italic' as const, marginTop: 12, lineHeight: 16 },
 });

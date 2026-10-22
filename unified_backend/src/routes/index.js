@@ -15,7 +15,8 @@ const exportRoutes = require('./export.routes');
 const auditRoutes = require('./audit.routes');
 const settingsRoutes = require('./settings.routes');
 const adminUsersRoutes = require('./adminUsers.routes');
-const analyticsRoutes = require('./analytics.routes');
+const analyticsRoutes            = require('./analytics.routes');
+const attendanceAnalyticsRoutes  = require('./attendanceAnalytics.routes');
 
 // ── Dashboard Routes ─────────────────────────────────────────────────────────
 const dashboardRoutes = require('./dashboard.routes');
@@ -68,6 +69,7 @@ router.use('/audit-logs', auditRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/admin-users', adminUsersRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/analytics/attendance', attendanceAnalyticsRoutes);
 
 // Dashboard
 router.use('/dashboard', dashboardRoutes);

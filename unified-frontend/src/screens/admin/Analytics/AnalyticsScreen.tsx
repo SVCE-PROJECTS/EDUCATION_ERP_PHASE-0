@@ -4,6 +4,7 @@ import { View, ScrollView, StyleSheet, Platform } from 'react-native';
 import { Text, Icon, ActivityIndicator } from 'react-native-paper';
 import ScreenLayout from '../../../navigation/admin/ScreenLayout';
 import { useAnalyticsOverview } from '../../../hooks/admin/useAnalytics';
+import { useAdminAttendanceSummary } from '../../../hooks/admin/useAttendanceAnalytics';
 import { useTheme } from '../../../context/admin/ThemeContext';
 import {
   spacing, typography, radius, shadows,
@@ -269,10 +270,131 @@ const AnalyticsScreen = ({ navigation }) => {
               : <Text style={styles.emptyChart}>No participant data available.</Text>}
           </ChartCard>
         </View>
+
+        {/* ── Attendance Intelligence (DuckDB) ──────────────────────────── */}
+        <View style={styles.sectionDivider} />
+        <AdminAttendanceIntelligence styles={styles} />
+
       </ScrollView>
     </ScreenLayout>
   );
 };
+
+// ── Admin Attendance Intelligence component ───────────────────────────────────
+
+function AdminAttendanceIntelligence({ styles: s }) {
+  const { data, isLoading, isError, error } = useAdminAttendanceSummary();
+
+  const freshnessBadge = () => {
+    if (!data?.freshness) return null;
+    const f     = data.freshness;
+    const stale = f.stale || !f.analyticsAvailable;
+    const label = f.lastSuccessfulRefreshAt
+      ? `Refreshed ${new Date(f.lastSuccessfulRefreshAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : 'Never refreshed';
+    return (
+      <View style={[s.freshnessBadge, stale ? s.freshnessBadgeStale : s.freshnessBadgeFresh]}>
+        <Text style={[s.freshnessText, { color: stale ? '#CA8A04' : '#16A34A' }]}>
+          {f.analyticsAvailable ? label : 'Analytics offline'}
+          {stale && f.analyticsAvailable ? ' · Stale' : ''}
+        </Text>
+      </View>
+    );
+  };
+
+  const content = () => {
+    if (isLoading) return <ActivityIndicator animating size="small" style={{ marginVertical: 16 }} />;
+
+    if (isError) {
+      const is503 = (error as any)?.status === 503 || (error as any)?.response?.status === 503;
+      return (
+        <View style={s.unavailableBox}>
+          <Text style={s.unavailableTitle}>{is503 ? '📊 Analytics Offline' : '⚠️ Unavailable'}</Text>
+          <Text style={s.unavailableBody}>
+            {is503
+              ? 'Attendance analytics are temporarily unavailable. All other features work normally.'
+              : (error as any)?.message || 'Unable to load analytics.'}
+          </Text>
+        </View>
+      );
+    }
+
+    if (!data || data.overall.recordedSessions === 0) {
+      return <Text style={s.emptyChart}>No attendance data in the analytics snapshot for this period.</Text>;
+    }
+
+    const { overall, departments } = data;
+    const pct = overall.attendancePercentage;
+
+    return (
+      <>
+        {/* Institution-level tiles */}
+        <View style={s.intelStatsRow}>
+          <View style={s.intelTile}>
+            <Text style={s.intelTileValue}>{pct !== null ? `${pct.toFixed(1)}%` : '—'}</Text>
+            <Text style={s.intelTileLabel}>Institution Attendance</Text>
+            <Text style={s.intelTileHint}>{overall.recordedSessions.toLocaleString()} sessions recorded</Text>
+          </View>
+          <View style={s.intelTile}>
+            <Text style={s.intelTileValue}>{overall.presentSessions.toLocaleString()}</Text>
+            <Text style={s.intelTileLabel}>Present (total)</Text>
+          </View>
+          <View style={s.intelTile}>
+            <Text style={s.intelTileValue}>{departments.length}</Text>
+            <Text style={s.intelTileLabel}>Departments</Text>
+          </View>
+        </View>
+
+        {/* Per-department breakdown */}
+        <Text style={s.intelSubLabel}>By department</Text>
+        {departments.map((dept) => {
+          const dpct = dept.attendancePercentage;
+          const color = dpct === null ? '#94A3B8'
+            : dpct < 60 ? '#DC2626'
+            : dpct < 75 ? '#CA8A04'
+            : '#16A34A';
+          const bg = dpct === null ? '#F1F5F9'
+            : dpct < 60 ? '#FEE2E2'
+            : dpct < 75 ? '#FEF9C3'
+            : '#DCFCE7';
+          return (
+            <View key={dept.departmentId} style={s.deptRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.deptRowId}>Department #{dept.departmentId}</Text>
+                <Text style={s.deptRowDetail}>
+                  {dept.distinctStudents} students · {dept.distinctClasses} classes · {dept.recordedSessions} sessions
+                </Text>
+              </View>
+              <View style={[s.deptBand, { backgroundColor: bg }]}>
+                <Text style={[s.deptBandText, { color }]}>
+                  {dpct !== null ? `${dpct.toFixed(1)}%` : '—'}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+
+        <Text style={s.intelDisclaimer}>
+          Colours: red &lt;60% · amber &lt;75% · green ≥75%. Demo thresholds — not official policy.
+          Data reflects the last analytics snapshot shown above.
+        </Text>
+      </>
+    );
+  };
+
+  return (
+    <View style={{ marginBottom: spacing.xl }}>
+      <View style={s.intelHeader}>
+        <Text style={s.intelTitle}>Attendance Intelligence</Text>
+        {freshnessBadge()}
+      </View>
+      <Text style={s.intelSubtitle}>
+        Institution-wide attendance aggregated from the DuckDB analytics snapshot.
+      </Text>
+      {content()}
+    </View>
+  );
+}
 
 const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
@@ -347,6 +469,31 @@ const getStyles = (colors) => StyleSheet.create({
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendLabel: { ...typography.body, color: colors.textSecondary, flex: 1, fontSize: 13 },
   legendValue: { ...typography.bodyBold, color: colors.textPrimary, fontSize: 13 },
+
+  // ── Attendance Intelligence additions ─────────────────────────────────────
+  sectionDivider:   { height: 1, backgroundColor: colors.border, marginVertical: spacing.xl, marginHorizontal: -spacing.lg },
+  intelHeader:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xs },
+  intelTitle:       { ...typography.h2, color: colors.textPrimary },
+  intelSubtitle:    { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
+  freshnessBadge:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: 1 },
+  freshnessBadgeFresh: { backgroundColor: '#DCFCE7', borderColor: '#16A34A' },
+  freshnessBadgeStale: { backgroundColor: '#FEF9C3', borderColor: '#CA8A04' },
+  freshnessText:    { fontSize: 11, fontWeight: '600' },
+  unavailableBox:   { backgroundColor: '#FEF9C3', borderRadius: radius.md, borderWidth: 1, borderColor: '#CA8A04', padding: spacing.md, marginVertical: spacing.sm },
+  unavailableTitle: { fontSize: 14, fontWeight: '700', color: '#CA8A04', marginBottom: 4 },
+  unavailableBody:  { fontSize: 12, color: '#CA8A04', lineHeight: 18 },
+  intelStatsRow:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.md },
+  intelTile:        { flex: 1, minWidth: 150, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, ...shadows.card },
+  intelTileValue:   { ...typography.h2, color: colors.textPrimary },
+  intelTileLabel:   { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
+  intelTileHint:    { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  intelSubLabel:    { fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginTop: spacing.sm, marginBottom: spacing.sm, letterSpacing: 0.5, textTransform: 'uppercase' },
+  deptRow:          { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.md },
+  deptRowId:        { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  deptRowDetail:    { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  deptBand:         { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.sm },
+  deptBandText:     { fontSize: 13, fontWeight: '700' },
+  intelDisclaimer:  { fontSize: 11, color: colors.textMuted, fontStyle: 'italic', marginTop: spacing.md, lineHeight: 16 },
 });
 
 export default AnalyticsScreen;

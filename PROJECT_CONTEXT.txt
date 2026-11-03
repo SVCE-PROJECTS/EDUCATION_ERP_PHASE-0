@@ -1,0 +1,955 @@
+================================================================================
+SVCE EDUCATION ERP — PHASE 0  |  AI AGENT PROJECT CONTEXT DOCUMENT
+================================================================================
+Generated for: AI agents, automated tools, and new developer onboarding.
+This document describes the full project — architecture, stack, module list,
+data model, auth flows, API surface, FR and NFR — in plain text.
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 1: PROJECT OVERVIEW
+────────────────────────────────────────────────────────────────────────────────
+
+Name        : SVCE Education ERP — Phase 0
+Institution : Sri Venkateswara College of Engineering (SVCE)
+Purpose     : Unified department-level ERP system covering Admin, HOD, and
+              Faculty portals for managing students, faculty, attendance,
+              assignments, IA marks, activities, meetings, and schedules.
+
+This is a monorepo containing two top-level packages:
+  1. unified_backend/    — Express.js REST API server
+  2. unified-frontend/   — React Native + Expo app (targets Web, iOS, Android)
+
+Single shared PostgreSQL database: education_erp
+
+The frontend was built by merging three previously separate portals:
+  - Admin ERP (Repo 1)
+  - HOD Portal (Repo 2)
+  - Faculty-Student ERP (Repo 3)
+All three portals now live inside one Expo app and share one backend.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 2: REPOSITORY STRUCTURE
+────────────────────────────────────────────────────────────────────────────────
+
+EDUCATION_ERP_PHASE-0/
+├── README.md
+├── LOGIN_CREDENTIALS.md         # Test account usernames/passwords
+├── MEETING_MANAGEMENT_SETUP.md  # Meeting feature setup notes
+├── QUICK_START_GUIDE.txt        # Calendar/schedules feature guide
+├── CALENDAR_FEATURE_COMPLETE.txt
+│
+├── database/
+│   ├── unified_schema.sql       # Full PostgreSQL schema (authoritative)
+│   ├── unified_seed_empty.sql   # Base seed (departments, roles, admin user)
+│   ├── seed_faculty_users.sql   # HOD + Faculty test accounts
+│   ├── seed_test_data.sql       # Sample students, classes, attendance, etc.
+│   └── migrations/
+│       ├── add_meeting_management.sql        # meetings + participants tables
+│       ├── add_meeting_management_external_url.sql
+│       ├── add_schedules_table.sql           # personal schedules table
+│       └── remove_schedule_end_time.sql
+│
+├── prisma/
+│   ├── schema.prisma            # Prisma schema (secondary; used for tooling)
+│   └── migrations/0001_initial/migration.sql
+│
+├── unified_backend/
+│   ├── server.js                # Entry point
+│   ├── package.json
+│   ├── .env.example
+│   ├── src/
+│   │   ├── app.js               # Express app factory
+│   │   ├── config/
+│   │   │   ├── index.js         # Central config (env vars, JWT auto-gen)
+│   │   │   ├── db.js            # pg pool (PostgreSQL connection)
+│   │   │   └── dbBootstrap.js   # Auto-applies schema + migrations on startup
+│   │   ├── routes/              # 30 route files — one per domain
+│   │   ├── controllers/         # 34 controller files
+│   │   ├── services/            # 21 service/business-logic files
+│   │   ├── repositories/        # 24 repository/DB-query files
+│   │   ├── middleware/
+│   │   │   ├── authenticate.js  # JWT auth + role guards
+│   │   │   ├── errorHandler.js
+│   │   │   ├── upload.js        # Multer (photo + document)
+│   │   │   └── validate.js      # express-validator integration
+│   │   ├── validators/          # Validation rule sets
+│   │   └── utils/
+│   │       ├── jwt.js           # Sign/verify JWT
+│   │       ├── logger.js        # Winston logger
+│   │       ├── response.js      # ApiError + helper formatters
+│   │       ├── asyncHandler.js
+│   │       └── classOwnership.js
+│   ├── uploads/                 # Uploaded files (gitignored)
+│   └── tests/
+│
+└── unified-frontend/
+    ├── package.json
+    ├── app.json                 # Expo config
+    ├── babel.config.js
+    ├── metro.config.js
+    └── src/
+        ├── App.tsx              # Root navigator (Login → portal fork)
+        ├── index.web.js         # Web entry point
+        ├── constants.ts         # API_BASE_URL, shared constants
+        ├── api/
+        │   ├── axiosInstance.ts # Shared Axios with auth header + 401 handler
+        │   └── tokenStore.ts    # In-memory token + logout handler ref
+        ├── context/
+        │   ├── AuthContext.tsx  # Unified auth state (all 3 portals)
+        │   ├── admin/AuthContext.tsx + ThemeContext.tsx
+        │   ├── hod/AuthContext.tsx + ThemeContext.tsx
+        │   └── faculty/AuthContext.tsx + ThemeContext.tsx
+        ├── portals/
+        │   ├── admin/AdminPortal.tsx    # Full Admin stack navigator
+        │   ├── hod/HODPortal.tsx        # Full HOD drawer navigator
+        │   └── faculty/FacultyPortal.tsx # Full Faculty drawer navigator
+        ├── screens/
+        │   ├── LoginScreen.tsx          # Unified login (3 role tabs)
+        │   ├── admin/                   # 17 admin screen folders
+        │   ├── hod/                     # 15 HOD screens
+        │   └── faculty/                 # 11 faculty screens
+        ├── components/
+        │   ├── calendar/                # MiniCalendar, ScheduleFormModal, SchedulePopup
+        │   ├── meeting/                 # Shared meeting components
+        │   ├── admin/, hod/, faculty/   # Portal-specific UI components
+        │   └── …shared components (Banner, Button, Card, Dialog, etc.)
+        ├── services/
+        │   ├── authService.ts
+        │   ├── schedule.service.ts
+        │   ├── meeting.service.ts
+        │   ├── admin/   (12 service files)
+        │   ├── hod/     (12 service files)
+        │   └── faculty/ (10 service files)
+        ├── hooks/
+        │   ├── useSchedules.ts
+        │   ├── useMeetings.ts
+        │   ├── admin/, hod/, faculty/   # Portal-scoped hooks
+        ├── navigation/
+        │   ├── admin/ScreenLayout.tsx
+        │   ├── hod/routes.ts
+        │   └── faculty/routes.ts
+        ├── layouts/
+        │   ├── faculty/FacultyDrawerContent.tsx
+        │   └── hod/HODDrawerContent.tsx
+        ├── theme/
+        │   ├── adminTheme.ts, hodTheme.ts, facultyTheme.ts
+        └── types/, utils/
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 3: TECH STACK
+────────────────────────────────────────────────────────────────────────────────
+
+BACKEND
+  Runtime         : Node.js 18+
+  Framework       : Express.js 4.x
+  Database        : PostgreSQL 14+ (accessed via node-postgres "pg" v8)
+  Auth            : JWT (jsonwebtoken ^9), bcryptjs for password hashing
+  File Uploads    : Multer (photos up to 5 MB, documents up to 10 MB)
+  Exports         : ExcelJS (Excel) + PDFKit (PDF)
+  AI Checker      : Optional OpenAI API integration (assignment checker)
+  Validation      : express-validator 7.x
+  Security        : Helmet, CORS, express-rate-limit
+  Logging         : Winston (console + optional file)
+  Dev             : Nodemon, Prisma CLI (schema tooling only — not ORM for runtime)
+
+FRONTEND
+  Framework       : React Native 0.81 + Expo SDK ~54
+  Language        : TypeScript 5.7
+  Navigation      : React Navigation 7 (native-stack + drawer)
+  State/Server    : TanStack React Query v5
+  HTTP Client     : Axios 1.7
+  UI Library      : React Native Paper 5, @expo/vector-icons
+  Forms           : react-hook-form 7
+  Storage         : AsyncStorage, expo-secure-store
+  Media           : expo-image-picker, expo-document-picker, expo-file-system
+  Sharing         : expo-sharing
+  Gradients       : expo-linear-gradient
+  Charts          : react-native-svg (custom chart components)
+  Date Utilities  : date-fns 2.x
+  CSV Parsing     : papaparse
+  Platform        : Targets Web (React Native Web), Android, iOS
+
+INFRASTRUCTURE
+  Database name   : education_erp
+  Default port    : 5000 (backend), 8081 (Expo web dev)
+  Environment     : .env file loaded by dotenv
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 4: BACKEND ARCHITECTURE
+────────────────────────────────────────────────────────────────────────────────
+
+SERVER STARTUP SEQUENCE (server.js)
+  1. Load .env via dotenv
+  2. testConnection() — ping PostgreSQL, exit on failure
+  3. initializeDatabase() — apply unified_schema.sql + all migrations + base seed
+  4. app.listen() on config.port (default 5000)
+  5. SIGTERM / SIGINT graceful shutdown (pool.end())
+
+EXPRESS APP (src/app.js)
+  Middleware stack (in order):
+    helmet()                          — security headers
+    cors()                            — CORS (origin from CORS_ORIGIN env var)
+    rateLimit (global: 1000/15min)    — applied to /api/*
+    rateLimit (auth: 50/15min)        — applied to login endpoints
+    express.json({ limit: '10mb' })
+    express.urlencoded({ limit: '10mb' })
+    cookieParser()
+    compression()
+    morgan("combined") → Winston       — HTTP request logging
+    express.static("uploads")         — serves uploaded files at /uploads
+    GET /health                        — health check endpoint
+    /api → routes/index.js            — all API routes
+    notFound + errorHandler           — 404 + error middleware
+
+LAYER PATTERN
+  Route → Controller → Service → Repository → pg (raw SQL queries)
+  No ORM at runtime. All SQL is written by hand in repository files.
+
+DATABASE BOOTSTRAP (src/config/dbBootstrap.js)
+  Runs inside a single transaction:
+    1. Execute unified_schema.sql (CREATE TABLE IF NOT EXISTS — idempotent)
+    2. Execute all .sql files from database/migrations/ (sorted by filename)
+    3. Execute unified_seed_empty.sql (departments, roles, semesters, etc.)
+    4. Upsert admin user (username: "admin", password hash hardcoded for seed)
+    5. Assign admin role_id to admin user
+    6. Insert default settings row for admin
+  Safe to re-run on every startup.
+
+JWT CONFIG (src/config/index.js)
+  JWT_SECRET auto-generation:
+    - If JWT_SECRET is missing or equals the placeholder string, a 64-byte
+      hex random secret is generated and written back into .env.
+    - This means a fresh clone works without manual .env editing.
+  Expiry: JWT_EXPIRES_IN (default "8h")
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 5: AUTHENTICATION & AUTHORIZATION (BACKEND)
+────────────────────────────────────────────────────────────────────────────────
+
+LOGIN ENDPOINTS
+  POST /api/auth/login              — universal (admin or faculty, auto-detected)
+  POST /api/auth/admin/login        — admin-only login
+  POST /api/auth/faculty/login      — faculty + HOD login (body: departmentCode, username, password)
+  POST /api/auth/logout             — invalidates session (requires token)
+  GET  /api/auth/me                 — returns current user profile
+
+TOKEN FORMAT
+  Bearer token in Authorization header  OR  "token" cookie
+  JWT payload includes: id, username, role, departmentCode, isHOD, roles[]
+
+MIDDLEWARE GUARDS (src/middleware/authenticate.js)
+  authenticate         — verifies JWT; sets req.user; blocks if missing/expired
+  requireAdmin         — checks req.user.role === "admin"
+  requireHOD           — checks req.user.isHOD === true OR roles.includes("HOD")
+  requireRole(...slugs) — checks req.user.roles includes any of the given slugs
+  requireSameDepartment — checks req.user.departmentCode matches req.targetDepartmentCode
+  optionalAuth         — attaches user if token present; does not fail if absent
+
+USER ROLES IN SYSTEM
+  admin   — college-level administrator (full access to all departments)
+  hod     — Head of Department (faculty with is_hod=true; scoped to own department)
+  faculty — Regular teaching faculty (scoped to own classes)
+
+COORDINATOR ROLES (stored in coordinator_assignments table, cached in faculty.coordinator_roles)
+  Faculty members can hold named coordinator roles such as:
+  SPORTS, CULTURAL, TECHNICAL, HACKATHON, INDUSTRY, etc.
+  These are checked via requireRole(...slugs) middleware.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 6: DATABASE SCHEMA SUMMARY
+────────────────────────────────────────────────────────────────────────────────
+
+All tables use BIGSERIAL primary keys and TIMESTAMPTZ for timestamps unless noted.
+Cascade convention:
+  Master/reference data (departments, semesters, etc.) → RESTRICT on delete
+  Ownership rows (attendance, submissions) → CASCADE
+  Optional references → SET NULL
+
+SECTION 1 — AUTH & AUTHORIZATION
+  roles(role_id, role_name, description)
+  users(user_id, username, email, password_hash, role_id→roles, faculty_id→faculty, student_id→students, status, last_login)
+  refresh_tokens(token_id, user_id→users, token_hash, expires_at, revoked)
+
+SECTION 2 — MASTER DATA
+  departments(department_id, department_name, department_code, hod_faculty_id→faculty, is_active)
+  programs(program_id, program_name, program_code, department_id→departments, is_active)
+  semesters(semester_id, semester_number [1–8])
+  sections(section_id, section_name, semester_id→semesters, department_id→departments)
+    UNIQUE(section_name, semester_id, department_id)
+  faculty(faculty_id, employee_id UNIQUE, name, email UNIQUE, phone, designation, qualification,
+          specialization, experience_years, department_id→departments, photo_url, username UNIQUE,
+          password_hash, coordinator_roles [denorm cache], is_hod, status[ACTIVE/INACTIVE/ON_LEAVE])
+  faculty_subjects(faculty_id→faculty, subject_id→subjects)  — capability mapping
+
+SECTION 3 — STUDENTS
+  students(library_id PK, usn UNIQUE nullable, name, email, phone, gender,
+           program_id→programs, department_id→departments, semester_id→semesters,
+           section_id→sections, academic_year, status[Enrolled/On Leave/Transferred/Inactive])
+  Trigger: trg_validate_student_section — ensures section.semester_id = student.semester_id
+
+SECTION 4 — SUBJECTS, CLASSES, TIMETABLE
+  subjects(subject_id, subject_code UNIQUE, subject_name, credits, program_id→programs,
+           semester_id→semesters, department_id→departments)
+  classes(class_id, semester_id, section_id, subject_id, faculty_id, academic_year,
+          class_teacher_id→faculty nullable)
+    UNIQUE(semester_id, section_id, subject_id, academic_year)
+    NOTE: A class row = ONE subject for ONE section for ONE academic year taught by ONE faculty.
+          Attendance, IA marks, and assignments key off class_id ONLY — subject/faculty derived via JOIN.
+  timetable(timetable_id, class_id→classes, day_of_week, period [1–8], room_number)
+    Trigger: trg_prevent_faculty_double_booking — no faculty double-booking
+
+SECTION 5 — ACADEMIC OPERATIONS
+  attendance(attendance_id, student_id→students, class_id→classes, attendance_date DATE,
+             status[Present/Absent], remarks)
+    UNIQUE(student_id, class_id, attendance_date)
+  ia_marks(ia_id, student_id→students, class_id→classes, ia1 [0–20], ia2 [0–20], ia3 [0–20],
+           average GENERATED ALWAYS AS ROUND((ia1+ia2+ia3)/3, 2) STORED)
+    UNIQUE(student_id, class_id)
+  assignments(assignment_id, class_id→classes, title, description, due_date, marks, attachment_url,
+              status[Open/Closed/Graded])
+  assignment_submissions(submission_id, assignment_id→assignments, student_id→students,
+                         submitted_at, file_url, marks, remarks)
+    UNIQUE(assignment_id, student_id)
+
+SECTION 6 — ACTIVITIES & ACHIEVEMENTS
+  activities(activity_id, student_id, faculty_id nullable, activity_type[Technical/Sports/Cultural/
+             IndustryProject/Hackathon/OtherCurricular], title, description, academic_year, status)
+  achievements(achievement_id, student_id, faculty_id nullable, title,
+               level[College/University/State/National/International],
+               type[Hackathon/Sports/Cultural/Industry/Certification/Publication/Award/Other],
+               position, certificate_url, achievement_date)
+
+SECTION 7 — ADMIN OPERATIONS
+  student_transfers(transfer_id, student_id, old_program_id, old_department_id, old_semester_id,
+                    old_section_id, new_program_id, new_department_id, new_semester_id, new_section_id,
+                    reason, document_url, transfer_date)
+  coordinator_assignments(coordinator_id, faculty_id→faculty, role_id→roles, department_id,
+                          assigned_date, remarks)
+    UNIQUE(faculty_id, role_id, department_id)
+    NOTE: Authoritative source; faculty.coordinator_roles is a denorm cache.
+
+SECTION 8 — ACADEMIC SETTINGS
+  academic_settings(setting_id, academic_year UNIQUE, current_semester_type[ODD/EVEN])
+
+SECTION 9 — COMMUNICATION & SYSTEM
+  notifications(notification_id, user_id→users, title, message, read_status[Unread/Read])
+  settings(setting_id, user_id→users UNIQUE, theme, language, notification_enabled)
+
+SECTION 10 — AUDIT
+  audit_logs(audit_id, user_id→users nullable, action, module, record_id, old_value JSONB,
+             new_value JSONB, created_at)
+
+MIGRATION TABLES (added via database/migrations/)
+  meetings(meeting_id, title, agenda, requester_user_id→users, department_id→departments nullable,
+           meeting_date DATE, start_time TIME, duration_minutes, end_time GENERATED,
+           status[pending_availability/pending_approval/confirmed/rejected/cancelled/
+                  rescheduled/in_progress/completed/deleted],
+           deleted_at, meeting_url, meeting_provider[jitsi/zoom/teams],
+           availability_deadline, approval_deadline, confirmed_at,
+           original_meeting_id self-ref nullable, reschedule_reason,
+           meeting_type[online/offline], location VARCHAR)
+  meeting_participants(meeting_id, user_id, role[organizer/participant/optional],
+                       availability[available/unavailable/maybe], responded_at)
+  meeting_documents(document_id, meeting_id, uploaded_by_user_id, file_url, file_name,
+                    file_size, file_type, uploaded_at)
+  meeting_minutes(minutes_id, meeting_id, content TEXT, recorded_by_user_id, recorded_at)
+  meeting_action_items(item_id, meeting_id, assigned_to_user_id, description,
+                       due_date, status[pending/in_progress/completed])
+  meeting_notifications(notification_id, meeting_id, user_id, type, message,
+                        is_read, created_at)
+  schedules(schedule_id, user_id→users, title, description TEXT nullable,
+            schedule_date DATE, status[pending/completed], created_at, updated_at)
+    NOTE: Personal calendar events — scoped to the logged-in user.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 7: API SURFACE — ALL ROUTES
+────────────────────────────────────────────────────────────────────────────────
+
+Base URL: http://localhost:5000/api
+
+All routes under /api require JWT unless noted. Format: METHOD /path — description.
+
+── CORE AUTH ──────────────────────────────────────────────────────────────
+POST   /auth/login                     — Universal login (admin or faculty)
+POST   /auth/admin/login               — Admin login
+POST   /auth/faculty/login             — Faculty/HOD login (requires departmentCode)
+POST   /auth/logout                    — Logout (requires auth)
+GET    /auth/me                        — Get own user profile
+
+── ADMIN USERS ────────────────────────────────────────────────────────────
+GET    /admin-users                    — List admin user accounts
+POST   /admin-users                    — Create admin user
+PUT    /admin-users/:id                — Update admin user
+DELETE /admin-users/:id                — Delete admin user
+
+── SETTINGS ───────────────────────────────────────────────────────────────
+GET    /settings                       — Get current user's settings
+PUT    /settings                       — Update settings
+
+── AUDIT LOGS ─────────────────────────────────────────────────────────────
+GET    /audit-logs                     — List audit entries (admin only)
+
+── DASHBOARD ──────────────────────────────────────────────────────────────
+GET    /dashboard/stats                — Faculty dashboard statistics
+GET    /dashboard/weekly-attendance    — Weekly attendance chart data
+GET    /dashboard/hod                  — HOD dashboard (requireHOD)
+
+── ANALYTICS ──────────────────────────────────────────────────────────────
+GET    /analytics/overview             — Role-scoped analytics overview
+
+── STUDENTS ───────────────────────────────────────────────────────────────
+GET    /students                       — List students (with filters)
+POST   /students                       — Create student
+GET    /students/:id                   — Get student by library_id
+PUT    /students/:id                   — Update student
+DELETE /students/:id                   — Delete student
+
+── ADMIN FACULTY (college-wide, no dept scoping) ──────────────────────────
+GET    /admin/faculty                  — List all faculty (admin)
+POST   /admin/faculty                  — Create faculty (admin)
+GET    /admin/faculty/:id              — Get faculty by id
+PUT    /admin/faculty/:id              — Update faculty (admin)
+DELETE /admin/faculty/:id              — Delete faculty (admin)
+
+── FACULTY (education_erp, department-scoped) ─────────────────────────────
+GET    /faculty/me                     — Own profile (faculty)
+GET    /faculty/me/classes             — Own assigned classes
+POST   /faculty/me/documents           — Upload own document
+GET    /faculty/me/documents           — List own documents
+DELETE /faculty/me/documents/:id       — Delete own document
+GET    /faculty                        — List faculty in dept
+GET    /faculty/:id                    — Get faculty profile
+GET    /faculty/:id/documents          — View faculty docs (HOD only)
+POST   /faculty                        — Create faculty (HOD only)
+PUT    /faculty/:id                    — Update faculty (HOD only)
+DELETE /faculty/:id                    — Delete faculty (HOD only)
+
+── NON-TEACHING STAFF ─────────────────────────────────────────────────────
+GET    /admin/non-teaching-staff       — List NTS
+POST   /admin/non-teaching-staff       — Create NTS
+GET    /admin/non-teaching-staff/:id   — Get NTS record
+PUT    /admin/non-teaching-staff/:id   — Update NTS
+DELETE /admin/non-teaching-staff/:id   — Delete NTS
+
+── STUDENTS (HOD portal) ─────────────────────────────────────────────────
+GET    /hod/student-list               — Student list scoped to dept/semester/section
+GET    /hod/academic                   — HOD academic overview
+GET    /hod/auth/login                 — HOD alternate login (slAuth)
+
+── ATTENDANCE ─────────────────────────────────────────────────────────────
+GET    /attendance                     — Get attendance (filters: subject, date)
+POST   /attendance                     — Record single attendance
+POST   /attendance/bulk                — Record bulk attendance
+GET    /attendance/class-statistics    — Stats per class
+
+── ASSIGNMENTS ────────────────────────────────────────────────────────────
+GET    /assignments                    — List assignments for faculty's classes
+POST   /assignments                    — Create assignment
+GET    /assignments/:id                — Get assignment + submissions
+PUT    /assignments/:id                — Update assignment
+DELETE /assignments/:id                — Delete assignment
+POST   /assignments/:id/submissions    — Student submits assignment
+PUT    /assignments/:id/submissions/:sid — Grade submission
+
+── IA MARKS ───────────────────────────────────────────────────────────────
+GET    /ia-marks                       — Get IA marks for a class
+POST   /ia-marks                       — Save IA marks
+PUT    /ia-marks/:id                   — Update IA marks
+
+── ACHIEVEMENTS ───────────────────────────────────────────────────────────
+GET    /achievements                   — List achievements
+POST   /achievements                   — Create achievement
+PUT    /achievements/:id               — Update achievement
+DELETE /achievements/:id               — Delete achievement
+
+── ACTIVITIES (extracurricular) ───────────────────────────────────────────
+GET/POST/PUT/DELETE /activities/cultural
+GET/POST/PUT/DELETE /activities/sports
+GET/POST/PUT/DELETE /activities/technical
+GET/POST/PUT/DELETE /activities/hackathons
+GET/POST/PUT/DELETE /activities/industry-projects
+GET/POST/PUT/DELETE /activities/other-curricular
+  (Each follows standard CRUD pattern, scoped to department)
+
+── ROLES (coordinator assignments) ────────────────────────────────────────
+GET    /roles                          — List roles
+POST   /roles                          — Assign coordinator role
+DELETE /roles/:id                      — Remove coordinator role assignment
+
+── SCHEDULES (personal calendar) ──────────────────────────────────────────
+GET    /schedules?from=YYYY-MM-DD&to=YYYY-MM-DD  — Get own schedules in range
+POST   /schedules                      — Create schedule
+PUT    /schedules/:id                  — Update schedule
+PATCH  /schedules/:id/complete         — Mark schedule as completed
+PATCH  /schedules/:id/pending          — Mark schedule as pending
+DELETE /schedules/:id                  — Delete schedule
+
+── MEETINGS ───────────────────────────────────────────────────────────────
+GET    /meetings/faculty               — List faculty for invitation
+GET    /meetings/today                 — Today's meetings
+GET    /meetings/notifications         — Meeting notifications
+PATCH  /meetings/notifications/:id/read — Mark notification read
+GET    /meetings                       — List meetings (role-filtered)
+POST   /meetings                       — Create meeting
+GET    /meetings/:id                   — Meeting details
+PUT    /meetings/:id                   — Update meeting
+DELETE /meetings/:id                   — Delete meeting (soft)
+POST   /meetings/:id/approve           — Approve/reject meeting (HOD/Admin)
+POST   /meetings/:id/availability      — Submit availability response
+POST   /meetings/:id/start             — Start meeting
+POST   /meetings/:id/complete          — Complete meeting
+POST   /meetings/:id/documents         — Upload document to meeting
+GET    /meetings/:id/documents         — Get meeting documents
+DELETE /meetings/:id/documents/:docId  — Delete meeting document
+POST   /meetings/:id/minutes           — Save meeting minutes
+GET    /meetings/:id/minutes           — Get meeting minutes
+POST   /meetings/:id/action-items      — Create action item
+GET    /meetings/:id/action-items      — List action items
+PUT    /meetings/:id/action-items/:iid — Update action item status
+GET    /meetings/:id/participants      — List participants
+POST   /meetings/:id/participants      — Add participant
+DELETE /meetings/:id/participants/:pid — Remove participant
+
+── DROPDOWN DATA ──────────────────────────────────────────────────────────
+GET    /dropdown/departments           — All departments
+GET    /dropdown/programs              — Programs (filtered by dept)
+GET    /dropdown/semesters             — Semesters 1–8
+GET    /dropdown/sections              — Sections (filtered by semester+dept)
+GET    /dropdown/subjects              — Subjects (filtered by program+semester)
+GET    /dropdown/faculty               — Faculty list for dropdowns
+GET    /dropdown/classes               — Classes (filtered by faculty / section)
+
+── EXPORT ─────────────────────────────────────────────────────────────────
+GET    /export/students                — Export students (Excel/PDF)
+GET    /export/faculty                 — Export faculty (Excel/PDF)
+GET    /export/attendance              — Export attendance report
+GET    /export/transfers               — Export transfer records
+
+── TRANSFER ───────────────────────────────────────────────────────────────
+POST   /transfer                       — Transfer student between sections/departments
+GET    /transfer                       — List transfer records
+
+── AI CHECKER ─────────────────────────────────────────────────────────────
+POST   /ai-checker/check               — AI plagiarism/quality check for assignment submission
+  (requires OPENAI_API_KEY in .env; feature is optional)
+
+── MISC ───────────────────────────────────────────────────────────────────
+GET    /health                         — Health check (no auth required)
+GET    /                               — Root info response
+GET    /api                            — API info response
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 8: FRONTEND ARCHITECTURE
+────────────────────────────────────────────────────────────────────────────────
+
+ENTRY POINT
+  src/App.tsx  →  <AuthProvider> wraps <NavigationContainer>
+  RootNavigator reads useAuth() to decide which shell to render:
+    - Not authenticated            → LoginScreen
+    - user.role === "admin"        → AdminPortal
+    - user.role === "hod"          → HODPortal
+    - user.role === "faculty"      → FacultyPortal
+  The `key` prop on each portal is set to `${role}-${userId}` so React
+  completely unmounts and remounts the portal on every new login, preventing
+  state leaks between sessions.
+
+UNIFIED AUTH CONTEXT (src/context/AuthContext.tsx)
+  Persists to AsyncStorage (key: "unified_token" / "unified_user").
+  Provides: user, token, isAuthenticated, isReady, login(), logout()
+  logout() wipes ALL session keys from all portals simultaneously.
+  Global refs:
+    getUnifiedToken()     — readable outside React for axios instances
+    unifiedLogoutRef      — callable outside React by 401 handlers
+
+AXIOS INSTANCE (src/api/axiosInstance.ts)
+  baseURL: process.env.EXPO_PUBLIC_API_URL (default: http://localhost:5000/api)
+  request interceptor: attaches Bearer token from tokenStore.getToken()
+  response interceptor: on 401, calls triggerLogout() → unifiedLogoutRef.current()
+  Returns response.data directly (not the raw Axios response).
+
+PORTAL SHELL PATTERN (same for all 3 portals)
+  Each portal has its own:
+    - AuthProvider (portal-scoped context)
+    - ThemeProvider (portal-scoped dark/light)
+    - QueryClientProvider (fresh per mount — prevents cache leak between users)
+    - PaperProvider (react-native-paper theming)
+  Token Bridge component: copies unified token into portal's own auth state on mount.
+  Logout Bridge component: calls unifiedLogout() when portal's own auth clears.
+
+NAVIGATION STRUCTURE
+  Admin portal : Stack navigator (all screens flat — no drawer)
+  HOD portal   : Drawer navigator (permanent sidebar on wide screens, hamburger on narrow)
+  Faculty portal: Drawer navigator (same responsive pattern as HOD)
+
+ADMIN PORTAL SCREENS (src/screens/admin/)
+  Dashboard              — Summary cards: total students, faculty, transfers, recent activity
+  Registry               — Hub screen for student + faculty + NTS registries
+  StudentRegistry        — StudentList, AddStudent, EditStudent, StudentDetails
+  TransferStudent        — Transfer a student to new section/department
+  TransferredStudents    — History of all transfers
+  FacultyRegistry        — FacultyList, AddFaculty, EditFaculty, FacultyDetails
+  NonTeachingStaffRegistry — NTSList, AddNTS, EditNTS, NTSDetails
+  Analytics              — Department-wide analytics charts
+  ActivityLog            — Audit log viewer
+  AdminUsers             — Manage admin accounts
+  Settings               — App settings, academic year config
+  Fee                    — Fee module (AcademicFee live; others stub)
+  MyProfile              — Admin own profile
+  Schedules              — SchedulesAndMeetings (personal calendar + meetings hub)
+  MeetingManagement      — MeetingManagement, CreateMeeting, MeetingDetails, EditMeeting
+
+HOD PORTAL SCREENS (src/screens/hod/)
+  HODDashboard           — Stats: students, faculty, attendance %, activities
+  DataAndManagement      — Hub for FacultyManagement, StudentManagement, CoordinatorManagement
+  FacultyManagement      — Faculty list for HOD's department
+  FacultyProfile         — View faculty profile + documents
+  AddEditFaculty         — Create or edit faculty member
+  StudentManagement      — Students by semester/section in dept
+  CoordinatorManagement  — Assign/remove coordinator roles
+  FacultyAllocation      — Assign faculty to subjects/classes
+  Activities             — ActivitiesPage (sub-pages for cultural, sports, technical, etc.)
+  ActivityLog            — HOD's audit log
+  SchedulesAndMeetings   — Personal schedule calendar + meetings hub
+  MySchedules            — Personal calendar (MiniCalendar component)
+  MeetingManagement      — List of meetings
+  Meeting sub-screens    — CreateMeeting, MeetingDetails, EditMeeting
+  Analytics              — Analytics for the HOD's department
+
+FACULTY PORTAL SCREENS (src/screens/faculty/)
+  Dashboard              — Class summary cards, recent attendance, assignment due dates
+  Attendance             — Mark/view attendance per class
+  Assignments            — Create assignments, view submissions, grade
+  IAMarks                — Enter/edit IA marks per student per class
+  MyProfile              — Faculty's own profile + document upload
+  SchedulesAndMeetings   — Personal schedule calendar + meetings hub
+  MySchedules            — Personal calendar
+  Meetings               — List of meetings
+  Meeting sub-screens    — CreateMeeting, MeetingDetails, EditMeeting
+  ActivityLog            — Faculty's activity log
+  Analytics              — Faculty-scoped analytics
+
+CALENDAR / SCHEDULES FEATURE (shared across all portals)
+  Components:
+    MiniCalendar          — Month grid with red dot markers for pending schedules
+    ScheduleFormModal     — Create/edit schedule form (title, description, date)
+    SchedulePopup         — Shows schedules for a selected date
+  Hook: useSchedules.ts   — React Query powered; caches per date range; exposes
+                            addSchedule, editSchedule, deleteSchedule, toggleComplete
+  Service: schedule.service.ts — CRUD calls to /api/schedules
+  All portals mount the calendar on their "My Schedules" / "SchedulesAndMeetings" screen.
+
+MEETINGS FEATURE
+  Components in src/components/meeting/
+  Hook: useMeetings.ts    — React Query for meetings list and details
+  Service: meeting.service.ts — Full CRUD + workflow calls to /api/meetings
+  Each portal has dedicated CreateMeeting, MeetingDetails, EditMeeting screens.
+  Meeting lifecycle: pending_availability → pending_approval → confirmed → in_progress → completed
+  Online meetings generate a Jitsi URL. Offline meetings have a location field.
+
+DATA FETCHING PATTERN
+  TanStack React Query v5 is used throughout.
+  Query keys are structured per portal per domain.
+  Default options: retry: 1, staleTime: 30000 ms, refetchOnWindowFocus: false
+  Services (src/services/) are thin wrappers around axiosInstance calls.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 9: FUNCTIONAL REQUIREMENTS (FR)
+────────────────────────────────────────────────────────────────────────────────
+
+FR-AUTH-01   Users must log in via username + password. JWT issued on success.
+FR-AUTH-02   Login screen must support three role tabs: Admin, Department (HOD), Faculty.
+FR-AUTH-03   HOD and Faculty login requires a Department Code in addition to credentials.
+FR-AUTH-04   A logged-in HOD attempting Faculty login (or vice versa) must be rejected.
+FR-AUTH-05   JWT tokens expire after 8 hours (configurable). 401 responses auto-logout.
+FR-AUTH-06   Logout must clear all session keys from AsyncStorage across all portals.
+
+FR-ADMIN-01  Admin can register, edit, and delete students with full profile details.
+FR-ADMIN-02  Admin can register, edit, and delete faculty and non-teaching staff.
+FR-ADMIN-03  Admin can transfer a student between sections, semesters, or departments.
+             Transfer records are persisted with old/new placement and a reason/document.
+FR-ADMIN-04  Admin can view all transferred students in a dedicated registry.
+FR-ADMIN-05  Admin can manage admin user accounts (create/edit/delete).
+FR-ADMIN-06  Admin can view system-wide audit logs.
+FR-ADMIN-07  Admin can configure academic settings (current semester type, academic year).
+FR-ADMIN-08  Admin can export student/faculty lists and attendance reports as Excel or PDF.
+FR-ADMIN-09  Admin has access to department-wide analytics and dashboard statistics.
+FR-ADMIN-10  Admin can manage meetings: create, approve/reject, view all meetings.
+FR-ADMIN-11  Admin can view and manage personal schedule calendar.
+
+FR-HOD-01    HOD can view all faculty in their department, including profile and documents.
+FR-HOD-02    HOD can create, edit, and delete faculty members within their department.
+FR-HOD-03    HOD can view students grouped by semester and section.
+FR-HOD-04    HOD can assign coordinator roles (Sports, Cultural, Technical, etc.) to faculty.
+FR-HOD-05    HOD can allocate faculty to subjects/classes.
+FR-HOD-06    HOD can view extracurricular activities: cultural, sports, technical, hackathons,
+             industry projects, and other curricular activities for their department.
+FR-HOD-07    HOD can view an activity/audit log for their department.
+FR-HOD-08    HOD can view analytics for their department.
+FR-HOD-09    HOD can create meetings and approve/reject meeting requests.
+FR-HOD-10    HOD can view and manage personal schedule calendar.
+
+FR-FAC-01    Faculty can view and mark attendance for their assigned classes.
+FR-FAC-02    Faculty can create assignments for their classes with due dates and attachments.
+FR-FAC-03    Faculty can view student submissions and assign marks/remarks.
+FR-FAC-04    Faculty can enter and update IA marks (IA1, IA2, IA3) per student per class.
+             The average is computed automatically by the database as a generated column.
+FR-FAC-05    Faculty can view their own profile and upload personal documents.
+FR-FAC-06    Faculty can view their own activity log.
+FR-FAC-07    Faculty can view class-level and individual student analytics.
+FR-FAC-08    Faculty can create meetings and respond to meeting invitations.
+FR-FAC-09    Faculty can view and manage personal schedule calendar.
+
+FR-SCHEDULE-01  Any authenticated user can create personal schedule entries (title, date, description).
+FR-SCHEDULE-02  Schedules have a status: pending (shows red dot on calendar) or completed.
+FR-SCHEDULE-03  Schedules are strictly user-scoped — no user can see another user's schedules.
+FR-SCHEDULE-04  Users can filter schedules by date range.
+
+FR-MEETING-01  Meetings can be online (Jitsi URL generated) or offline (location field).
+FR-MEETING-02  Meeting creator can set availability deadline and invite participants.
+FR-MEETING-03  Participants respond with: available / unavailable / maybe.
+FR-MEETING-04  HOD or Admin approval is required before a meeting is confirmed.
+FR-MEETING-05  Meetings support full document management (upload/download/delete per meeting).
+FR-MEETING-06  Meeting minutes and action items can be recorded during/after the meeting.
+FR-MEETING-07  Meetings support soft delete (status = 'deleted', record retained for history).
+FR-MEETING-08  Meeting notifications are pushed to participants; users can mark them read.
+
+FR-ACTIVITY-01  Faculty/HOD can log extracurricular activities per student:
+                 cultural, sports, technical events, hackathons, industry projects, other.
+FR-ACTIVITY-02  Achievements can be recorded with level (College/University/State/National/
+                International) and type (Hackathon/Sports/Cultural/Industry/etc.)
+
+FR-EXPORT-01   Exports are available in Excel (.xlsx) and PDF formats.
+FR-EXPORT-02   Exported data can be filtered by department, semester, section, academic year.
+
+FR-DROPDOWN-01 All picker/dropdown fields (departments, programs, semesters, sections,
+               subjects, faculty, classes) are served live from the backend.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 10: NON-FUNCTIONAL REQUIREMENTS (NFR)
+────────────────────────────────────────────────────────────────────────────────
+
+NFR-SEC-01   All API endpoints (except /health, /auth/login variants) require a valid JWT.
+NFR-SEC-02   Passwords are hashed with bcryptjs (cost factor 10).
+NFR-SEC-03   JWT secret is auto-generated if not set; minimum 32-byte entropy enforced.
+NFR-SEC-04   HTTP headers hardened via Helmet (CSP, X-Frame-Options, HSTS, etc.).
+NFR-SEC-05   File serving (/uploads) relaxes CORP headers to allow cross-origin viewing
+             inside iframe document-viewer modals.
+NFR-SEC-06   Rate limiting: global 1000 req/15 min, auth endpoints 50 req/15 min.
+NFR-SEC-07   HOD operations are department-scoped — HOD cannot access other departments.
+NFR-SEC-08   Faculty operations are class-scoped — faculty can only see their own classes.
+NFR-SEC-09   Personal schedule queries include user_id = req.user.id WHERE clause — no user
+             can read another user's schedules.
+
+NFR-PERF-01  PostgreSQL connection pooling via node-postgres (pg) pool.
+NFR-PERF-02  API response payloads use pagination (default PAGE_SIZE = 20 on frontend).
+NFR-PERF-03  TanStack Query caches server responses; staleTime = 30 seconds.
+NFR-PERF-04  The frontend uses a fresh QueryClient per portal mount to prevent stale cache
+             leaking between different users' sessions.
+NFR-PERF-05  Compression middleware enabled on all responses.
+NFR-PERF-06  Static file serving is handled directly by Express (no CDN in Phase 0).
+
+NFR-AVAIL-01 Server startup is blocked until PostgreSQL connection is verified.
+NFR-AVAIL-02 Graceful shutdown on SIGTERM/SIGINT: HTTP server closes, then pg pool ends.
+NFR-AVAIL-03 Database bootstrap is idempotent — all CREATE TABLE / ADD COLUMN statements
+             use IF NOT EXISTS; safe to re-run on every startup without data loss.
+NFR-AVAIL-04 Unhandled promise rejections trigger graceful shutdown.
+
+NFR-MAINT-01 Three-layer backend architecture (Controller → Service → Repository) enforces
+             separation of concerns; no raw SQL in controllers.
+NFR-MAINT-02 Single shared schema file (database/unified_schema.sql) is the authoritative
+             source of truth; migrations are additive only.
+NFR-MAINT-03 Winston logger with configurable levels; optional file logging via ENABLE_FILE_LOGS.
+NFR-MAINT-04 Environment-variable driven configuration; .env.example documents all keys.
+NFR-MAINT-05 All SQL migration files are idempotent (safe to re-run).
+
+NFR-COMPAT-01 Frontend targets React Native Web (primary), Android, and iOS via Expo.
+NFR-COMPAT-02 Responsive layout: drawer is permanent on screens ≥ 768 px; hamburger-menu
+              style on narrow screens (mobile).
+NFR-COMPAT-03 Frontend requires --legacy-peer-deps due to React 19 + RN Paper peer dependency.
+NFR-COMPAT-04 Backend requires Node.js ≥ 18.
+
+NFR-UX-01    Login screen supports dark/light theme toggle (persists for session only).
+NFR-UX-02    Each portal has its own color theme: Admin (purple), HOD (cyan), Faculty (green).
+NFR-UX-03    SnackbarHost provides global toast notifications within HOD and Faculty portals.
+NFR-UX-04    ErrorBoundary wraps each portal to catch React render errors gracefully.
+NFR-UX-05    All forms include inline validation with user-friendly error messages.
+NFR-UX-06    Keyboard Enter key triggers form submission on web.
+
+NFR-UPLOAD-01  Photo uploads: max 5 MB. Document uploads: max 10 MB.
+NFR-UPLOAD-01  Uploaded files are stored in the uploads/ directory on the server filesystem.
+NFR-UPLOAD-02  File URLs are served at /uploads/<filename> from the backend.
+NFR-UPLOAD-03  The uploads/ directory is gitignored.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 11: ENVIRONMENT VARIABLES
+────────────────────────────────────────────────────────────────────────────────
+
+BACKEND (unified_backend/.env)
+  PORT                  Server port (default: 5000)
+  NODE_ENV              development | production | test
+  CORS_ORIGIN           Allowed origin (default: *)
+  PG_HOST               PostgreSQL host (default: localhost)
+  PG_PORT               PostgreSQL port (default: 5432)
+  PG_DATABASE           Database name (default: education_erp)
+  PG_USER               PostgreSQL user (default: postgres)
+  PG_PASSWORD           PostgreSQL password
+  DATABASE_URL          Full connection string (used by Prisma tooling)
+  JWT_SECRET            JWT signing secret (auto-generated if placeholder)
+  JWT_EXPIRES_IN        JWT expiry (default: 8h)
+  UPLOAD_DIR            Upload directory path (default: uploads)
+  MAX_PHOTO_SIZE        Max photo bytes (default: 5242880 = 5 MB)
+  MAX_DOCUMENT_SIZE     Max document bytes (default: 10485760 = 10 MB)
+  BASE_URL              Backend base URL for constructing file URLs
+  RATE_LIMIT_WINDOW_MS  Rate limit window in ms (default: 900000 = 15 min)
+  RATE_LIMIT_MAX        Max requests per window (default: 200)
+  LOG_LEVEL             Winston log level (default: debug in dev, info in prod)
+  ENABLE_FILE_LOGS      true | false — enable Winston file transport
+  OPENAI_API_KEY        Optional — enables AI assignment checker feature
+
+FRONTEND (unified-frontend/.env)
+  EXPO_PUBLIC_API_URL   Backend API base URL
+    Android emulator : http://10.0.2.2:5000/api
+    iOS/Web local    : http://localhost:5000/api
+    Physical device  : http://<LAN-IP>:5000/api
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 12: DEFAULT CREDENTIALS & TEST ACCOUNTS
+────────────────────────────────────────────────────────────────────────────────
+
+Admin (auto-seeded on first backend start):
+  Username : admin
+  Password : Admin@123
+
+HOD and Faculty (from database/seed_faculty_users.sql):
+  Default password for all: Faculty@123
+  Format: <DEPT_CODE>_HOD  (e.g. CS_HOD, EC_HOD, IS_HOD, ME_HOD, etc.)
+  Faculty usernames follow department-specific patterns.
+  See LOGIN_CREDENTIALS.md for the full list.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 13: DEVELOPMENT COMMANDS
+────────────────────────────────────────────────────────────────────────────────
+
+BACKEND
+  npm run dev          — Start with Nodemon (hot reload)
+  npm start            — Start without hot reload (production)
+  npm run db:schema    — Apply schema only (manual)
+  npm run db:seed      — Apply seed only (manual)
+  npm run db:reset     — Drop + recreate DB + schema + seed
+  npm run prisma:studio — Open Prisma Studio for DB browsing
+
+FRONTEND
+  npx expo start             — Start Expo dev server
+  npx expo start --web       — Start for web target
+  npx expo start --clear --web — Clear cache and start web
+  npm install --legacy-peer-deps — Install with peer dep override
+
+DATABASE RESET (manual)
+  psql -U postgres -c "DROP DATABASE IF EXISTS education_erp;"
+  psql -U postgres -c "CREATE DATABASE education_erp;"
+  Then start the backend — dbBootstrap.js applies everything automatically.
+
+SEED ADDITIONAL ACCOUNTS
+  psql -U postgres -d education_erp -f database/seed_faculty_users.sql
+  psql -U postgres -d education_erp -f database/seed_test_data.sql
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 14: KEY DESIGN DECISIONS & NOTES FOR AI AGENTS
+────────────────────────────────────────────────────────────────────────────────
+
+1.  SINGLE SHARED BACKEND: All three portals (admin, hod, faculty) hit the same
+    Express server on port 5000. There is no BFF or gateway.
+
+2.  ROLE DETERMINATION ON LOGIN:
+    - Admin: POST /auth/login with only username + password
+    - HOD:   POST /auth/faculty/login + expects isHOD=true in response
+    - Faculty: POST /auth/faculty/login + isHOD=false
+    The unified LoginScreen handles this via the role tab selection.
+
+3.  PORTAL ISOLATION:
+    Each portal (admin/hod/faculty) has its own AuthContext, ThemeContext, and
+    QueryClient. They are independent React subtrees. Cross-portal communication
+    only goes through the top-level UnifiedAuthContext.
+
+4.  TOKEN BRIDGE PATTERN:
+    On portal mount, a TokenBridge component reads the unified token from
+    UnifiedAuthContext and injects it into the portal's own AuthContext and
+    AsyncStorage. This is needed because each portal was originally a standalone
+    app with its own auth flow.
+
+5.  NO GLOBAL STATE LIBRARY:
+    Admin portal uses React Context + React Query.
+    HOD and Faculty portals use Zustand (for persistent portal-level state)
+    + React Query for server state. Check context/hod/ and context/faculty/ for Zustand stores.
+
+6.  CLASS IS THE CENTRAL ENTITY:
+    The `classes` table links subject + section + faculty + academic_year.
+    Attendance, IA marks, and assignments all key off class_id ONLY.
+    Subject name, faculty name, section name are always derived via JOIN to classes.
+
+7.  IA MARKS AVERAGE IS DATABASE-COMPUTED:
+    ia_marks.average is a GENERATED ALWAYS ... STORED column. Never write to it
+    from application code. It auto-updates when ia1/ia2/ia3 change.
+
+8.  COORDINATOR ROLES ARE DUAL-STORED:
+    faculty.coordinator_roles (VARCHAR, comma-separated) = denorm cache for fast read.
+    coordinator_assignments table = authoritative source.
+    When assigning/removing roles, update BOTH.
+
+9.  MEETING SOFT DELETE:
+    Deleting a meeting sets status='deleted' and deleted_at=NOW().
+    The row is retained for audit trail. Filter out deleted meetings with
+    WHERE status != 'deleted' in queries.
+
+10. SCHEDULES ARE PRIVATE:
+    All schedule queries must include WHERE user_id = <logged_in_user_id>.
+    The backend enforces this — the user cannot pass a different user_id.
+
+11. DATABASE MIGRATIONS MUST BE IDEMPOTENT:
+    All new migration SQL must use CREATE TABLE IF NOT EXISTS,
+    ADD COLUMN IF NOT EXISTS, CREATE INDEX IF NOT EXISTS, etc.
+    dbBootstrap.js runs all migrations on every server startup.
+
+12. JWT SECRET PERSISTENCE:
+    The first time the server starts without a JWT_SECRET, it generates one and
+    writes it back to .env. Do not delete .env during development or all active
+    sessions will be invalidated.
+
+13. UPLOADS DIRECTORY:
+    Files are stored at unified_backend/uploads/ on the server filesystem.
+    They are served at http://localhost:5000/uploads/<filename>.
+    No cloud storage (S3, etc.) is used in Phase 0.
+
+14. AI CHECKER:
+    The /ai-checker endpoint requires an OPENAI_API_KEY. Without it, the feature
+    is silently unavailable. This is an optional feature and not required for
+    core functionality.
+
+15. FEE MODULE:
+    Most fee sub-screens (TuitionFee, ExamFee, TransportFee, HostelFee) are
+    placeholder stubs that display "Coming soon." Only AcademicFee is implemented.
+
+16. PRISMA IS TOOLING-ONLY:
+    prisma/schema.prisma exists for `prisma studio` (database browsing) and
+    `prisma validate`. The runtime queries all use node-postgres (pg) directly.
+    Prisma is NOT used as the ORM for actual API calls.
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================

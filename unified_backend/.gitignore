@@ -40,3 +40,8 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# DuckDB analytics database files — never commit; rebuilt from PostgreSQL
+data/
+*.duckdb
+*.duckdb.wal
